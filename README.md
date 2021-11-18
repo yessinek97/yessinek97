@@ -1,4 +1,4 @@
-- 👋 Hi, I’m Yessine Khanfir @yessinek97, i am a Data science engineering student at Esprit University in Tunisia and actually looking for a 6 month graduation internship opportunity.
+- 👋 Hi, I’m Yessine Khanfir @yessinek97, i am a Data science student at Esprit University in Tunisia and actually looking for a 6 month graduation internship opportunity.
 - 👀 Interested in Artificial Intelligence and web development
 - 🌱 Currently learning advanced deep learning
 - 💞️ Always looking to collaborate on data science projects
