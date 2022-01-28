@@ -2,8 +2,6 @@
 
 ## Installation
 
-## Installation
-
 **Requirements:**
 
 - docker 19.03 or later with [buildx](https://docs.docker.com/buildx/working-with-buildx/#install)
