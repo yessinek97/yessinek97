@@ -1,0 +1,13 @@
+# Ignore all by default to reduce build context as much as possible
+*
+
+# Python requirements installed in the docker
+!requirements.txt
+
+# Allow to use the repository as a package
+!setup.py
+!biondeep_ig
+!tests
+
+# To run the linters in the CI job
+!.pre-commit-config.yaml

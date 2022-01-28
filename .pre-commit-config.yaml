@@ -71,7 +71,7 @@ repos:
         args:
           - --convention=google
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-    rev: v7.0.1
+    rev: v5.0.0
     hooks:
       - id: commitlint
         stages: [commit-msg]
