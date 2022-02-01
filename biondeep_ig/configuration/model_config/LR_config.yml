@@ -1,0 +1,9 @@
+model_type: LRModel
+model_config:
+  general_params:
+    fit_intercept: True
+    normalize: "deprecated"
+    copy_X: True
+  model_params:
+    n_jobs: 4
+    positive: False

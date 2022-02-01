@@ -1,0 +1,16 @@
+zimj680103_mut
+hopt810101_mut
+tested_kiderafac10_pep_mhci
+grar740102_mut
+tested_score_biondeep_mhci
+engd860101_mut
+nontested_arom_pep_mhci
+nontested_zscales3_pep_mhci
+pram900101_mut
+kytj820101_mut
+wt_cruc_pp1_hbond
+diff_fasgai_comp_char_pep_mhci
+janj780101_mut
+wt_fasgai_el_prop
+diff_fasgai_comp_char
+bhar880101_mut

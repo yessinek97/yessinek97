@@ -1,0 +1,20 @@
+neptune_logs: False
+
+configs:
+  - modular_train_sub_1.yml
+  - modular_train_sub_2.yml
+
+benchmark_column:
+  - mean_topk # prediction_average ,mean_topk ,max_topk ,mintopk
+model_selection: mean_topk
+
+label: cd8_any
+comparison_score: tested_score_biondeep_mhci
+
+processing:
+  isunlabelled: false
+  fill_nan_method: mean
+  seed: 1994
+  validation_ratio: 0.1
+models:
+  - LR_config.yml

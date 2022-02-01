@@ -1,0 +1,14 @@
+model_type: CatBoostModel
+model_config:
+  general_params:
+    num_boost_round: 2000000000
+    verbose_eval: 20
+    early_stopping_rounds: 15
+  model_params:
+    depth: 7
+    iterations: 20
+    eval_metric: AUC
+    loss_function: Logloss
+    learning_rate: 0.01
+    verbose: false
+    use_best_model: True

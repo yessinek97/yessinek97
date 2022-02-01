@@ -1,0 +1,6 @@
+FS_type: Fsrfexgboost
+FS_config:
+  max_depth: 7
+  learning_rate: 0.03
+  nthread: 4
+  rand_seed: 1994

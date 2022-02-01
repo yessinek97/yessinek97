@@ -1,0 +1,16 @@
+pram900101_wt
+kanm000101
+daym780201_mut
+nontested_best_rank_biondeep_mhcii
+zimj680103_mut
+rada880106_wt
+tested_score_biondeep_mhci
+kriw790103_wt
+count_ms_mhcii
+janj780101_wt
+tested_best_rank_biondeep_mhcii
+zimj680103_wt
+tested_best_rank_biondeep_mhci
+nontested_acid_pep_mhcii
+diff_instab_pep_mhci
+tested_peptide_mposition_mhcii_flanks_30

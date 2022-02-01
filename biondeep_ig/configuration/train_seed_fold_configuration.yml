@@ -1,0 +1,81 @@
+neptune_logs: False
+experiments:
+  KfoldExperiment:
+    split_column: fold
+    plot_shap_values: True
+    plot_kfold_shap_values: True # False when using Logistic regression
+    operation:
+      - mean
+      - max
+      - min
+      - median
+    statics:
+      - mean
+      - max
+      - min
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: True
+  DoubleKfold:
+    split_column: fold
+    statistics:
+      - mean
+      - max
+      - min
+    operation:
+      - mean
+      - max
+      - min
+      - median
+
+label: cd8_any
+model_selection: prediction_average
+feature_paths:
+  - features_Cor
+  - features_NS
+  - features_RFELR
+  - features_SFMLR
+  - features_XGBoost
+  - features_CS
+  - features_PCA
+  - features_RFEXGBoost
+  - features_SFMXGBoost
+  - features_MI
+  - features_Relief
+  - features_RFGini
+  - features_ShapXGBoost
+
+eval_id_name: patientid
+observations_number: 20
+#comparison_score: tested_score_biondeep_mhci
+print_evals: true
+processing:
+  isunlabelled: false
+  fill_nan_method: keep
+  validation_ratio: 0.1
+  folds: [3]
+  seeds: [1994]
+models:
+  - xgboost_config.yml
+evaluation:
+  print_evals: True
+  comparison_score: tested_score_biondeep_mhci
+  eval_id_name: patientid
+  observations_number: 20
+  threshold: 0.3
+  metrics:
+    - topk
+    - roc
+    - logloss
+    - precision
+    - recall
+    - f1
+  metric_selector: topk
+  metrics_selector_higher: True
+  data_name_selector: test # test , validation
+  prediction_name_selector: "prediction_mean"
+  monitoring_metrics:
+    - roc
+    - topk
+    - topk_20_patientid
+    - topk_patientid

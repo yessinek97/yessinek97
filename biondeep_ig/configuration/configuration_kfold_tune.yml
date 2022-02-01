@@ -1,0 +1,26 @@
+neptune_logs: False
+experiments:
+  KfoldExperiment:
+    split_column: fold
+label: cd8_any
+benchmark_column:
+  - prediction_average # prediction_average ,"mean_topk" ,"max_topk" ,"mintopk"
+  - mean_topk
+  - max_topk
+  - min_topk
+
+feature_paths:
+  - Created_feature_list_NormalizedStatistics
+
+eval_id_name: patientid
+observations_number: 20
+comparison_score: tested_score_biondeep_mhci
+print_evals: false
+processing:
+  isunlabelled: false
+  fill_nan_method: keep
+  validation_ratio: 0.1
+  folds: [8]
+  seeds: [1001, 1994, 2017, 15987, 12, 158, 125, 187, 256984, 100002, 1569874, 123654789, 2013]
+models:
+  - xgboost_from_tune kfold.yml

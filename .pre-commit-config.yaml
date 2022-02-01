@@ -40,6 +40,9 @@ repos:
         args:
           - --no-strict-optional
           - --ignore-missing-imports
+        additional_dependencies:
+          - types-PyYAML==6.0.3
+          - types-requests==2.27.7
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v2.5.1
     hooks:
