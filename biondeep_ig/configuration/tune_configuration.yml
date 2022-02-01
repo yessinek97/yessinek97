@@ -1,0 +1,41 @@
+neptune_logs: False
+experiments:
+  KfoldExperiment:
+    split_column: fold
+    plot_shap_values: False
+    plot_kfold_shap_values: False
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: False
+label: cd8_any
+feature_paths:
+  - Created_feature_list_RFELR
+  - Created_feature_list_RFEXGBoost
+  - Created_feature_list_Correlation
+  - Created_feature_list_SFMXGBoost
+  - Created_feature_list_NormalizedStatistics
+  - Created_feature_list_CosSimilarity
+  - Created_feature_list_ClassificationBoundary
+  - Created_feature_list_XGBoost
+  - Created_feature_list_PCA2
+  - Created_feature_list_ShapXGBoost
+  - Created_feature_list_MI
+  - Created_feature_list_Relief
+  - Created_feature_list_RFGini
+
+tunning:
+  maximize: True
+  nbr_trials: 2500
+
+eval_id_name: patientid
+observations_number: 20
+comparison_score: tested_score_biondeep_mhci
+print_evals: false
+processing:
+  isunlabelled: false
+  fill_nan_method: keep
+  seed: 1994
+  validation_ratio: 0.1
+  fold: 5
+models:
+  - tune_xgboost.yml

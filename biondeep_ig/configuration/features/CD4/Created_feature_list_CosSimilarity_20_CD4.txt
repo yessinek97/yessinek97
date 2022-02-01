@@ -1,0 +1,15 @@
+tested_zscales1_pep_mhcii
+wt_charge_stryer
+kriw790103_wt
+wt_mw
+tested_acid_pep_mhcii
+argp820101_mut
+mut_charge_stryer
+tested_score_biondeep_mhci
+nontested_dissimilarity_richman_pep_mhcii
+nontested_arom_pep_mhci
+mut_mswhim3
+tested_alip_pep_mhci
+mut_mw
+mt_pos_27mer
+mut_zscales3

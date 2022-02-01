@@ -1,0 +1,4 @@
+FS_type: Fsrelief
+FS_config:
+  n_threads: 4
+  rand_seed: 1994

@@ -1,0 +1,25 @@
+name: biondeep_ig_train
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8.11
+  - pip
+  - pip:
+      - numpy==1.19.5
+      - xgboost==1.4.2
+      - Boruta==0.3
+      - sklearn-relief==1.0.0b2
+      - lightgbm==3.2.1
+      - catboost==0.26.1
+      - python-dotenv==0.19.0
+      - scipy==1.5.4
+      - plotly==5.3.1
+      - pillow==8.3.2
+      - pandas==1.1.5
+      - scikit-learn==0.24.2
+      - click==8.0.1
+      - hyperopt == 0.2.5
+      - shap
+      - seaborn
+      - neptune-client==0.13.1

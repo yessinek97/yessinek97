@@ -1,0 +1,56 @@
+neptune_logs: False
+experiments:
+  #  KfoldExperiment:
+  #    split_column: fold
+  #    plot_shap_values: True
+  #    plot_kfold_shap_values: True # False when using Logistic regression
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: True
+#  DoubleKfold:
+#    split_column: fold
+
+label: cd8_any
+benchmark_column:
+  - prediction_average # prediction_average ,"mean_topk" ,"max_topk" ,"mintopk"
+  - mean_topk
+  - max_topk
+  - min_topk
+model_selection: prediction_average
+feature_paths:
+  - Fspca
+  - Fscossim
+eval_id_name: patientid
+observations_number: 20
+comparison_score: tested_score_biondeep_mhci
+print_evals: false
+processing:
+  isunlabelled: false
+  fill_nan_method: keep
+  seed: 1994
+  validation_ratio: 0.1
+  fold: 3
+models:
+  - xgboost_config.yml
+
+FS:
+  min_nonNaNValues: 0.6
+  n_feat: 20
+  min_unique_values: 5
+  max_unique_values: 100
+  force_features:
+    - "tested_score_biondeep_mhci"
+  FS_methods:
+    - Fspca.yml
+    #- fsxgboost.yml
+    #- fsxgboostshap.yml
+    #- fsrfgini.yml
+    - Fscossim.yml
+    #- fscorr.yml
+    #- fssfmlr.yml
+    #- fsrfelr.yml
+    #- fssfmxgboost.yml
+    #- fsrfexgboost.yml
+    #- fsrelief.yml
+    #- fsmi.yml
+    #- fsboruta.yml

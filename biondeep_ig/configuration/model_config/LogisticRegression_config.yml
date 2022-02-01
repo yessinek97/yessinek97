@@ -1,0 +1,12 @@
+model_type: LogisticRegressionModel
+model_config:
+  general_params:
+    num_boost_round: 50
+    verbose_eval: 10
+    early_stopping_rounds: 5
+  model_params:
+    eta: 0.01
+    eval_metric: logloss
+    objective: binary:logistic
+    seed: 3001
+    subsample: 1

@@ -1,0 +1,16 @@
+nontested_best_rank_biondeep_mhcii
+tested_peptide_mposition_mhcii_flanks_30
+zimj680103_mut
+janj780101_wt
+end_pos_raw
+nontested_pk_pep_mhcii
+mut_mw
+count_ms_mhcii
+tested_best_rank_biondeep_mhcii
+tested_score_biondeep_mhci
+bhar880101_mut
+kola920101
+pram900101_mut
+start_pos_raw
+fasg760101_mut
+count_ms_mhci

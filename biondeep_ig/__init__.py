@@ -1,1 +1,1 @@
-"""BioNDeep IG."""
+"""Init."""
