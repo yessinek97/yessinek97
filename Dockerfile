@@ -1,6 +1,6 @@
 # To replace with the following image once it is available on the registry
 # FROM registry.gitlab.com/instadeep/biondeep-ig/py-pyrosetta-rosetta-tmlgn:38-443f-313
-FROM registry.gitlab.com/instadeep/bio-gnn/py-pyrosetta-rosetta-tmlgn:38-443f-313
+FROM registry.gitlab.com/instadeep/bio-gnn/py-pyrosetta-rosetta-tmlgn:38-443f-313 AS ci
 
 # Set different env variables linked to TF
 # Do not take all the GPUs memory by default
@@ -14,15 +14,6 @@ ENV TF_CPP_MIN_LOG_LEVEL=3
 # This directory is erased if we map the ${HOME_DIRECTORY} to local ${PWD}
 ENV PYTHONUSERBASE=/.pip_packages
 
-# Define the env variables / args linked to the user
-ENV USER=app
-ARG HOST_UID=42000
-ARG HOST_GID=42001
-ARG HOME_DIRECTORY
-
-# Ensure HOME_DIRECTORY is provided
-RUN test -n "$HOME_DIRECTORY"
-
 # Update and upgrade your base image
 RUN apt-get update && \
         apt-get upgrade -y
@@ -30,6 +21,25 @@ RUN apt-get update && \
 # Install required system dependencies and clear cache
 RUN DEBIAN_FRONTEND=noninteractive apt-get install git -y && \
         apt-get clean
+
+# Copy the requirements file into /tmp directory
+COPY ./requirements.txt /tmp/requirements.txt
+
+# Install python requirements
+RUN pip install --upgrade --quiet pip setuptools && \
+        pip install --no-cache-dir -r /tmp/requirements.txt && \
+        rm /tmp/requirements.txt
+
+FROM ci AS dev
+
+# Define the env variables / args linked to the user
+ENV USER=app
+ARG HOST_UID
+ARG HOST_GID
+ARG HOME_DIRECTORY
+
+# Ensure ARGS are provided
+RUN test -n "$HOME_DIRECTORY" && test -n "$HOST_UID" && test -n "$HOST_GID"
 
 # Create group and user: it allows to avoid permissions issue
 RUN groupadd --force --gid $HOST_GID $USER && \
@@ -41,20 +51,11 @@ RUN mkdir -p $HOME_DIRECTORY && mkdir -p $PYTHONUSERBASE
 RUN chown -R $USER:$USER $PYTHONUSERBASE
 RUN chown -R $USER:$USER $HOME_DIRECTORY
 
-# Copy the requirements file into /tmp directory
-COPY ./requirements.txt /tmp/requirements.txt
-RUN chown -R $USER:$USER /tmp/requirements.txt
-
 # Default user
 USER $USER
 
 # Add Python bin to PATH
 ENV PATH=$PATH:$PYTHONUSERBASE/bin
-
-# Install python requirements
-RUN pip install --upgrade --quiet pip setuptools && \
-        pip install --no-cache-dir -r /tmp/requirements.txt && \
-        rm /tmp/requirements.txt
 
 # Copy all the files into HOME_DIRECTORY after installing the requirements
 COPY . $HOME_DIRECTORY

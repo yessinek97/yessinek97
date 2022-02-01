@@ -40,8 +40,7 @@ define docker_buildx_template
 endef
 
 define docker_build_ci_template
-	docker build --progress=plain . -f $(1) -t $(2) \
-		--build-arg HOME_DIRECTORY=$(DOCKER_HOME_DIRECTORY)
+	docker build --target=ci --progress=plain . -f $(1) -t $(2)
 endef
 
 build:
