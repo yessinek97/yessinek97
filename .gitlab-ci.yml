@@ -7,7 +7,6 @@ variables:
   PRE_COMMIT_VERSION: "2.17.0"
   PROJECT_NAME: biondeep_ig
   DOCKER_IMAGE_NAME: registry.gitlab.com/instadeep/biondeep-ig
-  DOCKER_HOME_DIRECTORY: /home/app
 
 .docker_login: &docker_login |
   docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
@@ -28,11 +27,7 @@ linters:
   image: $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
   stage: lint
   script:
-    - cd $DOCKER_HOME_DIRECTORY
     - pip install pre-commit==$PRE_COMMIT_VERSION
-    # hack to be able to use pre-commit without all the .git directory available in the docker
-    # cf https://github.com/pre-commit/pre-commit/issues/1152
-    - git init .
     - pre-commit install -t pre-commit
     - pre-commit run --all-files
 
@@ -40,7 +35,6 @@ test:
   image: $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
   stage: test
   script:
-    - cd $DOCKER_HOME_DIRECTORY
     - pytest --cov=$PROJECT_NAME --cov-report=term-missing --junit-xml=test-results.xml
       --doctest-modules -vv
     - coverage html --directory=coverage_html_report

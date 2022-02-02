@@ -8,6 +8,3 @@
 !setup.py
 !biondeep_ig
 !tests
-
-# To run the linters in the CI job
-!.pre-commit-config.yaml
