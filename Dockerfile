@@ -10,10 +10,6 @@ ENV CUDA_DEVICE_ORDER=PCI_BUS_ID
 # Filter the warnings from TF
 ENV TF_CPP_MIN_LOG_LEVEL=3
 
-# By default ${HOME_DIRECTORY}/.local is used
-# This directory is erased if we map the ${HOME_DIRECTORY} to local ${PWD}
-ENV PYTHONUSERBASE=/.pip_packages
-
 # Update and upgrade your base image
 RUN apt-get update && \
         apt-get upgrade -y
@@ -25,10 +21,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install git -y && \
 # Copy the requirements file into /tmp directory
 COPY ./requirements.txt /tmp/requirements.txt
 
+
 # Install python requirements
 RUN pip install --upgrade --quiet pip setuptools && \
         pip install --no-cache-dir -r /tmp/requirements.txt && \
-        rm /tmp/requirements.txt
+        rm -rf /tmp/*
 
 FROM ci AS dev
 
@@ -46,8 +43,16 @@ RUN groupadd --force --gid $HOST_GID $USER && \
         useradd -M --home $HOME_DIRECTORY --base-dir $HOME_DIRECTORY \
         --uid $HOST_UID --gid $HOST_GID --shell "/bin/bash" $USER
 
+# By default ${HOME_DIRECTORY}/.local is used
+# If we install manually packages via pip install {package_name}
+# The packages will be stored locally due to volume mapping between ${HOME_DIRECTORY} and local ${PWD}
+# For fresh new container the packages manually installed will still be available
+ENV PYTHONUSERBASE=/.pip_packages
+
 # Create home directory + directory to store pip packages
 RUN mkdir -p $HOME_DIRECTORY && mkdir -p $PYTHONUSERBASE
+
+# Make the user own the directories
 RUN chown -R $USER:$USER $PYTHONUSERBASE
 RUN chown -R $USER:$USER $HOME_DIRECTORY
 
@@ -57,11 +62,5 @@ USER $USER
 # Add Python bin to PATH
 ENV PATH=$PATH:$PYTHONUSERBASE/bin
 
-# Copy all the files into HOME_DIRECTORY after installing the requirements
-COPY . $HOME_DIRECTORY
-
 # Set HOME_DIRECTORY as default
 WORKDIR $HOME_DIRECTORY
-
-# Install our pkg
-RUN pip install --prefix $PYTHONUSERBASE -e .
