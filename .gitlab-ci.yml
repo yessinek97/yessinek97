@@ -2,6 +2,7 @@ stages:
   - build
   - lint
   - test
+  - publish
 
 variables:
   PRE_COMMIT_VERSION: "2.17.0"
@@ -49,3 +50,16 @@ test:
     reports:
       junit: ./test-results.xml
     expire_in: 1 day
+
+pages:
+  image: $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+  stage: publish
+  needs: ["build_image"]
+  script:
+    - pip install -r $CI_PROJECT_DIR/requirements.txt
+    - mkdocs build --verbose
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
