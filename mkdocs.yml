@@ -1,0 +1,67 @@
+site_name: BioNDeep IG
+site_description: BioNDeep IG data generation and training pipeline
+site_author: bio-IG Contributors
+site_url: https://instadeep.gitlab.io/biondeep-ig
+site_dir: public
+repo_name: instadeep/biondeep-ig
+repo_url: https://gitlab.com/instadeep/biondeep-ig
+strict: false
+
+theme:
+  name: material
+  language: en
+  palette:
+    primary: md-primary-fg-color--dark
+    accent: md-accent-fg-color
+  icon:
+    repo: fontawesome/brands/gitlab
+  font:
+    text: Avenir Next
+  features:
+    - navigation.tracking
+
+markdown_extensions:
+  - pymdownx.snippets:
+      base_path: bio-IG
+  - toc:
+      permalink: "#"
+  - pymdownx.highlight:
+      linenums: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences
+  - def_list
+
+extra_javascript:
+  - javascript/mathjax.js
+  # These two javascript files load MathJax, c.f. https://www.mathjax.org/#gettingstarted.
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+plugins:
+  - search
+  - git-revision-date
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          rendering:
+            show_source: true
+          selection:
+            filters:
+              - "!^test"
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Data:
+      - Overview: data.md
+  - Feature selection: FS.md
+  - Train:
+      - Train: train.md
+      - Framework: layout.md
+  - Experiments:
+      - config: config.md
+      - available experiments: experiments.md
+  - Eval: eval.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
