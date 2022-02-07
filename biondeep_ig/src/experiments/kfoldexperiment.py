@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from biondeep_ig.src import Evals
-from biondeep_ig.src import ID_name
+from biondeep_ig.src import ID_NAME
 from biondeep_ig.src.experiments.base import BaseExperiment
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.utils import load_pkl
@@ -47,7 +47,10 @@ class KfoldExperiment(BaseExperiment):
         self.statistics_opts = kwargs.get("statistics", ["mean"])
 
         self.validation_split_path = self.splits_path / (
-            f'kfold_split_{self.configuration["processing"]["fold"]}_{self.configuration["processing"]["seed"]}.csv'
+            (
+                f'kfold_split_{self.configuration["processing"]["fold"]}_'
+                f'{self.configuration["processing"]["seed"]}.csv'
+            )
         )
 
         self.load_data_set()
@@ -56,12 +59,12 @@ class KfoldExperiment(BaseExperiment):
             if self.validation_split_path.exists():
                 validation_split = pd.read_csv(self.validation_split_path)
                 self.train_data = self.train_data.data.merge(
-                    validation_split, on=[ID_name], how="left"
+                    validation_split, on=[ID_NAME], how="left"
                 )
             else:
                 self.train_data.kfold_split()
                 self.train_data = self.train_data.data
-                self.train_data[[ID_name, self.split_column]].to_csv(
+                self.train_data[[ID_NAME, self.split_column]].to_csv(
                     self.validation_split_path, index=False
                 )
 
@@ -119,7 +122,7 @@ class KfoldExperiment(BaseExperiment):
 
     def eval_exp(self):
         """Evaluate method."""
-        train_data, test_data = self.predict()
+        _, test_data = self.predict()
         validation_data, test_data = self.predict()
         if self.evaluator.print_evals:
             log.info("           -Kfold predictions")

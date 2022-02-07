@@ -12,7 +12,6 @@ from biondeep_ig.trainer import tune
 @click.group()
 def main():
     """Entry point for biondeep."""
-    pass
 
 
 main.add_command(featureselection)

@@ -12,24 +12,12 @@ from sklearn.model_selection import train_test_split
 
 from biondeep_ig.src import DATAPROC_DIRACTORY
 from biondeep_ig.src import FEATURIZER_DIRECTORY
-from biondeep_ig.src import ID_name
+from biondeep_ig.src import ID_NAME
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.utils import load_pkl
 from biondeep_ig.src.utils import save_as_pkl
 
 log = get_logger("Processing")
-
-
-class Error(Exception):  # quick callback for an error function
-    """Print error message."""
-
-    def __init__(self, msg):
-        """Initialize the error class."""
-        self.msg = msg
-
-    def __str__(self):
-        """Return the message."""
-        return self.msg
 
 
 class Dataset:
@@ -95,10 +83,9 @@ class Dataset:
             self.loaddataset(str(self.output_path))
             log.debug(f"processed data loaded from  {self.output_path.name}")
             return self
-        else:
-            self.loaddataset(self.data_path)
-            self.process()
-            return self.save_get_data()
+        self.loaddataset(self.data_path)
+        self.process()
+        return self.save_get_data()
 
     def process(self):
         """Process Method."""
@@ -140,19 +127,19 @@ class Dataset:
         _, file_extension = os.path.splitext(path)
         if file_extension == ".csv":
             self.data = pd.read_csv(path, low_memory=False)
-        elif file_extension == ".tsv" or file_extension == ".temp":
+        elif file_extension in [".tsv", ".temp"]:
             self.data = pd.read_csv(path, low_memory=False, sep="\t")
         elif file_extension == ".xlsx":
             self.data = pd.read_excel(path)
         else:
-            raise Error("UserError: File ending of data file not known!")
+            raise Exception("UserError: File ending of data file not known!")
 
     # ----------------------------------------------
     def features_lower_case(self):
         """Make all the features lowercase."""
         self.data.columns = self.data.columns.astype(str)
         self.data.columns = self.data.columns.str.lower()
-        self.data[ID_name] = list(range(len(self.data)))
+        self.data[ID_NAME] = list(range(len(self.data)))
 
     # ----------------------------------------------
     def duplicate_features(self):
@@ -162,7 +149,11 @@ class Dataset:
         self.data = self.data.loc[:, ~self.data.columns.duplicated()]
         if len(self.data.columns) < pl:
             log.debug(
-                f"Duplicate column names detected in {self.data_path} and removed - maybe check your data set - will proceed with deduplicated version "
+                (
+                    f"Duplicate column names detected in {self.data_path}"
+                    "and removed - maybe check your data set - will proceed"
+                    "with deduplicated version "
+                )
             )
             log.debug(
                 f"Duplicate columns:{[x for x in ini_cols if ini_cols.to_list().count(x) > 1]}"
@@ -186,7 +177,7 @@ class Dataset:
         """Reduce the data set for debug use."""
         self.data = self.data.iloc[0:reduce_mode]
         # ini_len = len(self.data)
-        log.debug("Initial length = " + str(len(self.data)))
+        log.debug(f"Initial length = {len(self.data)}")
 
         self.data.reset_index(drop=True, inplace=True)
 
@@ -220,24 +211,18 @@ class Dataset:
 
         ini_len = len(self.data)
         log.debug(
-            "    *Target  "
-            + "{0: <35}".format(self.target)
-            + " had "
-            + str(self.data[self.target].isna().sum())
-            + " NaNs"
+            f"    *Target  {self.target} had " + f"{self.data[self.target].isna().sum()} Nans"
         )
         for col in self.features:
-
             log.debug(
-                "    *Feature "
-                + "{0: <35}".format(col)
-                + " had "
-                + str(self.data[col].isna().sum())
-                + " NaNs (after removing target NaNs)"
+                (
+                    f"    *Feature {col} had {self.data[col].isna().sum()}"
+                    "NaNs (after removing target NaNs)"
+                )
             )
         if not self.fill_nan_method:
             self.data = self.data.dropna(subset=self.features)
-            log.debug("Removed " + str(ini_len - len(self.data)) + " nan values")
+            log.debug(f"Removed {ini_len - len(self.data)}  nan values")
 
         self.data.reset_index(drop=True, inplace=True)
 
@@ -276,7 +261,7 @@ class Dataset:
         ix = 0
         iy = 0
         plt.figure(figsize=(6 * len(self.features), 6 * len(self.features)))
-        fig, axs = plt.subplots(
+        _, axs = plt.subplots(
             int(np.ceil(np.sqrt(len(self.features)))), int(np.ceil(np.sqrt(len(self.features))))
         )
         for feature in self.features:
@@ -370,9 +355,9 @@ class Featureizer:
                 data[col] = data[col].replace({"n.d.": np.nan, "NE": np.nan, "?": np.nan})
                 try:
                     data[col] = data[col].astype(float)
-                    log.debug("    *Feature " + col + " could be transformed to numeric.")
+                    log.debug(f"    *Feature {col} could be transformed to numeric.")
                 except ValueError:
-                    log.debug("    *Feature " + col + " couldn't be transformed to numeric.")
+                    log.debug(f"    *Feature {col} couldn't be transformed to numeric.")
 
             self.int_features = self.get_int_features(data)
             self.categorical_features = self.get_categorical_features(data)
@@ -437,7 +422,10 @@ class Featureizer:
                     log.debug(f"{self.use_normalized_data} is used as Normalizer")
                 else:
                     raise ValueError(
-                        f"Normalizer : {self.use_normalized_data} not known ; available methods: UnitVariance, Scale01 "
+                        (
+                            f"Normalizer : {self.use_normalized_data} not known "
+                            "; available methods: UnitVariance, Scale01 "
+                        )
                     )
             self.normalizer_fitted = True
         if self.normalizer:

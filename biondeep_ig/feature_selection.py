@@ -41,20 +41,11 @@ log = get_logger("FeatureSelection")
     required=True,
     help="Path to the dataset used in  evaluation.",
 )
-@click.option(
-    "--unlabeled_path",
-    "-unlabeled",
-    type=str,
-    required=False,
-    help="Path to the unlabeled dataset.",
-)
 @click.option("--folder_name", "-n", type=str, required=True, help="Experiment name.")
 @click.option(
     "--configuration_file", "-c", type=str, required=True, help=" Path to configuration file."
 )
-def featureselection(
-    train_data_path, test_data_path, unlabeled_path, configuration_file, folder_name
-):
+def featureselection(train_data_path, test_data_path, configuration_file, folder_name):
     """Feature selection process."""
     _check_model_folder(folder_name)
     general_configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_file)
@@ -63,16 +54,12 @@ def featureselection(
         tags=["feature selection"], training_path=train_data_path, test_path=test_data_path
     )
     neptune_log.upload_configuration_files(CONFIGURATION_DIRECTORY / configuration_file)
-    feature_selection_main(
-        train_data_path, test_data_path, unlabeled_path, configuration_file, folder_name
-    )
+    feature_selection_main(train_data_path, test_data_path, configuration_file, folder_name)
 
 
 # -------------------------------- #
 # Thanks to click commands not being able to be callable via command line and as a function at the same time (see https://github.com/pallets/click/issues/330), this function is doubled ..
-def feature_selection_main(
-    train_data_path, test_data_path, unlabeled_path, configuration_file, folder_name
-):
+def feature_selection_main(train_data_path, test_data_path, configuration_file, folder_name):
     """Run feature selection methods."""
     init_logger(folder_name)
     log.info("Started feature selection")
@@ -93,10 +80,8 @@ def feature_selection_main(
             fs_param=fs_param,
             train_data_path=train_data_path,
             test_data_path=test_data_path,
-            unlabeled_path=unlabeled_path,
             configuration=configuration,
             folder_name=folder_name,
-            log=log,
         )
 
 
@@ -106,12 +91,10 @@ def _fs_func(  # noqa: CCR001
     fs_param,
     train_data_path,
     test_data_path,
-    unlabeled_path,
     configuration,
     folder_name,
-    log,
 ):
-
+    """Apply features selection."""
     train_columns = set(get_column_names(train_data_path))
     test_columns = set(get_column_names(test_data_path))
     features = train_columns & test_columns
@@ -185,10 +168,15 @@ def _fs_func(  # noqa: CCR001
 
 
 def _check_model_folder(folder_name):
+    """Check if the checkpoint folder  exists or not."""
     model_folder_path = MODELS_DIRECTORY / folder_name
     if model_folder_path.exists():
         click.confirm(
-            f"The model folder with the name {folder_name} already exists. Do you want to continue the training but all the checkpoints will be deleted?",
+            (
+                f"The model folder with the name {folder_name}"
+                "already exists. Do you want to continue the training"
+                "but all the checkpoints will be deleted?"
+            ),
             abort=True,
         )
         shutil.rmtree(model_folder_path)

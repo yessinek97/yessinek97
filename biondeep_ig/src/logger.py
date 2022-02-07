@@ -77,7 +77,6 @@ class ModelLogWriter:
 
     def flush(self):
         """Flush Method."""
-        pass
 
     def reset_stdout(self, orginal_stdout):
         """Reset stdout to system."""
@@ -140,7 +139,11 @@ class NeptuneLogs:
                 self._upload_file(f"{neptune_sub_folder}/{destination}/eval/{file.name}", str(file))
             for file in self._iter_dir(experiment_path / "checkpoint"):
                 self._upload_file(
-                    f"{neptune_sub_folder}/{destination}/checkpoint/{file.relative_to((experiment_path / 'checkpoint'))}",
+                    (
+                        f"{neptune_sub_folder}/{destination}/"
+                        "checkpoint/"
+                        f"{file.relative_to((experiment_path /'checkpoint'))}"
+                    ),
                     str(file),
                 )
 
@@ -171,7 +174,7 @@ class NeptuneLogs:
         """Iterate over folder."""
         if not prefix_to_remove:
             prefix_to_remove = []
-        if not (type(prefix_to_remove) == list):
+        if not isinstance(prefix_to_remove, list):
             raise TypeError("prefix_to_remove should be a list")
 
         return [

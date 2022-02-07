@@ -90,15 +90,15 @@ def per_split_evaluation(
             )
 
         top_k_retrieval_global += metrics[split]["top_k_retrieval"]
-        _topk_x, _top_k_retrieval_x = topk_x_observations(
+        split_topk_x, split_top_k_retrieval_x = topk_x_observations(
             split_id_df, target_name, prediction_name, observations_number
         )
         (
             metrics[split][f"topk_{observations_number}"],
             metrics[split][f"topk_retrieval_{observations_number}"],
         ) = (
-            float(_topk_x),
-            int(_top_k_retrieval_x),
+            float(split_topk_x),
+            int(split_top_k_retrieval_x),
         )
         metrics[split]["true_label"] = int(split_id_df[target_name].sum())
         top_k_retrieval_x += int(metrics[split][f"topk_retrieval_{observations_number}"])
@@ -140,37 +140,51 @@ def test_evaluation(data, target_name, prediction_name, eval_id_name, observatio
     return metrics
 
 
-def roc(labels, scores, **args):
-    """Compute the AUC score for a given label and predications."""
+def roc(labels, scores, **kwargs):  # pylint: disable=W0613
+    """Compute the AUC score for a given label and predications.
+
+    kwargs is used to make the function callable, even if there is an extra argument
+    since we call all metric functions in the same way.
+
+    """
     return roc_auc_score(labels, scores)
 
 
-def logloss(labels, scores, **args):
-    """Compute the log_loss score for a given label and predications."""
+def logloss(labels, scores, **kwargs):  # pylint: disable=W0613
+    """Compute the log_loss score for a given label and predications.
+
+    kwargs is used to make the function callable, even if there is an extra argument
+    since we call all metric functions in the same way.
+
+    """
     return log_loss(labels, scores)
 
 
-def precision(labels, scores, **args):
+def precision(labels, scores, **kwargs):  # pylint: disable=W0613
     """Compute the precision score for a given label and predications."""
-    scores = (scores >= args["threshold"]).astype(int)
+    scores = (scores >= kwargs["threshold"]).astype(int)
     return precision_score(labels, scores)
 
 
-def recall(labels, scores, **args):
+def recall(labels, scores, **kwargs):
     """Compute the recall score for a given label and predications."""
-    scores = (scores >= args["threshold"]).astype(int)
+    scores = (scores >= kwargs["threshold"]).astype(int)
     return recall_score(
         labels,
         scores,
     )
 
 
-def f1(labels, scores, **args):
+def f1(labels, scores, **kwargs):
     """Compute the recall score for a given label and predications."""
-    scores = (scores >= args["threshold"]).astype(int)
+    scores = (scores >= kwargs["threshold"]).astype(int)
     return f1_score(labels, scores)
 
 
-def topk(labels, scores, **args):
-    """Compute the topk score for a given label and predications."""
+def topk(labels, scores, **kwargs):  # pylint: disable=W0613
+    """Compute the topk score for a given label and predications.
+
+    kwargs is used to make the function callable, even if there is an extra argument
+    since we call all metric functions in the same way.
+    """
     return topk_global(labels, scores)[0]

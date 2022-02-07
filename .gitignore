@@ -11,3 +11,8 @@ __pycache__
 
 # Generated since the repository is a package
 biondeep_ig.egg-info
+
+##Data folder
+biondeep_ig/data
+#Checkpoint folder
+biondeep_ig/models
