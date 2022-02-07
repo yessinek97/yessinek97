@@ -9,7 +9,8 @@ from hyperopt import tpe
 from hyperopt import Trials
 from hyperopt.fmin import fmin
 
-from biondeep_ig.src import ID_name
+from biondeep_ig.src import Evals
+from biondeep_ig.src import ID_NAME
 from biondeep_ig.src import MODELS_DIRECTORY
 from biondeep_ig.src.experiments.base import BaseExperiment
 from biondeep_ig.src.metrics import topk_global
@@ -125,8 +126,8 @@ class Tuning(BaseExperiment):
                 sub_model_directory=None,
             )
             preds = []
-            for fold in models:
-                preds.append(models[fold].predict(self.test_data, with_label=False))
+            for _, i_model in models.items():
+                preds.append(i_model.predict(self.test_data, with_label=False))
 
             preds = np.mean(preds, axis=0)
             # TODO change topk_global to configurbale param
@@ -154,7 +155,7 @@ class Tuning(BaseExperiment):
         model_param["model_params"] = model_configuration_dynamique
         return model_param
 
-    def train(self, features_list_path):
+    def train(self, features_list_path):  # pylint: disable=W0221
         """Train method."""
         if self.experiment_name == "SingleModel":
             results, all_trials = self.tune_single_model(
@@ -167,7 +168,11 @@ class Tuning(BaseExperiment):
             )
         else:
             raise NotImplementedError(
-                "{experiment_name} is not defined; choose from: [SingleModel, KfoldExperiment, SingKfoldModel]"
+                (
+                    "{experiment_name} is not defined; "
+                    "choose from: [SingleModel, KfoldExperiment,"
+                    "SingKfoldModel]"
+                )
             )
 
         path = self.experiment_directory / self.sub_folder_name
@@ -186,11 +191,11 @@ class Tuning(BaseExperiment):
         """Eval method."""
         return
 
-    def inference(self):
+    def inference(self, data, save_df=False, file_name=""):
         """Inference method."""
         return
 
-    def predict(self):
+    def predict(self, save_df):
         """Predict method."""
         return
 
@@ -202,11 +207,11 @@ class Tuning(BaseExperiment):
         )
         if self.validation_split_path.exists():
             validation_split = pd.read_csv(self.validation_split_path)
-            self.train_data = self.train_data.data.merge(validation_split, on=[ID_name], how="left")
+            self.train_data = self.train_data.data.merge(validation_split, on=[ID_NAME], how="left")
         else:
             self.train_data.train_val_split()
             self.train_data = self.train_data.data
-            self.train_data[[ID_name, self.validation_column]].to_csv(
+            self.train_data[[ID_NAME, self.validation_column]].to_csv(
                 self.validation_split_path, index=False
             )
 
@@ -218,15 +223,21 @@ class Tuning(BaseExperiment):
         self.split_column = experiment_param["split_column"]
 
         self.validation_split_path = self.splits_path / (
-            f'kfold_split_{self.configuration["processing"]["fold"]}_{self.configuration["processing"]["seed"]}.csv'
+            (
+                f'kfold_split_{self.configuration["processing"]["fold"]}_'
+                f'{self.configuration["processing"]["seed"]}.csv'
+            )
         )
 
         if self.validation_split_path.exists():
             validation_split = pd.read_csv(self.validation_split_path)
-            self.train_data = self.train_data.data.merge(validation_split, on=[ID_name], how="left")
+            self.train_data = self.train_data.data.merge(validation_split, on=[ID_NAME], how="left")
         else:
             self.train_data.kfold_split()
             self.train_data = self.train_data.data
-            self.train_data[[ID_name, self.split_column]].to_csv(
+            self.train_data[[ID_NAME, self.split_column]].to_csv(
                 self.validation_split_path, index=False
             )
+
+    def _parse_metrics_to_data_frame(self, eval_metrics: Evals, file_name: str = "results"):
+        """Parse Metrics results from dictionary to dataframe object."""

@@ -45,9 +45,9 @@ def compute_metrics(test_data_paths, folder_name):
     for test_data_path in test_data_paths:
 
         file_name = Path(test_data_path).stem
-        log.info("#" * 20 + "\n")
+        log.info(f"{'#'* 20} \n")
         log.info(f"Start evaluating {file_name}\n")
-        log.info("#" * 20 + "\n")
+        log.info(f"{'#'* 20} \n")
 
         results = []
         for experiment_name, experiment_param in zip(experiment_names, experiment_params):
@@ -71,7 +71,7 @@ def compute_metrics(test_data_paths, folder_name):
                     )
                     scores = experiment.eval_test()
                     results.append(scores)
-        best_experiment_id, eval_message = get_best_experiment(
+        _, eval_message = get_best_experiment(
             results, eval_configuration, path=MODELS_DIRECTORY / folder_name, file_name="results"
         )
         log_summary_results(eval_message)

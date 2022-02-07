@@ -66,9 +66,8 @@ class BaseFeatureSelection(ABC):
         }
 
     @abstractmethod
-    def rank_features(self):
+    def rank_features(self, df_processed, targets_c):
         """Rank features method."""
-        pass
 
     def select_features(self, df_processed, label_s):
         """Select n features method."""
@@ -94,7 +93,7 @@ class BaseFeatureSelection(ABC):
             FEATURES_DIRECTORY / (subfolder_n + "/" + self.fs_type + ".txt"), "w+"
         ) as outfile:
             for item in feature_list:
-                outfile.write("%s\n" % item)
+                outfile.write(f"{item}\n")
 
 
 # ---------------------------------------- #

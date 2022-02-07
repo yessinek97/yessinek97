@@ -8,12 +8,10 @@ from sklearn.linear_model import LinearRegression
 from biondeep_ig.src import CONFIGURATION_DIRECTORY
 from biondeep_ig.src import MODELS_DIRECTORY
 from biondeep_ig.src import SINGLE_MODEL_NAME
-from biondeep_ig.src.evaluation import Evaluation
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
 from biondeep_ig.src.logger import NeptuneLogs
 from biondeep_ig.src.processing import Dataset
-from biondeep_ig.src.processing import Error
 from biondeep_ig.src.utils import load_models
 from biondeep_ig.src.utils import load_yml
 from biondeep_ig.src.utils import save_yml
@@ -56,15 +54,10 @@ def modulartrain(ctx, train_data_path, test_data_path, configuration_file, folde
     )
     neptune_log.upload_configuration_files(CONFIGURATION_DIRECTORY / configuration_file)
     save_yml(general_configuration, MODELS_DIRECTORY / folder_name / "configuration.yml")
-
+    # TODO remove benchmark_column
     benchmark_column = general_configuration.get("benchmark_column", ["prediction_average"])
     temp_directory = MODELS_DIRECTORY / folder_name / "temp"
     temp_directory.mkdir(exist_ok=True, parents=True)
-    if len(benchmark_column) > 1:
-        raise Error(
-            "You need to choose a single benchmark_column to choose the best model - stopping"
-        )
-
     predictions_df_train = []
     predictions_df_test = []
     feature_l = []
@@ -84,12 +77,14 @@ def modulartrain(ctx, train_data_path, test_data_path, configuration_file, folde
         cur_modeltype = load_models(local_config)[0][0]
         predictions_df_train.append(
             pd.read_csv(
-                f"{MODELS_DIRECTORY}/{folder_name}/{config_file.split('.')[0]}/{SINGLE_MODEL_NAME}/{local_config['feature_paths'][0]}/{cur_modeltype}/prediction/train.csv"
+                f"{MODELS_DIRECTORY}/{folder_name}/{config_file.split('.')[0]}/{SINGLE_MODEL_NAME}"
+                + f"/{local_config['feature_paths'][0]}/{cur_modeltype}/prediction/train.csv"
             )
         )
         predictions_df_test.append(
             pd.read_csv(
-                f"{MODELS_DIRECTORY}/{folder_name}/{config_file.split('.')[0]}/{SINGLE_MODEL_NAME}/{local_config['feature_paths'][0]}/{cur_modeltype}/prediction/test.csv"
+                f"{MODELS_DIRECTORY}/{folder_name}/{config_file.split('.')[0]}/{SINGLE_MODEL_NAME}"
+                + "/{local_config['feature_paths'][0]}/{cur_modeltype}/prediction/test.csv"
             )
         )
 
@@ -156,26 +151,28 @@ def modulartrain(ctx, train_data_path, test_data_path, configuration_file, folde
     # Evaluate it on the test dataset
     pred = reg.predict(x_test)
     df_test.data["prediction"] = pred
-    Evaluation(
-        df_test.data,
-        "prediction",
-        general_configuration["label"],
-        MODELS_DIRECTORY / folder_name,
-        general_configuration["comparison_score"],
-    )
+    # TODO change the Evaluation class
+    # Evaluation(
+    #     df_test.data,
+    #     "prediction",
+    #     general_configuration["label"],
+    #     MODELS_DIRECTORY / folder_name,
+    #     general_configuration["comparison_score"],
+    # )
 
 
 def _check_local_config(local_config, single_model_name, general_configuration, benchmark_column):
     """Check config."""
     if next(iter(local_config["experiments"])) != single_model_name:
-        raise Error(f"Modular only makes sense with {single_model_name} - stopping")
+        raise Exception(f"Modular only makes sense with {single_model_name} - stopping")
     if local_config["label"] != general_configuration["label"]:
-        raise Error("Label not the same as in modular config - stopping")
+        raise Exception("Label not the same as in modular config - stopping")
     if local_config["benchmark_column"] != benchmark_column:
-        raise Error(
-            "local config does not have same benchmark_column value as main modular config - stopping"
+        raise Exception(
+            "local config does not have same benchmark_column value as "
+            + "main modular config - stopping"
         )
     if len(local_config["feature_paths"]) > 1:
-        raise Error("modular only works with one feature list per module - stopping")
+        raise Exception("modular only works with one feature list per module - stopping")
     if len(local_config["models"]) > 1:
-        raise Error("modular only works with one model type per module - stopping")
+        raise Exception("modular only works with one model type per module - stopping")

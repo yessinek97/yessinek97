@@ -40,9 +40,11 @@ class BaseExperiment(ABC):
         configuration: the full configuration of the experiment in dictionary format
         folder_name: main folder name where the run will be saved
         experiment_name: the experiment name (KfoldExperiment,SingleModel,..)
-        sub_folder_name: folder name  where the experiment with the specific feature list will be saved folder_name/experiment_name/sub_folder_name)
+        sub_folder_name: folder name  where the experiment with the specific
+        feature list will be saved folder_name/experiment_name/sub_folder_name)
         unlabeled_path: path to the unlabeled data
-        experiment_directory: path where the experiment will be saved in case experiment_directory is not None
+        experiment_directory: path where the experiment
+        will be saved in case experiment_directory is not None
 
 
     """
@@ -107,8 +109,7 @@ class BaseExperiment(ABC):
         """Checking if directory is empty."""
         if self.checkpoint_directory.exists():
             return not any(self.checkpoint_directory.iterdir())
-        else:
-            return False
+        return False
 
     @property
     def task(self):
@@ -117,16 +118,14 @@ class BaseExperiment(ABC):
             return "CD8"
         if "4" in self.label_name:
             return "CD4"
-        else:
-            return None
+        return None
 
     @property
     def features_directory(self):
         """Return features list directory."""
         if self.task:
             return FEATURES_DIRECTORY / self.task
-        else:
-            return FEATURES_DIRECTORY
+        return FEATURES_DIRECTORY
 
     @property
     def eval_configuration(self):
@@ -145,22 +144,18 @@ class BaseExperiment(ABC):
     @abstractmethod
     def train(self):
         """Training method."""
-        pass
 
     @abstractmethod
-    def predict(self):
+    def predict(self, save_df):
         """Predict method."""
-        pass
 
     @abstractmethod
     def eval_exp(self):
         """Evaluation method."""
-        pass
 
     @abstractmethod
-    def inference(self, data: pd.DataFrame, file_name: str):
+    def inference(self, data: pd.DataFrame, save_df: bool, file_name: str = ""):
         """Inference method."""
-        pass
 
     def initialize_checkpoint_directory(self, tuning_option: bool = False):
         """Init a ckpt directory."""
@@ -221,7 +216,11 @@ class BaseExperiment(ABC):
             self.features = load_features(self.experiment_directory / "features")
         else:
             sys.exit(
-                f"Experiment with name {self.experiment_name} is not available. Please train the model first or change the save_model argument in the model config file."
+                (
+                    f"Experiment with name {self.experiment_name} is not available."
+                    " Please train the model first or change the save_model argument "
+                    "in the model config file."
+                )
             )
 
     # TODO replace Any with the Model class
@@ -283,7 +282,6 @@ class BaseExperiment(ABC):
             plotting_shap_values(
                 model.shap_values,
                 train,
-                self.model_type,
                 self.features,
                 model_path.parent / "shap.png",
             )
@@ -351,7 +349,7 @@ class BaseExperiment(ABC):
     # TODO Dict
     def eval_test(self) -> Dict[str, Any]:
         """Eval method for single data set."""
-        test_data = self.inference(self.test_data, file_name=self.test_data_path.stem)
+        test_data = self.inference(self.test_data, file_name=self.test_data_path.stem, save_df=True)
         if self.experiment_name == SINGLE_MODEL_NAME:
             prediction_columns_name = self.prediction_columns_name
         else:
@@ -393,7 +391,6 @@ class BaseExperiment(ABC):
     def plot_comparison_score(self, eval_comparison_score: str):
         """Plot comparison score  scores."""
         # TODO to be implemented
-        pass
 
     def check_and_return_model_type(self, model_type: str) -> str:
         """Checking an returning model type."""
@@ -405,7 +402,10 @@ class BaseExperiment(ABC):
             "LogisticRegressionModel",
         ]:
             raise NotImplementedError(
-                f"{model_type} is not supported. Please choose one of: [XgboostModel, LgbmModel, CatBoostModel, LabelPropagationModel]"
+                (
+                    f"{model_type} is not supported. Please "
+                    "choose one of: [XgboostModel, LgbmModel, CatBoostModel, LabelPropagationModel]"
+                )
             )
         return model_type
 
@@ -418,9 +418,9 @@ class BaseExperiment(ABC):
         df_test_metrics = pd.DataFrame(dict_l)
         df_train_metrics = pd.DataFrame(train_metrics)
 
-        cols = [col for col in df_test_metrics.columns if ("_all" not in col)]
+        cols = [col for col in df_test_metrics.columns if "_all" not in col]
         df_test_metrics = df_test_metrics[cols]
-        cols = [col for col in df_train_metrics.columns if ("_all" not in col)]
+        cols = [col for col in df_train_metrics.columns if "_all" not in col]
         df_train_metrics = df_train_metrics[cols]
         if self.comparison_score:
             df_test_metrics_cs = df_test_metrics[self.comparison_score]
@@ -467,7 +467,7 @@ class BaseExperiment(ABC):
 
         return df_test_metrics, df_train_metrics
 
-    def subplot2(self, fig, ax, df_cur, plot_cols, title_string, plot_cols_eval, posshist, i, j):
+    def subplot2(self, fig, ax, df_cur, plot_cols, title_string, i, j):
         """Plots an experiment - performs actual plot."""
         ax[j, i] = df_cur.transpose()[plot_cols].plot.bar(
             rot=90,
@@ -482,11 +482,11 @@ class BaseExperiment(ABC):
             # overwrite label names for SV as they should not be the same as for V (maybe do this smarter in a newer version)
             labels = [item.get_text() for item in ax[j, i].get_xticklabels()]
             labels_new = []
-            for _la in range(len(labels) - 4):
+            for _ in range(len(labels) - 4):
                 labels_new.append(self.split_column)
 
             k = 4
-            for _ik in range(4):
+            for _ in range(4):
                 labels_new.append(labels[-k])
                 k = k - 1
             ax[j, i].set_xticklabels(labels_new)
@@ -526,22 +526,19 @@ class BaseExperiment(ABC):
         fig, ax = plt.subplots(iterator, 2, figsize=(12, iterator * 6))
 
         for i in range(iterator):
-
-            posshist = 0
+            # posshist = 0
             if i == 0:
                 df_cur = df_train_metrics
 
             else:
                 df_cur = df_test_metrics
-                posshist = len(self.test_data.loc[self.test_data[self.label_name] == 1])
+                # posshist = len(self.test_data.loc[self.test_data[self.label_name] == 1])
             ax, fig = self.subplot2(
                 fig,
                 ax,
                 df_cur,
                 plot_cols_topk,
                 ["Global TopK per KFold (V)", "Global TopK per KFold (SV)"],
-                "topk",
-                posshist,
                 i,
                 0,
             )
@@ -552,8 +549,6 @@ class BaseExperiment(ABC):
                 df_cur,
                 plot_cols_auc,
                 ["AUC-ROC per KFold (V)", "AUC-ROC per KFold (SV)"],
-                "auc",
-                posshist,
                 i,
                 1,
             )
@@ -565,10 +560,9 @@ class BaseExperiment(ABC):
     @abstractmethod
     def _parse_metrics_to_data_frame(self, eval_metrics: Evals, file_name: str = "results"):
         """Parse Metrics results from dictionary to dataframe object."""
-        pass
 
     def _get_experiment_directory(self, experiment_directory: Optional[Path]) -> Path:
-
+        """Get experiment path."""
         if experiment_directory:
             return experiment_directory
 

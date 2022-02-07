@@ -97,11 +97,18 @@ class Evaluation:
                     metrics[metric_name] = getattr(sklearn_metrics, metric_name)
                 except AttributeError:
                     log.warning(
-                        f"{metric_name} is not implemented in sklearn or in the defined metrics.It will not be used"
+                        (
+                            f"{metric_name} is not implemented in sklearn"
+                            "or in the defined metrics.It will not be used"
+                        )
                     )
         if len(metrics) == 0:
             raise NotImplementedError(
-                "No metric is defined,please chose one from the available list :roc ,logloss ,precession, recall, topk,f1."
+                (
+                    "No metric is defined,please chose one"
+                    "from the available list "
+                    ":roc ,logloss ,precession, recall, topk,f1."
+                )
             )
         return metrics
 
@@ -116,9 +123,9 @@ class Evaluation:
         prediction_metrics_evaluation = {}
         prediction_eval_message = ""
         data = data.loc[(data[self.label_name] == 0) | (data[self.label_name] == 1)]
-        for metric_name in self.metrics:
+        for metric_name, metric_fuc in self.metrics.items():
             prediction_metrics_evaluation[metric_name] = float(
-                self.metrics[metric_name](
+                metric_fuc(
                     labels=data[self.label_name],
                     scores=data[prediction_name],
                     threshold=self.threshold,
@@ -218,10 +225,8 @@ class Evaluation:
 
     def plot_curve(self, data: pd.DataFrame, prediction_name: str, plot_path: Path) -> None:
         """Plot precision recall curve and roc curve."""
-        precision, recall, thresholds = precision_recall_curve(
-            data[self.label_name], data[prediction_name]
-        )
-        fpr, tpr, thresholds = roc_curve(data[self.label_name], data[prediction_name])
+        precision, recall, _ = precision_recall_curve(data[self.label_name], data[prediction_name])
+        fpr, tpr, _ = roc_curve(data[self.label_name], data[prediction_name])
         fig, ax = plt.subplots(figsize=(12, 6), ncols=2)
         ax[0].plot(recall, precision, label="precision_recall_curve")
         ax[1].plot(fpr, tpr, label="roc_curve")

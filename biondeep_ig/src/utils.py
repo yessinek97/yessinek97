@@ -10,6 +10,7 @@ from typing import Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 import shap
 import yaml
 
@@ -174,13 +175,13 @@ def get_best_experiment(
     validation = pd.concat([result["validation"] for result in results])
     test = pd.concat([result["test"] for result in results])
     pd.concat([validation, test]).to_csv(path / f"{file_name}.csv", index=False)
-    _statistic = []
+    statistic_list = []
     for result in results:
         try:
-            _statistic.append(result["statistic"])
+            statistic_list.append(result["statistic"])
         except KeyError:
             pass
-    statistic = pd.DataFrame(_statistic)
+    statistic = pd.DataFrame(statistic_list)
     data_selector = pd.concat(
         [result[eval_configuration["data_name_selector"]] for result in results]
     )
@@ -211,10 +212,10 @@ def get_best_experiment(
     )
     display += f"Test score :  {test_metrics_display}\n"
     if len(statistic):
-        best_statistic = statistic[statistic.ID == best_experiment_id]
-        if len(best_statistic):
-            for e in best_statistic.drop(["ID"], axis=1).columns:
-                display += f"{e} :  {best_statistic[e].iloc[0]}\n"
+        beststatistic_list = statistic[statistic.ID == best_experiment_id]
+        if len(beststatistic_list):
+            for e in beststatistic_list.drop(["ID"], axis=1).columns:
+                display += f"{e} :  {beststatistic_list[e].iloc[0]}\n"
     return best_experiment_id, display
 
 
@@ -277,7 +278,7 @@ def convert_int_params(names, params):
     return params
 
 
-def plotting_shap_values(shap_values, data, model_type, features, fig_name):
+def plotting_shap_values(shap_values, data, features, fig_name):
     """Plot single experiment shap values."""
     shap.summary_plot(
         shap_values, data[features].values, feature_names=features, plot_type="violin", show=False
@@ -288,12 +289,10 @@ def plotting_shap_values(shap_values, data, model_type, features, fig_name):
 
 def plotting_kfold_shap_values(df, fig_name):
     """Plotting kfold shap values mean resuls."""
-    import seaborn as sns
-
     plt.figure()
     plt.title("Kfold feature importance")
     df.sort_values(by=["scores"], ascending=False, inplace=True)
-    snsplot = sns.barplot(df.scores, df.features)
+    snsplot = sns.barplot(x=df.scores, y=df.features)
     snsplot.figure.savefig(fig_name, dpi=200, bbox_inches="tight")
 
 
@@ -312,7 +311,10 @@ def load_features(file):
 
     if not file.exists():
         raise FileExistsError(
-            f"feature list {file.name}  not excite in the configuration/features folder please check the file name."
+            (
+                f"feature list {file.name}  not excite"
+                "in the configuration/features folder please check the file name."
+            )
         )
     with open(file, "r") as f:
         features = [line.rstrip() for line in f]

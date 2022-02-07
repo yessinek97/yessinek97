@@ -2,7 +2,7 @@
 import pandas as pd
 
 from biondeep_ig.src import Evals
-from biondeep_ig.src import ID_name
+from biondeep_ig.src import ID_NAME
 from biondeep_ig.src.experiments.base import BaseExperiment
 from biondeep_ig.src.utils import load_pkl
 from biondeep_ig.src.utils import save_yml
@@ -46,12 +46,12 @@ class SingleModel(BaseExperiment):
             if self.validation_split_path.exists():
                 validation_split = pd.read_csv(self.validation_split_path)
                 self.train_data = self.train_data.data.merge(
-                    validation_split, on=[ID_name], how="left"
+                    validation_split, on=[ID_NAME], how="left"
                 )
             else:
                 self.train_data.train_val_split()
                 self.train_data = self.train_data.data
-                self.train_data[[ID_name, self.validation_column]].to_csv(
+                self.train_data[[ID_NAME, self.validation_column]].to_csv(
                     self.validation_split_path, index=False
                 )
 
@@ -73,11 +73,11 @@ class SingleModel(BaseExperiment):
         )
         return model
 
-    def predict(self):
+    def predict(self, save_df=True):
         """Predict method."""
-        test_data = self.inference(self.test_data, save_df=True, file_name="test")
-        validation = self.inference(self.validation, save_df=True, file_name="validation")
-        train_data = self.inference(self.train_data, save_df=True, file_name="train")
+        test_data = self.inference(self.test_data, save_df=save_df, file_name="test")
+        validation = self.inference(self.validation, save_df=save_df, file_name="validation")
+        train_data = self.inference(self.train_data, save_df=save_df, file_name="train")
         return train_data, validation, test_data
 
     def inference(self, data, save_df=False, file_name=""):
@@ -95,7 +95,7 @@ class SingleModel(BaseExperiment):
 
     def eval_exp(self):
         """Evaluate method."""
-        train_data, validation, test_data = self.predict()
+        self.predict()
         results = self._parse_metrics_to_data_frame(self.evaluator.get_evals())
         best_validation_scores, best_test_scores = self.evaluator.get_experiment_best_scores(
             results=results,

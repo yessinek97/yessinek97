@@ -64,14 +64,12 @@ class BaseModel(ABC):
         }
 
     @abstractmethod
-    def predict(self):
+    def predict(self, data, with_label):
         """Prediction method."""
-        pass
 
     @abstractmethod
-    def fit(self):
+    def fit(self, train_data, val_data):
         """Fit method."""
-        pass
 
     def eval_model(self, data, data_name, evaluator):
         """Eval method."""
@@ -86,9 +84,8 @@ class BaseModel(ABC):
         return shap.TreeExplainer(self.model).shap_values(dataframe)
 
     @abstractmethod
-    def _create_matrix(self):
+    def _create_matrix(self, data, with_label):
         """Return the correct data structure. Object that is required by the model."""
-        pass
 
 
 warnings.filterwarnings("ignore")
@@ -96,33 +93,6 @@ warnings.filterwarnings("ignore")
 
 class XgboostModel(BaseModel):
     """Xgboost model class."""
-
-    def __init__(
-        self,
-        features,
-        parameters,
-        label_name,
-        prediction_name,
-        checkpoints,
-        other_params,
-        folder_name,
-        experiment_name,
-        model_type,
-        save_model,
-    ):
-        """Init."""
-        super().__init__(
-            features,
-            parameters,
-            label_name,
-            prediction_name,
-            checkpoints,
-            other_params,
-            folder_name,
-            experiment_name,
-            model_type,
-            save_model,
-        )
 
     def fit(self, train_data, val_data):
         """Fitting model."""
@@ -159,33 +129,6 @@ class XgboostModel(BaseModel):
 class LgbmModel(BaseModel):
     """This is an implementation of lgbm model.Based on the Native Microsoft Implementation."""
 
-    def __init__(
-        self,
-        features,
-        parameters,
-        label_name,
-        prediction_name,
-        checkpoints,
-        other_params,
-        folder_name,
-        experiment_name,
-        model_type,
-        save_model,
-    ):
-        """Init."""
-        super().__init__(
-            features,
-            parameters,
-            label_name,
-            prediction_name,
-            checkpoints,
-            other_params,
-            folder_name,
-            experiment_name,
-            model_type,
-            save_model,
-        )
-
     def generate_shap_values(self, dataframe):
         """Generate shap values."""
         return shap.TreeExplainer(self.model).shap_values(dataframe)[1]
@@ -215,59 +158,30 @@ class LgbmModel(BaseModel):
         """Prediction method."""
         return self.model.predict(data[self.features], num_iteration=self.model.best_iteration)
 
-    def _create_matrix(self, data, x_data=None, train=True, with_label=True):
+    def _create_matrix(self, data, with_label=True):
         """Data model creation."""
         label = data[self.label_name] if with_label else None
-        if train:
+        if label:
             return lgb.Dataset(data[self.features], label=label, feature_name=self.features)
-
-        else:
-            return lgb.Dataset(data[self.features], reference=x_data)
+        return lgb.Dataset(data[self.features], feature_name=self.features)
 
 
 class CatBoostModel(BaseModel):
     """This is an implementation of catboost model.Based on the Native Implementation."""
 
-    def __init__(
-        self,
-        features,
-        parameters,
-        label_name,
-        prediction_name,
-        checkpoints,
-        other_params,
-        folder_name,
-        experiment_name,
-        model_type,
-        save_model,
-    ):
-        """Init."""
-        super().__init__(
-            features,
-            parameters,
-            label_name,
-            prediction_name,
-            checkpoints,
-            other_params,
-            folder_name,
-            experiment_name,
-            model_type,
-            save_model,
-        )
-
-    def fit(self, train, validation, with_label=True):
+    def fit(self, train_data, val_data):
         """Fitting model."""
         # create model
         model = CatBoostClassifier(**self.parameters)
         # train model
         self.model = model.fit(
-            X=train[self.features].values,
-            y=train[self.label_name].values,
-            eval_set=(validation[self.features].values, validation[self.label_name].values),
+            X=train_data[self.features].values,
+            y=train_data[self.label_name].values,
+            eval_set=(val_data[self.features].values, val_data[self.label_name].values),
             log_cout=sys.stdout,
             log_cerr=sys.stderr,
         )
-        self.shap_values = self.generate_shap_values(train[self.features])
+        self.shap_values = self.generate_shap_values(train_data[self.features])
         # Save model
         if self.checkpoints and self.save_model:
             save_as_pkl(self, self.checkpoints)
@@ -280,36 +194,10 @@ class CatBoostModel(BaseModel):
 
     def _create_matrix(self, data, with_label=True):
         """Data model creation."""
-        pass
 
 
 class LabelPropagationModel(BaseModel):
     """Label Propagation model class."""
-
-    def __init__(
-        self,
-        features,
-        parameters,
-        label_name,
-        prediction_name,
-        checkpoints,
-        other_params,
-        folder_name,
-        experiment_name,
-        model_type,
-    ):
-        """Init."""
-        super().__init__(
-            features,
-            parameters,
-            label_name,
-            prediction_name,
-            checkpoints,
-            other_params,
-            folder_name,
-            experiment_name,
-            model_type,
-        )
 
     def fit(self, train_data, val_data):
         """Fitting model."""
@@ -334,45 +222,20 @@ class LabelPropagationModel(BaseModel):
         """Data model creation."""
         if with_label:
             return data[self.features].to_numpy()
-        else:
-            return data[self.label_name].to_numpy()
+        return data[self.label_name].to_numpy()
 
 
 class LogisticRegressionModel(BaseModel):
-    """This is an implementation of LogisticRegression model."""
+    """This is an implementation of LogisticRegression model.
 
-    """Based on the Native Implementation."""
+    Based on the Native Implementation.
+    """
 
-    def __init__(
-        self,
-        features,
-        parameters,
-        label_name,
-        prediction_name,
-        checkpoints,
-        other_params,
-        folder_name,
-        experiment_name,
-        model_type,
-        save_model,
-    ):
-        """Init."""
-        super().__init__(
-            features,
-            parameters,
-            label_name,
-            prediction_name,
-            checkpoints,
-            other_params,
-            folder_name,
-            experiment_name,
-            model_type,
-            save_model,
-        )
-
-    def fit(self, train, validation, with_label=True):
+    def fit(self, train_data, val_data):  # pylint disable=W0613
         """Fitting model."""
-        self.model = LogisticRegression().fit(train[self.features], train[self.label_name])
+        self.model = LogisticRegression().fit(
+            train_data[self.features], train_data[self.label_name]
+        )
 
         # Save model
         if self.checkpoints and self.save_model:
@@ -386,4 +249,3 @@ class LogisticRegressionModel(BaseModel):
 
     def _create_matrix(self, data, with_label=True):
         """Data model creation."""
-        pass
