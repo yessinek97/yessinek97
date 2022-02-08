@@ -14,6 +14,7 @@ import seaborn as sns
 import shap
 import yaml
 
+from biondeep_ig.src import FEATURES_DIRECTORY
 from biondeep_ig.src import FS_CONFIGURATION_DIRECTORY
 from biondeep_ig.src import MODEL_CONFIGURATION_DIRECTORY
 from biondeep_ig.src import MODELS_DIRECTORY
@@ -325,3 +326,19 @@ def log_summary_results(display):
     """Print summary results."""
     for line in display.split("\n"):
         log.info(line)
+
+
+def get_task_name(label_name):
+    """Return the folder name to the correspending label name."""
+    if label_name.lower() == "cd4_any":
+        return "CD4"
+    if label_name.lower() == "cd8_any":
+        return "CD8"
+    raise ValueError("label name not known in fs ...")
+
+
+def remove_genrated_features(features_names, label_name):
+    """Remove Genrated features files by feature selection process."""
+    task = get_task_name(label_name)
+    for features_name in features_names:
+        (FEATURES_DIRECTORY / task / f"{features_name}.txt").unlink()

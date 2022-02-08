@@ -21,7 +21,7 @@ log = get_logger("Eval")
 @click.command()  # noqa
 @click.option(
     "--test_data_paths",
-    "-test",
+    "-d",
     type=str,
     required=True,
     multiple=True,

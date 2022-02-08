@@ -11,7 +11,6 @@ import pandas as pd
 
 import biondeep_ig.src.feature_selection as fese
 from biondeep_ig.src import CONFIGURATION_DIRECTORY
-from biondeep_ig.src import DATAPROC_DIRACTORY
 from biondeep_ig.src import FS_CONFIGURATION_DIRECTORY
 from biondeep_ig.src import MODELS_DIRECTORY
 from biondeep_ig.src.logger import get_logger
@@ -22,6 +21,7 @@ from biondeep_ig.src.utils import get_model_by_name
 from biondeep_ig.src.utils import load_fs
 from biondeep_ig.src.utils import load_yml
 from biondeep_ig.src.utils import save_yml
+
 
 log = get_logger("FeatureSelection")
 
@@ -54,13 +54,17 @@ def featureselection(train_data_path, test_data_path, configuration_file, folder
         tags=["feature selection"], training_path=train_data_path, test_path=test_data_path
     )
     neptune_log.upload_configuration_files(CONFIGURATION_DIRECTORY / configuration_file)
-    feature_selection_main(train_data_path, test_data_path, configuration_file, folder_name)
+    features_name = feature_selection_main(
+        train_data_path, test_data_path, configuration_file, folder_name
+    )
+    return features_name
 
 
 # -------------------------------- #
 # Thanks to click commands not being able to be callable via command line and as a function at the same time (see https://github.com/pallets/click/issues/330), this function is doubled ..
 def feature_selection_main(train_data_path, test_data_path, configuration_file, folder_name):
     """Run feature selection methods."""
+    features_name = []
     init_logger(folder_name)
     log.info("Started feature selection")
     general_configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_file)
@@ -68,13 +72,11 @@ def feature_selection_main(train_data_path, test_data_path, configuration_file, 
     fs_type, fs_params = load_fs(general_configuration)
     log.info("****************************** Load fs ****************************** ")
 
-    # displays = "####### fs Summary #######"
-    save_yml(general_configuration, MODELS_DIRECTORY / folder_name / "configuration.yml")
-
+    fs_configuration = general_configuration["FS"]
+    fs_methods = {}
     for fs_type, fs_param in zip(fs_type, fs_params):
         log.info(f"{fs_type} :")
         configuration = copy.deepcopy(general_configuration)
-        # displays += f"\n fs :{experiment_name}: "
         _fs_func(
             fs_type=fs_type,
             fs_param=fs_param,
@@ -83,6 +85,11 @@ def feature_selection_main(train_data_path, test_data_path, configuration_file, 
             configuration=configuration,
             folder_name=folder_name,
         )
+        features_name.append(f"{folder_name}_{fs_type}")
+        fs_methods[fs_type] = fs_param
+    fs_configuration["FS_methods"] = fs_methods
+    save_yml(fs_configuration, MODELS_DIRECTORY / folder_name / "FS_configuration.yml")
+    return features_name
 
 
 # -------------------------------- #
@@ -182,27 +189,6 @@ def _check_model_folder(folder_name):
         shutil.rmtree(model_folder_path)
 
     model_folder_path.mkdir(exist_ok=True, parents=True)
-
-
-def remove_processed_data(folder_name):
-    """Remove data proc folder."""
-    path = MODELS_DIRECTORY / folder_name / DATAPROC_DIRACTORY
-    shutil.rmtree(path)
-
-
-def log_summary_results(display):
-    """Print summary results."""
-    for line in display.split("\n"):
-        log.info(line)
-
-
-def get_safely_model_selection(general_configuration):
-    """Load model selection column and check if it's included in the benchmark columns list or not."""
-    model_selection = general_configuration.get("model_selection", "prediction_average")
-    benchmark_column = general_configuration.get("benchmark_column", ["prediction_average"])
-    if model_selection in benchmark_column:
-        return model_selection
-    raise KeyError(f"{model_selection}: is not available in the benchmark_column")
 
 
 def read(file_path: Path, **kwargs):

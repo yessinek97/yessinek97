@@ -25,6 +25,7 @@ from biondeep_ig.src.utils import load_experiments
 from biondeep_ig.src.utils import load_models
 from biondeep_ig.src.utils import load_yml
 from biondeep_ig.src.utils import log_summary_results
+from biondeep_ig.src.utils import remove_genrated_features
 from biondeep_ig.src.utils import save_yml
 
 log = get_logger("Train")
@@ -72,9 +73,16 @@ def train(train_data_path, test_data_path, unlabeled_path, configuration_file, f
     log.info(f"Best model will be selected based on {model_selection}")
 
     if "FS" in general_configuration:
-        feature_selection_main(train_data_path, test_data_path, configuration_file, folder_name)
+        features_names = feature_selection_main(
+            train_data_path, test_data_path, configuration_file, folder_name
+        )
+        print("features_names", features_names)
         log.info("****************************** Finished FS ****************************** ")
 
+        existing_featrues_lists = general_configuration.get("feature_paths", [])
+        print("existing_featrues_lists", existing_featrues_lists)
+        existing_featrues_lists.extend(features_names)
+        general_configuration["feature_paths"] = existing_featrues_lists
     displays = "####### Runs Summary #######"
     results = []
     neptune_log = NeptuneLogs(general_configuration, folder_name=folder_name)
@@ -130,6 +138,9 @@ def train(train_data_path, test_data_path, unlabeled_path, configuration_file, f
         folder_name=folder_name,
     )
     remove_processed_data(folder_name)
+
+    if "FS" in general_configuration:
+        remove_genrated_features(features_names, general_configuration["label"])
 
 
 @click.command()  # noqa
@@ -415,7 +426,7 @@ def _train_func(  # noqa: CCR001
         display += (
             f"     {prediction_name} :"
             f" Validation : {validation_score:0.3f}"
-            f"Test:{test_score:0.3f}\n"
+            f" Test:{test_score:0.3f}\n"
         )
 
         results.append(scores)
@@ -461,6 +472,7 @@ def _genrate_single_exp_config(
     return configuration
 
 
+# TODO remove model_selection and change it with prediction_name_selector
 def get_safely_model_selection(general_configuration):
     """Load model selection column and check if it's included in the benchmark columns list or not."""
     model_selection = general_configuration.get("model_selection", "prediction_average")
