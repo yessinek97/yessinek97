@@ -70,7 +70,7 @@ def save_as_json(data, file_path):
         json.dump(data, f)
 
 
-def get_model_module_by_name(base_module, target_class_name):
+def import_experiment(base_module, target_class_name):
     """Import class from a submodule."""
     for module_name, module in inspect.getmembers(base_module):
 
@@ -342,3 +342,21 @@ def remove_genrated_features(features_names, label_name):
     task = get_task_name(label_name)
     for features_name in features_names:
         (FEATURES_DIRECTORY / task / f"{features_name}.txt").unlink()
+
+
+def read(file_path: str, **kwargs):
+    """Read data."""
+    extension = Path(file_path).suffix
+    if extension == ".csv":
+        df = pd.read_csv(file_path, **kwargs)
+
+    elif extension == ".tsv":
+        df = pd.read_csv(file_path, sep="\t", **kwargs)
+
+    elif extension == ".xlsx":
+        df = pd.read_excel(file_path, **kwargs)
+
+    else:
+        raise ValueError(f"extension {extension} not supported")
+
+    return df

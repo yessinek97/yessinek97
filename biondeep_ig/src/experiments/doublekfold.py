@@ -87,18 +87,22 @@ class DoubleKfold(BaseExperiment):
     def train(self):
         """Training method."""
         for split in np.sort(self.train_data[self.split_column].unique()):
+            log.info("          ----------------------")
+            log.info(f"          Begin Split {split} :")
             train = self.train_data[self.train_data[self.split_column] != split]
             models = self.multiple_fit(
                 train=train,
                 split_column=self.split_column,
                 sub_model_directory=f"split_{split}",
             )
+            log.info(f"          End Split {split} :")
+            log.info("          ----------------------")
+
         return models
 
     def predict(self, save_df=True):
         """Predict method."""
         test_data = self.inference(self.test_data, save_df, file_name="test")
-
         train_data = []
         for sub_model_paths in self.checkpoint_directory.iterdir():
             split = maybe_int(sub_model_paths.name.replace("split_", ""))
@@ -130,12 +134,7 @@ class DoubleKfold(BaseExperiment):
                 prediction_data[f"prediction_{sub_model_split}"] += (
                     model.predict(data, with_label=False) / self.num_fold
                 )
-            log.info(f"           -Average Split_{sub_model_split} :")
-            self.evaluator.compute_metrics(
-                data=prediction_data,
-                prediction_name=f"prediction_{sub_model_split}",
-                data_name="test",
-            )
+
         for operation in self.kfold_operations:
             prediction_data[f"prediction_{operation}"] = getattr(np, operation)(
                 prediction_data[self.prediction_columns_name], axis=1
@@ -149,7 +148,15 @@ class DoubleKfold(BaseExperiment):
         """Evaluate method."""
         validation_data, test_data = self.predict()
         if self.evaluator.print_evals:
-            log.info("            -Double Kfold predictions")
+            for pred_name in self.prediction_columns_name:
+                log.info(f"           -{pred_name} :")
+                self.evaluator.compute_metrics(
+                    data=test_data,
+                    prediction_name=pred_name,
+                    data_name="test",
+                )
+            log.info("            -Double Kfold predictions columns")
+
         for operation in self.kfold_operations:
             if self.evaluator.print_evals:
                 log.info(f"             {operation} :")
@@ -162,7 +169,11 @@ class DoubleKfold(BaseExperiment):
                 data_name="validation",
             )
         results = self._parse_metrics_to_data_frame(eval_metrics=self.evaluator.get_evals())
-        best_validation_scores, best_test_scores = self.evaluator.get_experiment_best_scores(
+        (
+            best_validation_scores,
+            best_test_scores,
+            best_prediction_name,
+        ) = self.evaluator.get_experiment_best_scores(
             results=results,
             experiment_name=self.experiment_name,
             model_type=self.model_type,
@@ -176,7 +187,7 @@ class DoubleKfold(BaseExperiment):
             model_type=self.model_type,
             features_name=self.configuration["features"],
         )
-
+        self._save_prediction_name_selector(best_prediction_name)
         return {
             "validation": best_validation_scores,
             "test": best_test_scores,

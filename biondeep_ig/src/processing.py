@@ -1,6 +1,5 @@
 """Holds functions for data preprocessing."""
 import hashlib
-import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -124,7 +123,7 @@ class Dataset:
     def loaddataset(self, path):
         """Load data."""
         # Note: According to https://stackoverflow.com/questions/24251219/pandas-read-csv-low-memory-and-dtype-options, low_memory does nothing more than suppress this warning currently - a failed deprecation of pandas
-        _, file_extension = os.path.splitext(path)
+        file_extension = Path(path).suffix
         if file_extension == ".csv":
             self.data = pd.read_csv(path, low_memory=False)
         elif file_extension in [".tsv", ".temp"]:

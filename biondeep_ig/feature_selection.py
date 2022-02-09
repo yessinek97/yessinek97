@@ -1,13 +1,10 @@
 """Module used to define the training command."""
 import copy
-import os
 import shutil
 import tempfile
-from pathlib import Path
 
 import click
 import numpy as np
-import pandas as pd
 
 import biondeep_ig.src.feature_selection as fese
 from biondeep_ig.src import CONFIGURATION_DIRECTORY
@@ -20,6 +17,7 @@ from biondeep_ig.src.processing import Dataset
 from biondeep_ig.src.utils import get_model_by_name
 from biondeep_ig.src.utils import load_fs
 from biondeep_ig.src.utils import load_yml
+from biondeep_ig.src.utils import read
 from biondeep_ig.src.utils import save_yml
 
 
@@ -62,7 +60,9 @@ def featureselection(train_data_path, test_data_path, configuration_file, folder
 
 # -------------------------------- #
 # Thanks to click commands not being able to be callable via command line and as a function at the same time (see https://github.com/pallets/click/issues/330), this function is doubled ..
-def feature_selection_main(train_data_path, test_data_path, configuration_file, folder_name):
+def feature_selection_main(
+    train_data_path, test_data_path, configuration_file, folder_name, with_train=False
+):
     """Run feature selection methods."""
     features_name = []
     init_logger(folder_name)
@@ -72,6 +72,9 @@ def feature_selection_main(train_data_path, test_data_path, configuration_file, 
     fs_type, fs_params = load_fs(general_configuration)
     log.info("****************************** Load fs ****************************** ")
 
+    features_selection_path = MODELS_DIRECTORY / folder_name / "features_selection"
+    features_selection_path.mkdir(exist_ok=True, parents=True)
+    log.info(f"Features list will be saved under {features_selection_path} ")
     fs_configuration = general_configuration["FS"]
     fs_methods = {}
     for fs_type, fs_param in zip(fs_type, fs_params):
@@ -84,6 +87,8 @@ def feature_selection_main(train_data_path, test_data_path, configuration_file, 
             test_data_path=test_data_path,
             configuration=configuration,
             folder_name=folder_name,
+            with_train=with_train,
+            features_selection_path=features_selection_path,
         )
         features_name.append(f"{folder_name}_{fs_type}")
         fs_methods[fs_type] = fs_param
@@ -100,6 +105,8 @@ def _fs_func(  # noqa: CCR001
     test_data_path,
     configuration,
     folder_name,
+    with_train,
+    features_selection_path,
 ):
     """Apply features selection."""
     train_columns = set(get_column_names(train_data_path))
@@ -171,6 +178,8 @@ def _fs_func(  # noqa: CCR001
         folder_name=folder_name,
         n_feat=configuration["FS"]["n_feat"],
         fs_type=fs_type,
+        with_train=with_train,
+        features_selection_path=features_selection_path,
     ).select_features(df_processed, label_s)
 
 
@@ -191,24 +200,6 @@ def _check_model_folder(folder_name):
     model_folder_path.mkdir(exist_ok=True, parents=True)
 
 
-def read(file_path: Path, **kwargs):
-    """Read data."""
-    _, extension = os.path.splitext(file_path)
-    if extension == ".csv":
-        df = pd.read_csv(file_path, **kwargs)
-
-    elif extension == ".tsv":
-        df = pd.read_csv(file_path, sep="\t", **kwargs)
-
-    elif extension == ".xlsx":
-        df = pd.read_excel(file_path, **kwargs)
-
-    else:
-        raise ValueError(f"extension {extension} not supported")
-
-    return df
-
-
-def get_column_names(file_path: Path):
+def get_column_names(file_path: str):
     """Get the columns names."""
     return read(file_path, nrows=1).columns.to_list()

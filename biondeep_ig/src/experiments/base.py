@@ -59,6 +59,7 @@ class BaseExperiment(ABC):
         sub_folder_name: Optional[str] = None,
         unlabeled_path: Optional[str] = None,
         experiment_directory: Optional[Path] = None,
+        features_file_path: Optional[str] = None,
     ):
         """Class init."""
         self.test_data_path = Path(test_data_path)
@@ -77,10 +78,12 @@ class BaseExperiment(ABC):
         self.eval_directory = self.experiment_directory / "eval"
         self.curve_plot_directory = self.eval_directory / "curve_plots"
         self.model_cls = get_model_by_name(src_model, self.model_type)
-        self.features = [
-            x.lower()
-            for x in load_features(self.features_directory / self.configuration["features"])
-        ]
+        self.features_file_path = (
+            features_file_path
+            if features_file_path
+            else self.features_directory / self.configuration["features"]
+        )
+        self.features = [x.lower() for x in load_features(self.features_file_path)]
 
         self.save_model = True
         self.evaluator = Evaluation(
@@ -366,7 +369,7 @@ class BaseExperiment(ABC):
         fake_validation = results.copy()
         fake_validation["split"] = "validation"
         results = pd.concat([results, fake_validation])
-        best_validation_scores, best_test_scores = self.evaluator.get_experiment_best_scores(
+        best_validation_scores, best_test_scores, _ = self.evaluator.get_experiment_best_scores(
             results=results,
             experiment_name=self.experiment_name,
             model_type=self.model_type,
@@ -576,3 +579,8 @@ class BaseExperiment(ABC):
             if self.sub_folder_name
             else base_path / self.model_type
         )
+
+    def _save_prediction_name_selector(self, prediction_name_selector: str):
+        """Save prediction name selector."""
+        self.configuration["evaluation"]["prediction_name_selector"] = prediction_name_selector
+        save_yml(self.configuration, self.experiment_directory / "configuration.yml")

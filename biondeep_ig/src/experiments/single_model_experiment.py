@@ -97,12 +97,17 @@ class SingleModel(BaseExperiment):
         """Evaluate method."""
         self.predict()
         results = self._parse_metrics_to_data_frame(self.evaluator.get_evals())
-        best_validation_scores, best_test_scores = self.evaluator.get_experiment_best_scores(
+        (
+            best_validation_scores,
+            best_test_scores,
+            best_prediction_name,
+        ) = self.evaluator.get_experiment_best_scores(
             results=results,
             experiment_name=self.experiment_name,
             model_type=self.model_type,
             features_name=self.configuration["features"],
         )
+        self._save_prediction_name_selector(best_prediction_name)
         return {"validation": best_validation_scores, "test": best_test_scores}
 
     def _parse_metrics_to_data_frame(
