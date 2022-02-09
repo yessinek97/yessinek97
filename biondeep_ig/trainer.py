@@ -20,11 +20,12 @@ from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
 from biondeep_ig.src.logger import NeptuneLogs
 from biondeep_ig.src.utils import get_best_experiment
-from biondeep_ig.src.utils import get_model_module_by_name
+from biondeep_ig.src.utils import import_experiment
 from biondeep_ig.src.utils import load_experiments
 from biondeep_ig.src.utils import load_models
 from biondeep_ig.src.utils import load_yml
 from biondeep_ig.src.utils import log_summary_results
+from biondeep_ig.src.utils import read
 from biondeep_ig.src.utils import remove_genrated_features
 from biondeep_ig.src.utils import save_yml
 
@@ -69,12 +70,9 @@ def train(train_data_path, test_data_path, unlabeled_path, configuration_file, f
     log.info("****************************** Load EXP ****************************** ")
     model_types, model_params = load_models(general_configuration)
     log.info("****************************** Load Models ****************************** ")
-    model_selection = get_safely_model_selection(general_configuration=general_configuration)
-    log.info(f"Best model will be selected based on {model_selection}")
-
     if "FS" in general_configuration:
         features_names = feature_selection_main(
-            train_data_path, test_data_path, configuration_file, folder_name
+            train_data_path, test_data_path, configuration_file, folder_name, with_train=True
         )
         print("features_names", features_names)
         log.info("****************************** Finished FS ****************************** ")
@@ -187,11 +185,9 @@ def train_seed_fold(  # noqa
     )
     neptune_log.upload_configuration_files(CONFIGURATION_DIRECTORY / configuration_file)
     save_yml(general_configuration, MODELS_DIRECTORY / folder_name / "configuration.yml")
-    model_selection = get_safely_model_selection(general_configuration=general_configuration)
     log.info("****************************** Load YAML ****************************** ")
     log.info("****************************** Load EXP ****************************** ")
     log.info("****************************** Load Models ****************************** ")
-    log.info(f"Best model will be selected based on {model_selection}")
     displays = "####### Runs Summary #######"
     results = []
     for experiment_name, experiment_param in zip(experiment_names, experiment_params):
@@ -389,7 +385,7 @@ def _train_func(  # noqa: CCR001
         model_type=model_type,
         model_param=model_param,
     )
-    experiment_class = get_model_module_by_name(exper, experiment_name)
+    experiment_class = import_experiment(exper, experiment_name)
     features_list_paths = copy.deepcopy(configuration["feature_paths"])
     eval_configuration = configuration["evaluation"]
     results = []
@@ -472,16 +468,6 @@ def _genrate_single_exp_config(
     return configuration
 
 
-# TODO remove model_selection and change it with prediction_name_selector
-def get_safely_model_selection(general_configuration):
-    """Load model selection column and check if it's included in the benchmark columns list or not."""
-    model_selection = general_configuration.get("model_selection", "prediction_average")
-    benchmark_column = general_configuration.get("benchmark_column", ["prediction_average"])
-    if model_selection in benchmark_column:
-        return model_selection
-    raise KeyError(f"{model_selection}: is not available in the benchmark_column")
-
-
 def _save_best_experiment(best_experiment_id, folder_name):
     """Save best experiment."""
     if len(best_experiment_id) == 4:
@@ -513,8 +499,8 @@ def eval_comparison_score(configuration, train_path, test_path, folder_name):
     if comparison_score:
         log.info(f"Eval {comparison_score}")
         results = {}
-        train_df = pd.read_csv(train_path)
-        test = pd.read_csv(test_path)
+        train_df = read(train_path)
+        test = read(test_path)
         test.columns = [col.lower() for col in test.columns]
         train_df.columns = [col.lower() for col in train_df.columns]
         train_df[ID_NAME] = range(len(train_df))
@@ -550,7 +536,7 @@ def eval_comparison_score(configuration, train_path, test_path, folder_name):
                 validation_column = configuration["experiments"][SINGLE_MODEL_NAME][
                     "validation_column"
                 ]
-                split = pd.read_csv(split_validation_path)
+                split = read(split_validation_path)
                 train_df = train_df.merge(split, on=[ID_NAME], how="left")
                 evaluator.compute_metrics(
                     data=train_df[train_df[validation_column] == 0],
@@ -587,7 +573,7 @@ def eval_comparison_score(configuration, train_path, test_path, folder_name):
             if split_kfold_path.exists():
                 log.info(KFOLD_MODEL_NAME)
                 split_column = configuration["experiments"][KFOLD_MODEL_NAME]["split_column"]
-                split_kfold = pd.read_csv(split_kfold_path)
+                split_kfold = read(split_kfold_path)
                 train_df = train_df.merge(split_kfold, on=[ID_NAME], how="left")
                 for split in np.sort(train_df[split_column].unique()):
                     log.info(split)

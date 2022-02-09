@@ -192,7 +192,7 @@ class Evaluation:
 
     def get_experiment_best_scores(
         self, results: pd.DataFrame, experiment_name: str, model_type: str, features_name: str
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, str]:
         """Return best experiment scores."""
         metrics = results[results["split"] == self.data_name_selector]
         metrics.sort_values(
@@ -221,7 +221,7 @@ class Evaluation:
         best_test_scores["features"] = features_name
         best_test_scores["ID"] = f"{experiment_name}//{features_name}//{model_type}"
 
-        return best_validation_scores, best_test_scores
+        return best_validation_scores, best_test_scores, best_prediction_name
 
     def plot_curve(self, data: pd.DataFrame, prediction_name: str, plot_path: Path) -> None:
         """Plot precision recall curve and roc curve."""

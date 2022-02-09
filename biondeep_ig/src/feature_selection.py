@@ -47,6 +47,8 @@ class BaseFeatureSelection(ABC):
         folder_name,
         n_feat,
         fs_type,
+        with_train,
+        features_selection_path,
     ):
         """Init method."""
         self.features = features
@@ -56,6 +58,8 @@ class BaseFeatureSelection(ABC):
         self.folder_name = folder_name
         self.n_feat = n_feat
         self.fs_type = fs_type
+        self.with_train = with_train
+        self.features_selection_path = features_selection_path
         self.fs = None
 
     @property
@@ -84,10 +88,13 @@ class BaseFeatureSelection(ABC):
         if self.force_features:
             feature_list.extend(self.force_features)
             feature_list = list(set(feature_list))
-
-        with open(
-            FEATURES_DIRECTORY / task / f"{self.folder_name}_{self.fs_type}.txt", "w+"
-        ) as outfile:
+        if self.with_train:
+            with open(
+                FEATURES_DIRECTORY / task / f"{self.folder_name}_{self.fs_type}.txt", "w+"
+            ) as outfile:
+                for item in feature_list:
+                    outfile.write(f"{item}\n")
+        with open(self.features_selection_path / f"{self.fs_type}.txt", "w+") as outfile:
             for item in feature_list:
                 outfile.write(f"{item}\n")
 

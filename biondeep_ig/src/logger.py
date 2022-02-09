@@ -26,7 +26,7 @@ def init_logger(folder_name=None, file_name=None):
 
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
+        format="%(name)-12s: %(levelname)-8s %(message)s",
         datefmt="%m-%d %H:%M",
         filename=log_file_path,
     )

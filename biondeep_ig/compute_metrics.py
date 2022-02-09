@@ -1,4 +1,4 @@
-"""Module used to define the inference on a new test set command."""
+"""Module used to compute metrics for a given datasets."""
 import copy
 from pathlib import Path
 
@@ -9,7 +9,7 @@ from biondeep_ig.src import MODELS_DIRECTORY
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
 from biondeep_ig.src.utils import get_best_experiment
-from biondeep_ig.src.utils import get_model_module_by_name
+from biondeep_ig.src.utils import import_experiment
 from biondeep_ig.src.utils import load_experiments
 from biondeep_ig.src.utils import load_models
 from biondeep_ig.src.utils import load_yml
@@ -52,7 +52,7 @@ def compute_metrics(test_data_paths, folder_name):
         results = []
         for experiment_name, experiment_param in zip(experiment_names, experiment_params):
             log.info(f"{experiment_name} :")
-            experiment_class = get_model_module_by_name(exper, experiment_name)
+            experiment_class = import_experiment(exper, experiment_name)
             for model_type, _ in zip(model_types, model_params):
                 log.info(f" {model_type} :")
                 for features_list_path in features_list_paths:
@@ -81,7 +81,10 @@ def compute_metrics(test_data_paths, folder_name):
         best_exp_configuration = load_yml(best_exp_path / "configuration.yml")
         best_experiment_name = list(best_exp_configuration["experiments"])[0]
         best_experiment_param = best_exp_configuration["experiments"][best_experiment_name]
-        experiment = experiment_class(
+        best_experiment_features_file_path = best_exp_path / "features.txt"
+        best_experiment_class = import_experiment(exper, best_experiment_name)
+
+        experiment = best_experiment_class(
             train_data_path=None,
             test_data_path=test_data_path,
             configuration=best_exp_configuration,
@@ -89,6 +92,7 @@ def compute_metrics(test_data_paths, folder_name):
             folder_name=folder_name,
             sub_folder_name=best_exp_configuration["features"],
             experiment_directory=best_exp_path,
+            features_file_path=best_experiment_features_file_path,
             **best_experiment_param,
         )
         log.info(f"Experiment : {best_experiment_name}")
