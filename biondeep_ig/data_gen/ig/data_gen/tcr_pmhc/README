@@ -1,0 +1,50 @@
+This directory assumes, that one has: 1/ A list of produced pMHC models (full paths in mhclist.txt)
+2/ A list of produced TCR models to be tested (full paths in tcrlists.txt) 3/ A directory with full
+pMHC-TCR models (./complextemplates) to be used as a starting point
+
+NOTE: Make sure the paths in all the files are properly set.
+
+The process is two-fold: 1/ Generate starting poses for docking by running ./prepareForDocking.py 2/
+Run the docking experiment for some of the input structures. The script is sequential, but trivially
+parallelizable. A good, simple, local queue system I can recommend is suq
+(https://github.com/spronk/suq).
+
+What I do, is having a step (1) running in an infninite loop, generating a batch of inputs at a
+time. And in another session (tmux/screen etc.) I have something like this going on:
+
+for t in `ls m*.?.pdb | awk -F. '{print substr($2, length($2)-1, length($2))}' | sort -u`; do echo
+$t; ~/sw/suq run ./doDocking.v2.sh $t ; done; sleep 45m; done
+
+NOTE: ./doDocking.v2.sh by default deletes the docked poses and intermediate files. Still, the
+process can generate a lot of data, especially if run in a massively multi-processing environment
+
+This will produce a set of files named [timestamp].sc - one per run of ./doDocking.v2.sh - these
+contain the results and can be safely concatenated.
+
+cat 1\*sc > ifAnalyzer.sc
+
+or, if you are averse to messy inputs:
+
+head -2 ifAnalyser.sc > ifAnalyser.proper.sc cat ifAnalyzer.sc | grep -v 'SEQ' | grep -v 'total' |
+sort -u >> ifAnalyzer.proper.sc
+
+for a pair of pMHC
+
+50 pMHC structs 50 TCRs (shared across all) -> 2500 pairs -> take X random ones -> dock twice
+
+get 2X per pair
+
+!!! WT and MT should have the same set of TCR !! if TCR binds well to WT, then this TCR does not
+exist as it is killed
+
+rotate pMHC, rotate TCR, then dock then interface analyzer
+/Rosetta/main/source/bin/InterfaceAnalyzer.default.linuxgccrelease -out:level 10 -in:file:s
+${output_dir}/${file*name}${suffix}\_0001.pdb.gz -pack_separated -pack_input -out:file:score_only
+${output_dir}/ia*${file_name}${suffix}.sc
+
+# perturbation 5A away from the surface, rotate 12 degrees
+
+# m000-t2640.0.0_0001_0001.pdb -> time it
+
+~/rosetta/main/source/bin/docking_protocol.static.linuxgccrelease -in:file:s xxxxxx.pdb -partners
+AC_DE -docking_local_refine -dock_pert 5 12 -nstruct 2 -ex1 -ex2aro

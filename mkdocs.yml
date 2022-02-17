@@ -55,6 +55,7 @@ nav:
   - Installation: installation.md
   - Data:
       - Overview: data.md
+      - Data IG generation: data_gen.md
   - Feature selection: FS.md
   - Train:
       - Train: train.md
