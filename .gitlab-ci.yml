@@ -3,6 +3,7 @@ stages:
   - lint
   - test
   - publish
+  - workflow
 
 variables:
   PRE_COMMIT_VERSION: "2.17.0"
@@ -63,3 +64,45 @@ pages:
       - public
   only:
     - main
+
+run-pmhc-argoWorkflow:
+  stage: workflow
+  image: registry.gitlab.com/instadeep/multi_bin_packing/ci:latest
+  when: manual
+  needs:
+    - job: build_image
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /ARGO .*/
+  tags:
+    - k8s-biondeep-ig
+  script:
+    - yq e ".metadata.name = \"pmhc-$CI_COMMIT_SHORT_SHA\"" -i
+      ./biondeep_ig/bio_ig_gen/pipeline/argo/pmhc-gen-workflow.yaml
+    - yq e ".spec.arguments.parameters[0].value = \"$DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA\"" -i
+      ./biondeep_ig/bio_ig_gen/pipeline/argo/pmhc-gen-workflow.yaml
+    - kubectl apply -f ./biondeep_ig/bio_ig_gen/pipeline/argo/pmhc-gen-workflow.yaml --namespace
+      biondeep-ig-infra
+    - echo "To see the logs, Please visit Argo Server
+      https://argo.instadeep.ichorai.io/workflows/biondeep-ig-infra"
+
+run-tcr-pmhc-argoWorkflow:
+  stage: workflow
+  image: registry.gitlab.com/instadeep/multi_bin_packing/ci:latest
+  when: manual
+  needs:
+    - job: build_image
+  only:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /ARGO .*/
+  tags:
+    - k8s-biondeep-ig
+  script:
+    - yq e ".metadata.name = \"tcr-pmhc-$CI_COMMIT_SHORT_SHA\"" -i
+      ./biondeep_ig/bio_ig_gen/pipeline/argo/tcr-pmhc-gen-workflow.yaml
+    - yq e ".spec.arguments.parameters[0].value = \"$DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA\"" -i
+      ./biondeep_ig/bio_ig_gen/pipeline/argo/tcr-pmhc-gen-workflow.yaml
+    - kubectl apply -f ./biondeep_ig/bio_ig_gen/pipeline/argo/tcr-pmhc-gen-workflow.yaml --namespace
+      biondeep-ig-infra
+    - echo "To see the logs, Please visit Argo Server
+      https://argo.instadeep.ichorai.io/workflows/biondeep-ig-infra"

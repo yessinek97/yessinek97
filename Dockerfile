@@ -15,7 +15,7 @@ RUN apt-get update && \
         apt-get upgrade -y
 
 # Install required system dependencies and clear cache
-RUN DEBIAN_FRONTEND=noninteractive apt-get install git -y && \
+RUN DEBIAN_FRONTEND=noninteractive apt-get install git parallel -y && \
         apt-get clean
 
 # Copy the requirements file into /tmp directory
