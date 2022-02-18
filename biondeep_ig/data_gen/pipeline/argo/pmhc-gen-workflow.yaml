@@ -300,7 +300,7 @@ spec:
           apt-get update && apt-get install -y tree jq gzip
 
           # chmod pmhc bash script
-          chmod +x ./biondeep_ig/bio_ig_gen/pipeline/PosGeneration/gen_pmhc_poses.sh
+          chmod +x ./biondeep_ig/data_gen/pipeline/PosGeneration/gen_pmhc_poses.sh
           # create folder for generated pmhcs
           outdir="/mnt/data/ig-dataset/generated_pmhc"
 
@@ -321,7 +321,7 @@ spec:
               flag=$(cat $todo_alleles_peptides  | jq '.['"$i"'][3] // empty' | tr -d '"')
 
               if [[ ! -z "$allele" ]]; then
-                echo "./biondeep_ig/bio_ig_gen/pipeline/PosGeneration/gen_pmhc_poses.sh -r $flag -i $init -a $allele -p $peptide -o $outdir" >> cmds_$uuid
+                echo "./biondeep_ig/data_gen/pipeline/PosGeneration/gen_pmhc_poses.sh -r $flag -i $init -a $allele -p $peptide -o $outdir" >> cmds_$uuid
               fi
 
             done

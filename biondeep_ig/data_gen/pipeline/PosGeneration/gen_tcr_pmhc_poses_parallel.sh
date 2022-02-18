@@ -38,7 +38,7 @@ trap "rm_cmds" ERR
 # Add empty line at the end of the CSV file if needed
 sed -i -e '$a\' $INPUT_CSV
 
-chmod +x ./biondeep_ig/bio_ig_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh
+chmod +x ./biondeep_ig/data_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh
 # Parse CSV file
 # CSV file columns must respect the following order:
 # pmhc_filename,tcr_filename,template_filename,optional1,optional2,etc
@@ -46,7 +46,7 @@ chmod +x ./biondeep_ig/bio_ig_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh
     read
     while IFS="," read -r pmhc_filename tcr_filename template_filename rec_remaining
     do
-        echo "./biondeep_ig/bio_ig_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh -p $pmhc_filename -r $tcr_filename -t $template_filename -n $NUM_DOCKING -o $OUTPUT_DIR || true" >> cmds
+        echo "./biondeep_ig/data_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh -p $pmhc_filename -r $tcr_filename -t $template_filename -n $NUM_DOCKING -o $OUTPUT_DIR || true" >> cmds
     done
 } < $INPUT_CSV
 

@@ -15,7 +15,7 @@ def parse_args():
         "--tcrmodel-path",
         "-e",
         type=str,
-        default="/home/app/biondeep_ig/bio_ig_gen/ig/data_gen/tcr/tcrmodel.sh",
+        default="/home/app/biondeep_ig/data_gen/ig/data_gen/tcr/tcrmodel.sh",
         help="Path to tcrmodel.sh executable.",
     )
     parser.add_argument(

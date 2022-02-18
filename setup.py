@@ -25,11 +25,11 @@ setup(
     entry_points={
         "console_scripts": [
             # data generation
-            "agg_scores=biondeep_ig.bio_ig_gen.ig.data_gen.parse_score_files:main",
-            "tcr_gen=biondeep_ig.bio_ig_gen.ig.data_gen.tcr.generate_tcrs:main",
-            "pmhc_gen=biondeep_ig.bio_ig_gen.ig.data_gen.pmhc.generate_pmhc:main",
-            "tcr_pmhc_extract=biondeep_ig.bio_ig_gen.ig.data_gen.tcr_pmhc.tcr_pmhc_extract:main",
-            "tcr_pmhc_align=biondeep_ig.bio_ig_gen.ig.data_gen.tcr_pmhc.tcr_pmhc_align:main",
+            "agg_scores=biondeep_ig.data_gen.ig.data_gen.parse_score_files:main",
+            "tcr_gen=biondeep_ig.data_gen.ig.data_gen.tcr.generate_tcrs:main",
+            "pmhc_gen=biondeep_ig.data_gen.ig.data_gen.pmhc.generate_pmhc:main",
+            "tcr_pmhc_extract=biondeep_ig.data_gen.ig.data_gen.tcr_pmhc.tcr_pmhc_extract:main",
+            "tcr_pmhc_align=biondeep_ig.data_gen.ig.data_gen.tcr_pmhc.tcr_pmhc_align:main",
         ]
     },
 )

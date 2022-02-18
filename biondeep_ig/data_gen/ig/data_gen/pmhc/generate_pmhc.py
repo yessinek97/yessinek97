@@ -8,6 +8,7 @@ import pyrosetta as pr
 from biondeep_ig.data_gen.ig.data_gen.rosetta import build_min_mover
 from biondeep_ig.data_gen.ig.data_gen.rosetta import build_score_function
 from biondeep_ig.data_gen.ig.data_gen.rosetta import init_rosetta
+from biondeep_ig.data_gen.ig.data_gen.rosetta import rechain
 from biondeep_ig.data_gen.ig.data_gen.rosetta import redock
 from biondeep_ig.data_gen.ig.data_gen.rosetta import relax
 from biondeep_ig.data_gen.ig.data_gen.rosetta import substitute_chain
@@ -59,6 +60,7 @@ def generate_pmhc(
     num_extra_residues: int,
     insert_pos_offset: int = 3,
     pack_radius: int = 8,
+    save_min: bool = False,
 ):
     """Score the peptide.
 
@@ -70,11 +72,14 @@ def generate_pmhc(
         num_extra_residues: number of extra residues to add.
         insert_pos_offset: offset position from where residues are added.
         pack_radius: linked to the definition of neighbor.
+        save_min: whether to save the min pose
     """
     # if file exists, do not execute
     if not os.path.exists(output_path + ".pdb"):
         score_fn = build_score_function()
         pose = pr.pose_from_pdb(pdb_path)
+        if pose.pdb_info().num_chains() == 2:
+            pose = rechain(pose, {"B": "C"})
         pose = substitute_chain(
             score_fn=score_fn,
             pose=pose,
@@ -89,6 +94,8 @@ def generate_pmhc(
         minmover = build_min_mover(score_fn=score_fn)
         pose = redock(score_fn=score_fn, minmover=minmover, pose=pose, temperature=temperature)
         min_pdb_path = f"{output_path}_min.pdb"
+        if save_min:
+            pose.dump_pdb(min_pdb_path)
         pose.dump_pdb(min_pdb_path)
         pose = relax(score_fn=score_fn, pose=pose)
         relax_pdb_path = f"{output_path}_relax.pdb"
@@ -102,7 +109,12 @@ def get_peptide_in_pose(file_path) -> str:
         file_path: path to template PDB.
     """
     pose = pr.pose_from_pdb(str(file_path))
-    peptide_in_pose = pose.chain_sequence(2)
+    num_chains = pose.pdb_info().num_chains()
+    peptide_in_pose = sorted(
+        (pose.chain_sequence(i) for i in range(1, num_chains + 1)),
+        key=lambda chain: len(chain),  # pylint: disable=W0108
+    )[0]
+    logger.info("Peptide in pose: %s", peptide_in_pose)
     return peptide_in_pose
 
 

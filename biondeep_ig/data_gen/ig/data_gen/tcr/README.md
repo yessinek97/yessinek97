@@ -19,8 +19,8 @@ where, user should provide full alpha and beta amino acid sequences.
 Optionally, we can use the provided bash script with only cdr3a and cdr3b sequences,
 
 ```bash
-chmod +x ./biondeep_ig/bio_ig_gen/ig/data_gen/tcr/tcrmodel.sh
-./biondeep_ig/bio_ig_gen/ig/data_gen/tcr/tcrmodel.sh -a $cdr3a -b $cdr3b -o ${output_dir}
+chmod +x ./biondeep_ig/data_gen/ig/data_gen/tcr/tcrmodel.sh
+./biondeep_ig/data_gen/ig/data_gen/tcr/tcrmodel.sh -a $cdr3a -b $cdr3b -o ${output_dir}
 ```
 
 where we consider the following full alpha/beta chain,

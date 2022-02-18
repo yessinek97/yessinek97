@@ -116,7 +116,9 @@ def build_randomizer() -> Any:
     return randomize
 
 
-def build_dock_min_mover(score_fn: Callable, name: str = "DockMinMover") -> Tuple[Any, int]:
+def build_dock_min_mover(
+    score_fn: Callable, name: str = "DockMinMover", partners: str = "A_C"
+) -> Tuple[Any, int]:
     """Build docker.
 
     - If hrdock is DockMinMover, we may need ~100-1000 runs.
@@ -125,6 +127,7 @@ def build_dock_min_mover(score_fn: Callable, name: str = "DockMinMover") -> Tupl
     Args:
         score_fn: score function.
         name: name of the docking method.
+        partners: interface partners
 
     Returns:
         - Docking method.
@@ -136,6 +139,8 @@ def build_dock_min_mover(score_fn: Callable, name: str = "DockMinMover") -> Tupl
     else:
         hrdock = pr.rosetta.protocols.docking.DockingHighResLegacy()
         num_iter = 100
+    hrdock.set_partners(partners)
+    logger.info("Docking interface partners: %s", hrdock.get_partners())
     hrdock.set_movable_jumps(pr.Vector1([1]))
     hrdock.set_scorefxn(score_fn)
     return hrdock, num_iter
@@ -184,6 +189,7 @@ def relax(score_fn: Callable, pose: pr.Pose) -> pr.Pose:
 def insert_extra_residues(
     pose: pr.Pose,
     seq: str,
+    chain: str,
     minmover: pr.rosetta.protocols.minimization_packing.MinMover,
     movemap: pr.MoveMap,
     mutant_position_start: int,
@@ -198,6 +204,7 @@ def insert_extra_residues(
     Args:
         pose: rosetta pose to mutate.
         seq: mutant sequence.
+        chain: chain ID
         minmover: min mover.
         movemap: pyrosetta movemap instance.
         mutant_position_start: first position in the target chain.
@@ -232,6 +239,7 @@ def insert_extra_residues(
         )
         # insert extra residue at position residue_pos
         pose.prepend_polymer_residue_before_seqpos(residue, residue_pos + 1, True)
+        pose.pdb_info().chain(residue_pos + 1, chain)
 
         movemap.set_bb(residue_pos, True)  # unfreeze backbone
         movemap.set_chi(residue_pos, True)  # unfreeze side chains
@@ -343,6 +351,7 @@ def substitute_chain(  # noqa:CCR001
         insert_extra_residues(
             pose=pose,
             seq=seq,
+            chain=chain,
             minmover=insert_minmover,
             movemap=movemap,
             mutant_position_start=mutant_position_start,
