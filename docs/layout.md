@@ -74,7 +74,7 @@ You can find more information on the results under the best experiment:
 
 Additionally the framework logs intermediate results and progress to two files:
 
-- biondeep-ig/biondeep_ig/models/<name>/<experiment_name>/<features_list>/<model_type>/runs.log:
+- biondeep-ig/biondeep_ig/models/name/experiment_name/features_list/model_type/runs.log:
   - progress and intermediate results of the current run
-- biondeep-ig/biondeep_ig/models/<name>/<experiment_name>/<features_list>/<model_type>/models.log:
+- biondeep-ig/biondeep_ig/models/name/experiment_name/features_list/model_type/models.log:
   - model convergence
