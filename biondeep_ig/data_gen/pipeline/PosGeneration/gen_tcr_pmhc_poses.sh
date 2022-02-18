@@ -52,8 +52,8 @@ mkdir -p $OUT_DIR
 
 echo "PROCESSING pMHC: ${PMHC_STEM} - TCR: ${TCR_STEM} - TEMPLATE: ${TEMPLATE_STEM}..."
 
-chmod +x ./biondeep_ig/bio_ig_gen/ig/data_gen/tcr_pmhc/generate_tcr_pmhc.sh
-./biondeep_ig/bio_ig_gen/ig/data_gen/tcr_pmhc/generate_tcr_pmhc.sh -p $PMHC -t $TCR -m $TEMPLATE -n $NUM_DOCKING -o $OUT_DIR
+chmod +x ./biondeep_ig/data_gen/ig/data_gen/tcr_pmhc/generate_tcr_pmhc.sh
+./biondeep_ig/data_gen/ig/data_gen/tcr_pmhc/generate_tcr_pmhc.sh -p $PMHC -t $TCR -m $TEMPLATE -n $NUM_DOCKING -o $OUT_DIR
 
 NUM_FILES_GENERATED=$(ls ${OUT_DIR} | wc -l)
 echo "${NUM_FILES_GENERATED} were generated in ${OUT_DIR}"

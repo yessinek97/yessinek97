@@ -315,7 +315,7 @@ spec:
 
           apt-get update && apt-get install -y tree jq gzip
 
-          chmod +x ./biondeep_ig/bio_ig_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh
+          chmod +x ./biondeep_ig/data_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh
 
           # create folder for generated tcr pmhcs
           outdir="/mnt/data/ig-dataset/generated_tcr_pmhc"
@@ -333,7 +333,7 @@ spec:
               template=$(cat $todos  | jq '.['"$i"'][2] // empty' | tr -d '"')
 
               if [[ ! -z "$pmhc" ]]; then
-                echo "./biondeep_ig/bio_ig_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh -p $pmhc -r $tcr -t $template -o $outdir -n 4"  >> cmds_$uuid
+                echo "./biondeep_ig/data_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses.sh -p $pmhc -r $tcr -t $template -o $outdir -n 4"  >> cmds_$uuid
               fi
 
             done

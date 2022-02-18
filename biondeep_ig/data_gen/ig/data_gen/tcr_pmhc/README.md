@@ -24,8 +24,8 @@ applied using Rosetta. Scores are finally computed using Rosetta's InterfaceAnal
 Example command:
 
 ```bash
-chmod +x ./biondeep_ig/bio_ig_gen/ig/data_gen/tcr_pmhc/generate_tcr_pmhc.sh
-./biondeep_ig/bio_ig_gen/ig/data_gen/tcr_pmhc/generate_tcr_pmhc.sh  -p /home/app/data/pmhcs/FLVQNIHTL_1_relax.pdb -t /home/app/data/tcrs/tcr-CAVPLYNNNDMRF-CASSDRGLGYGYTF.pdb -m /home/app/data/tcr_pmhc_templates/4JFF.rechained.pdb -o /home/app/data/out/rosetta -n 2
+chmod +x ./biondeep_ig/data_gen/ig/data_gen/tcr_pmhc/generate_tcr_pmhc.sh
+./biondeep_ig/data_gen/ig/data_gen/tcr_pmhc/generate_tcr_pmhc.sh  -p /home/app/data/pmhcs/FLVQNIHTL_1_relax.pdb -t /home/app/data/tcrs/tcr-CAVPLYNNNDMRF-CASSDRGLGYGYTF.pdb -m /home/app/data/tcr_pmhc_templates/4JFF.rechained.pdb -o /home/app/data/out/rosetta -n 2
 ```
 
 ## `tcr_pmhc_align.py`
