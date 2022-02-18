@@ -1,12 +1,13 @@
 ## Available experiments
 
-- SingleModel:
-  - Single model training
-  - Parameters:
-    - validation_column: Column name of a binary feature indicating which samples should be used as
-      validation. Alternatively `validation` if processing is active and takes care of it based on
-      `processing:validation_ratio`.
-    - plot_shap_values : plot shape values or not
+### SingleModel:
+
+- Single model training
+- Parameters:
+  - validation_column: Column name of a binary feature indicating which samples should be used as
+    validation. Alternatively `validation` if processing is active and takes care of it based on
+    `processing:validation_ratio`.
+  - plot_shap_values : plot shape values or not
 - KfoldExperiment:
   - Classic Kfold experiment
   - Parameters:
@@ -15,18 +16,22 @@
       it based on `processing:fold`.
     - plot_shap_values: plot shape values or not
     - plot_kfold_shap_values: plot shape values for Kfold method or not
-    - operations: It can be the mean, max, min, median of the prediction folds. - - statistics: of
-      the trained models in terms of mean, max, and min of the TopK.
-- DoubleKfold:
-  - K times classic Kfold experiment
-  - Parameters:
-    - split_column: Column name of a feature consisting of integers \[0,k\] indicating which samples
-      should be used for which fold. Alternatively `fold` if processing is active and takes care of
-      it based on `processing:fold`.
-      - operations: It can be the mean, max, min, median of the prediction folds.
-      - statistics: of the trained models in terms of mean, max, and min of the TopK.
-- Tuning:
-  - Hyperparameter optimization
+    - operations: It can be the mean, max, min, median of the prediction folds.
+    - statistics: of the trained models in terms of mean, max, and min of the TopK.
+
+### DoubleKfold:
+
+- K times classic Kfold experiment
+- Parameters:
+  - split_column: Column name of a feature consisting of integers \[0,k\] indicating which samples
+    should be used for which fold. Alternatively `fold` if processing is active and takes care of it
+    based on `processing:fold`.
+    - operations: It can be the mean, max, min, median of the prediction folds.
+    - statistics: of the trained models in terms of mean, max, and min of the TopK.
+
+### Tuning:
+
+- Hyperparameter optimization
 
 Multiple experiments can be defined in the global configuration file.
 
@@ -45,7 +50,7 @@ The goal is to train the model with a list of number of folds and a list of seed
 python -m  biondeep_ig.main train-seed-fold -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
 
 # Example
-python -m  biondeep_ig.main train-seed-fold -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c final_configuration_seed_fold.yml -n  test_seed_folds
+python -m  biondeep_ig.main train-seed-fold -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c train_seed_fold.yml -n  test_seed_folds
 ```
 
 ```
@@ -78,7 +83,7 @@ the resulted params with the training command.
 python -m  biondeep_ig.main tune -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
 
 # Example
-python -m  biondeep_ig.main tune -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c tune_configuration.yml -n  test_tune
+python -m  biondeep_ig.main tune -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c tune.yml -n  test_tune
 ```
 
 ```

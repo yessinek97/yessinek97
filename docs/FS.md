@@ -25,7 +25,7 @@ configuration file - see below. We can either run feature selection alone:
 python -m  biondeep_ig.main featureselection -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
 
 # Example
-python -m  biondeep_ig.main featureselection -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c FS_configuration.yml -n  test_FS
+python -m  biondeep_ig.main featureselection -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c train_with_fs.yml -n  test_FS
 ```
 
 or in combination with training:
@@ -34,7 +34,7 @@ or in combination with training:
 python -m  biondeep_ig.main train -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
 
 # Example
-python -m  biondeep_ig.main train -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c FS_configuration.yml -n  test_FS_train
+python -m  biondeep_ig.main train -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c train_with_fs.yml -n  test_FS_train
 ```
 
 the resulting feature lists will be stored in:
