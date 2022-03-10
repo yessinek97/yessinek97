@@ -22,7 +22,6 @@ from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.processing import Dataset
 from biondeep_ig.src.utils import get_model_by_name
 from biondeep_ig.src.utils import load_features
-from biondeep_ig.src.utils import load_yml
 from biondeep_ig.src.utils import plotting_kfold_shap_values
 from biondeep_ig.src.utils import plotting_shap_values
 from biondeep_ig.src.utils import save_features
@@ -215,7 +214,7 @@ class BaseExperiment(ABC):
     def restore(self) -> None:
         """Restoring a ckpt."""
         if self.experiment_directory.exists() & (not self.is_checkpoint_directory_empty):
-            self.configuration = load_yml(self.experiment_directory / "configuration.yml")
+            # self.configuration = load_yml(self.experiment_directory / "configuration.yml")
             self.features = load_features(self.experiment_directory / "features")
         else:
             sys.exit(

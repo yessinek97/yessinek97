@@ -493,7 +493,7 @@ def _save_best_experiment(best_experiment_id, folder_name):
     shutil.copytree(best_experiment_path, destination_path)
 
 
-def eval_comparison_score(configuration, train_path, test_path, folder_name):
+def eval_comparison_score(configuration, train_path, test_path, folder_name):  # noqa
     """Eval comparation score."""
     comparison_score = configuration["evaluation"].get("comparison_score", None)
     if comparison_score:
@@ -508,7 +508,10 @@ def eval_comparison_score(configuration, train_path, test_path, folder_name):
         train_df = train_df[
             (train_df[configuration["label"]] == 1) | (train_df[configuration["label"]] == 0)
         ]
-        test = test[(test[configuration["label"]] == "1") | (test[configuration["label"]] == "0")]
+        if len(test[(test[configuration["label"]] == "1") | (test[configuration["label"]] == "0")]):
+            test = test[
+                (test[configuration["label"]] == "1") | (test[configuration["label"]] == "0")
+            ]
         test[configuration["label"]] = test[configuration["label"]].astype(int)
 
         test[comparison_score].fillna(test[comparison_score].mean(), inplace=True)
