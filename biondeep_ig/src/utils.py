@@ -313,7 +313,7 @@ def load_features(file):
     if not file.exists():
         raise FileExistsError(
             (
-                f"feature list {file.name}  not excite"
+                f"feature list {file.name}  does not exist"
                 "in the configuration/features folder please check the file name."
             )
         )
