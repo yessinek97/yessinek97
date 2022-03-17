@@ -138,7 +138,7 @@ class LgbmModel(BaseModel):
         # Load data
         true_data = train_data
         train_data = self._create_matrix(train_data)
-        val_data = self._create_matrix(val_data, train_data, train=False)
+        val_data = self._create_matrix(val_data, with_label=False)
 
         # train model
         self.model = lgb.train(
@@ -160,9 +160,11 @@ class LgbmModel(BaseModel):
 
     def _create_matrix(self, data, with_label=True):
         """Data model creation."""
-        label = data[self.label_name] if with_label else None
-        if label:
-            return lgb.Dataset(data[self.features], label=label, feature_name=self.features)
+        if with_label:
+            return lgb.Dataset(
+                data[self.features], label=data[self.label_name], feature_name=self.features
+            )
+
         return lgb.Dataset(data[self.features], feature_name=self.features)
 
 

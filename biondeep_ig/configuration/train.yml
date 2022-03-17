@@ -57,6 +57,7 @@ processing:
   fold: 3
 models:
   - xgboost_config.yml
+  - lgbm_config.yml
 evaluation:
   print_evals: True
   comparison_score: tested_score_biondeep_mhci
