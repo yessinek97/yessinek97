@@ -52,7 +52,6 @@ build-arm:
 build-ci:
 	$(call docker_build_ci_template,$(DOCKERFILE),$(DOCKER_IMAGE_CI))
 	docker tag $(DOCKER_IMAGE_CI) $(DOCKER_IMAGE)
-
 # Push commands
 
 .PHONY: push-ci
@@ -73,3 +72,17 @@ bash: build
 
 docs: build
 	docker run $(DOCKER_RUN_FLAGS) -p 8000:8000 $(DOCKER_IMAGE) mkdocs serve
+
+#IG Docker
+IG_IMAGE_NAME=ig_train
+IG_CONTAINER_NAME=ig_container
+ig_build:
+	docker build -t $(IG_IMAGE_NAME) --build-arg gid=$$(id -g)  --build-arg uid=$$(id -u)  -f Dockerfile.ig .
+
+ig_run:
+	docker run -it -d -e MACHINE_ID=`hostname`   --name $(IG_CONTAINER_NAME)  -v ${PWD}:/home/appuser/biondeep_ig  $(IG_IMAGE_NAME):latest
+ig_bash:
+	docker exec -it $(IG_CONTAINER_NAME) sh -c "pip install --user -e . && /bin/bash"
+ig_rm:
+	docker stop  $(IG_CONTAINER_NAME)
+	docker rm  $(IG_CONTAINER_NAME)

@@ -1,7 +1,7 @@
 ## Configuration file
 
 All experiment related parameters can be changed in a global configuration file. A default global
-configuration file is available at `biondeep-ig/biondeep_ig/configuration/final_configuration.yml`.
+configuration file is available at `biondeep-ig/biondeep_ig/configuration/train.yml`.
 
 All model related parameters can be changed in model configuration files. Defaults for each
 available model are located at `biondeep-ig/biondeep_ig/configuration/model_config/<model>.yml`. The

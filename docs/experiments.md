@@ -47,10 +47,10 @@ Multiple experiments can be defined in the global configuration file.
 The goal is to train the model with a list of number of folds and a list of seeds.
 
 ```
-python -m  biondeep_ig.main train-seed-fold -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
+train-seed-fold -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
 
 # Example
-python -m  biondeep_ig.main train-seed-fold -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c train_seed_fold.yml -n  test_seed_folds
+train-seed-fold -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c train_seed_fold.yml -n  test_seed_folds
 ```
 
 ```
@@ -80,10 +80,10 @@ The goal is to find the best hyperparameters for a specific model, for example X
 the resulted params with the training command.
 
 ```
-python -m  biondeep_ig.main tune -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
+tune -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
 
 # Example
-python -m  biondeep_ig.main tune -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c tune.yml -n  test_tune
+tune -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c tune.yml -n  test_tune
 ```
 
 ```
@@ -105,7 +105,7 @@ immunogenicity. An example of a config file for this model type is given in
 configuration/final_configuration_modular_train.yml
 
 ```
-python -m  biondeep_ig.main modulartrain -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
+modulartrain -train <train_data>  -test <test_data>  -c  <configuration_file> -n  <name>
 
 # Example
 python -m  biondeep_ig.main modulartrain -train publicIEDBFilteredTransformerS128_20210827_out.csv  -test optimaAnonymizedimmunogenicityTransformerS128_20210818_out.tsv  -c modular_train.yml -n  test_modulartrain

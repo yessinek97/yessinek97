@@ -30,6 +30,12 @@ setup(
             "pmhc_gen=biondeep_ig.data_gen.ig.data_gen.pmhc.generate_pmhc:main",
             "tcr_pmhc_extract=biondeep_ig.data_gen.ig.data_gen.tcr_pmhc.tcr_pmhc_extract:main",
             "tcr_pmhc_align=biondeep_ig.data_gen.ig.data_gen.tcr_pmhc.tcr_pmhc_align:main",
+            "train=biondeep_ig.trainer:train",
+            "train-seed-fold=biondeep_ig.trainer:train_seed_fold",
+            "tune=biondeep_ig.trainer:tune",
+            "featureselection=biondeep_ig.feature_selection:featureselection",
+            "inference=biondeep_ig.inference:inference",
+            "compute-metrics=biondeep_ig.compute_metrics:compute_metrics",
         ]
     },
 )
