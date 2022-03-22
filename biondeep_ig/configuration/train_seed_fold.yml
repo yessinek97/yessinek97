@@ -29,26 +29,7 @@ experiments:
       - median
 
 label: cd8_any
-model_selection: prediction_average
 feature_paths:
-  - features_Cor
-  - features_NS
-  - features_RFELR
-  - features_SFMLR
-  - features_XGBoost
-  - features_CS
-  - features_PCA
-  - features_RFEXGBoost
-  - features_SFMXGBoost
-  - features_MI
-  - features_Relief
-  - features_RFGini
-  - features_ShapXGBoost
-
-eval_id_name: patientid
-observations_number: 20
-#comparison_score: tested_score_biondeep_mhci
-print_evals: true
 processing:
   isunlabelled: false
   fill_nan_method: keep

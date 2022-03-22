@@ -27,10 +27,7 @@ experiments:
       - max
       - min
       - median
-
 label: cd8_any
-feature_paths:
-  - features_Cor
 processing:
   isunlabelled: false
   fill_nan_method: keep
@@ -70,15 +67,15 @@ FS:
     - "tested_score_biondeep_mhci"
   FS_methods:
     - Fspca.yml
-    #- fsxgboost.yml
-    #- fsxgboostshap.yml
-    #- fsrfgini.yml
+    - Fsxgboost.yml
+    - Fsxgboostshap.yml
+    - Fsrfgini.yml
     - Fscossim.yml
-    #- fscorr.yml
-    #- fssfmlr.yml
-    #- fsrfelr.yml
-    #- fssfmxgboost.yml
-    #- fsrfexgboost.yml
-    #- fsrelief.yml
-    #- fsmi.yml
-    #- fsboruta.yml
+    - Fscorr.yml
+    - Fssfmlr.yml
+    - Fsrfelr.yml
+    - Fssfmxgboost.yml
+    - Fsrfexgboost.yml
+    - Fsrelief.yml
+    - Fsmi.yml
+    - Fsboruta.yml
