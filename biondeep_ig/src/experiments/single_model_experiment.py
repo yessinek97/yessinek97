@@ -43,17 +43,22 @@ class SingleModel(BaseExperiment):
         self.load_data_set()
         if self.train_data_path:
             self.initialize_checkpoint_directory()
-            if self.validation_split_path.exists():
-                validation_split = pd.read_csv(self.validation_split_path)
-                self.train_data = self.train_data.data.merge(
-                    validation_split, on=[ID_NAME], how="left"
-                )
+            if self.validation_strategy:
+                if self.validation_split_path.exists():
+                    validation_split = pd.read_csv(self.validation_split_path)
+                    self.train_data = self.train_data.data.merge(
+                        validation_split, on=[ID_NAME], how="left"
+                    )
+                else:
+                    self.train_data.train_val_split()
+                    self.train_data = self.train_data.data
+                    self.train_data[[ID_NAME, self.validation_column]].to_csv(
+                        self.validation_split_path, index=False
+                    )
             else:
-                self.train_data.train_val_split()
                 self.train_data = self.train_data.data
-                self.train_data[[ID_NAME, self.validation_column]].to_csv(
-                    self.validation_split_path, index=False
-                )
+            if self.validation_column not in self.train_data.columns:
+                raise KeyError(f"{self.validation_column} column is missing")
 
             self.validation = self.train_data[self.train_data[self.validation_column] == 1]
             self.train_data = self.train_data[self.train_data[self.validation_column] == 0]

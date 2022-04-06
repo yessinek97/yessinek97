@@ -32,6 +32,9 @@ Multiple models can be defined in the global configuration file.
 - print_evals:
   - print model convergence.
 - processing
+  - validation_strategy:
+    - If True use the available validation strategy splitter to generate the `split_column` if it's
+      False use the provided `split_column` in the train data.
   - isunlabelled:
     - Placeholder for unlabelled dataset in the future.
   - fill_nan_method:

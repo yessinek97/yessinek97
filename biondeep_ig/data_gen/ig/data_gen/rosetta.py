@@ -254,7 +254,10 @@ def get_mutate_residues(
     movemap: pr.MoveMap,
     mutant_position_start: int,
 ) -> Tuple[
-    pr.rosetta.core.pack.task.PackerTask, pr.rosetta.utility.vector1_unsigned_long, Any, Set[int]
+    pr.rosetta.core.pack.task.PackerTask,
+    pr.rosetta.utility.vector1_unsigned_long,
+    Any,
+    Set[int],
 ]:
     """Mutate residues in pose according to a mutant sequence.
 
@@ -370,7 +373,7 @@ def substitute_chain(  # noqa:CCR001
         mutant_position_start=mutant_position_start,
     )
 
-    rr = pack_radius ** 2
+    rr = pack_radius**2
     logger.info("Finding neighbours in the MHC...")
     for i in range(1, pose.total_residue() + 1):
         if i in mutant_positions:
