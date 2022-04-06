@@ -16,22 +16,23 @@ experiments:
   SingleModel:
     validation_column: validation
     plot_shap_values: True
-  # DoubleKfold:
-  #   split_column: fold
-  #   statistics:
-  #     - mean
-  #     - max
-  #     - min
-  #   operation:
-  #     - mean
-  #     - max
-  #     - min
-  #     - median
+  DoubleKfold:
+    split_column: fold
+    statistics:
+      - mean
+      - max
+      - min
+    operation:
+      - mean
+      - max
+      - min
+      - median
 
 label: cd8_any
 feature_paths:
   - features
 processing:
+  validation_strategy: false
   isunlabelled: false
   fill_nan_method: keep
   seed: 20015
@@ -53,7 +54,7 @@ evaluation:
     - precision
     - recall
     - f1
-  metric_selector: topk_20_patientid
+  metric_selector: topk
   metrics_selector_higher: True
   data_name_selector: test # test , validation
   prediction_name_selector: "prediction_mean"

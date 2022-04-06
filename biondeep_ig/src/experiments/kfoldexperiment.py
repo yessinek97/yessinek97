@@ -56,17 +56,22 @@ class KfoldExperiment(BaseExperiment):
         self.load_data_set()
         if self.train_data_path:
             self.initialize_checkpoint_directory()
-            if self.validation_split_path.exists():
-                validation_split = pd.read_csv(self.validation_split_path)
-                self.train_data = self.train_data.data.merge(
-                    validation_split, on=[ID_NAME], how="left"
-                )
+            if self.validation_strategy:
+                if self.validation_split_path.exists():
+                    validation_split = pd.read_csv(self.validation_split_path)
+                    self.train_data = self.train_data.data.merge(
+                        validation_split, on=[ID_NAME], how="left"
+                    )
+                else:
+                    self.train_data.kfold_split()
+                    self.train_data = self.train_data.data
+                    self.train_data[[ID_NAME, self.split_column]].to_csv(
+                        self.validation_split_path, index=False
+                    )
             else:
-                self.train_data.kfold_split()
                 self.train_data = self.train_data.data
-                self.train_data[[ID_NAME, self.split_column]].to_csv(
-                    self.validation_split_path, index=False
-                )
+            if self.split_column not in self.train_data.columns:
+                raise KeyError(f"{self.split_column} column is missing")
 
     @property
     def prediction_columns_name(self):

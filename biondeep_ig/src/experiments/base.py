@@ -135,6 +135,11 @@ class BaseExperiment(ABC):
         return self.configuration["evaluation"]
 
     @property
+    def validation_strategy(self):
+        """Return validation_strategy."""
+        return self.configuration["processing"].get("validation_strategy", True)
+
+    @property
     def model_configuration(self):
         """Model cfg."""
         return self.configuration["model"]
