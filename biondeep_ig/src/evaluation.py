@@ -14,9 +14,9 @@ from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import roc_curve
 
 import biondeep_ig.src.metrics as src_metrics
-from biondeep_ig.src import DKFOLD_MODEL_NAME
-from biondeep_ig.src import Evals
-from biondeep_ig.src import KFOLD_MODEL_NAME
+from biondeep_ig import DKFOLD_MODEL_NAME
+from biondeep_ig import Evals
+from biondeep_ig import KFOLD_MODEL_NAME
 from biondeep_ig.src.logger import get_logger
 
 log = get_logger("Evaluation")

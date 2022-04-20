@@ -30,20 +30,24 @@ experiments:
 
 label: cd8_any
 feature_paths:
-  - features
+  - train_features
 processing:
-  validation_strategy: false
+  remove_proc_data: false
+  trainable_features: "features"
+  #exclude_features:
+  validation_strategy: True
   isunlabelled: false
+  #normalizer:
   fill_nan_method: keep
-  seed: 20015
   validation_ratio: 0.1
-  fold: 4
+  folds: [3, 4, 5]
+  seeds: [0, 1]
 models:
   - xgboost_config.yml
   - lgbm_config.yml
 evaluation:
   print_evals: True
-  comparison_score: tested_score_biondeep_mhci
+  comparison_score: presentation_score
   eval_id_name: patientid
   observations_number: 20
   threshold: 0.3

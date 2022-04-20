@@ -5,9 +5,10 @@ from pathlib import Path
 import click
 
 import biondeep_ig.src.experiments as exper
-from biondeep_ig.src import MODELS_DIRECTORY
+from biondeep_ig import MODELS_DIRECTORY
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
+from biondeep_ig.src.processing_v1 import Dataset
 from biondeep_ig.src.utils import get_best_experiment
 from biondeep_ig.src.utils import import_experiment
 from biondeep_ig.src.utils import load_experiments
@@ -32,7 +33,7 @@ log = get_logger("Eval")
     "-eid",
     type=str,
     default=None,
-    help="Path to the dataset used in  evaluation.",
+    help="column name to eval per split.",
 )
 @click.option("--folder_name", "-n", type=str, required=True, help="Experiment name.")
 def compute_metrics(test_data_paths, folder_name, eval_id_name):  # noqa
@@ -54,7 +55,12 @@ def compute_metrics(test_data_paths, folder_name, eval_id_name):  # noqa
     features_list_paths = copy.deepcopy(general_configuration["feature_paths"])
     log.info("****************************** Load Features lists *****************************")
     for test_data_path in test_data_paths:
-
+        test_data = Dataset(
+            data_path=test_data_path,
+            configuration=general_configuration,
+            is_train=False,
+            experiment_path=experiment_path,
+        ).load_data()
         file_name = Path(test_data_path).stem
         log.info(f"{'#'* 20} \n")
         log.info(f"Start evaluating {file_name}\n")
@@ -76,8 +82,8 @@ def compute_metrics(test_data_paths, folder_name, eval_id_name):  # noqa
 
                     log.info(f"  {features_list_name} :")
                     experiment = experiment_class(
-                        train_data_path=None,
-                        test_data_path=test_data_path,
+                        train_data=None,
+                        test_data=test_data,
                         configuration=configuration,
                         experiment_name=experiment_name,
                         folder_name=folder_name,
@@ -92,7 +98,7 @@ def compute_metrics(test_data_paths, folder_name, eval_id_name):  # noqa
         log_summary_results(eval_message)
 
         log.info("Eval best experiment")
-        best_exp_path = experiment_path = MODELS_DIRECTORY / folder_name / "best_experiment"
+        best_exp_path = MODELS_DIRECTORY / folder_name / "best_experiment"
         best_exp_configuration = load_yml(best_exp_path / "configuration.yml")
         best_exp_configuration["evaluation"]["eval_id_name"] = eval_id_name
         if not eval_id_name:
@@ -103,8 +109,8 @@ def compute_metrics(test_data_paths, folder_name, eval_id_name):  # noqa
         best_experiment_class = import_experiment(exper, best_experiment_name)
 
         experiment = best_experiment_class(
-            train_data_path=None,
-            test_data_path=test_data_path,
+            train_data=None,
+            test_data=test_data,
             configuration=best_exp_configuration,
             experiment_name=best_experiment_name,
             folder_name=folder_name,

@@ -1,25 +1,22 @@
 """Module used to define the training command."""
 import copy
 import shutil
-import tempfile
+from pathlib import Path
 
 import click
-import numpy as np
 
 import biondeep_ig.src.feature_selection as fese
-from biondeep_ig.src import CONFIGURATION_DIRECTORY
-from biondeep_ig.src import FS_CONFIGURATION_DIRECTORY
-from biondeep_ig.src import MODELS_DIRECTORY
+from biondeep_ig import CONFIGURATION_DIRECTORY
+from biondeep_ig import FEATURES_SELECTION_DIRACTORY
+from biondeep_ig import MODELS_DIRECTORY
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
 from biondeep_ig.src.logger import NeptuneLogs
-from biondeep_ig.src.processing import Dataset
+from biondeep_ig.src.processing_v1 import Dataset
 from biondeep_ig.src.utils import get_model_by_name
 from biondeep_ig.src.utils import load_fs
 from biondeep_ig.src.utils import load_yml
-from biondeep_ig.src.utils import read
 from biondeep_ig.src.utils import save_yml
-
 
 log = get_logger("FeatureSelection")
 
@@ -32,37 +29,37 @@ log = get_logger("FeatureSelection")
     required=True,
     help="Path to the dataset used in training",
 )
-@click.option(
-    "--test_data_path",
-    "-test",
-    type=str,
-    required=True,
-    help="Path to the dataset used in  evaluation.",
-)
 @click.option("--folder_name", "-n", type=str, required=True, help="Experiment name.")
 @click.option(
     "--configuration_file", "-c", type=str, required=True, help=" Path to configuration file."
 )
-def featureselection(train_data_path, test_data_path, configuration_file, folder_name):
+def featureselection(train_data_path, configuration_file, folder_name):
     """Feature selection process."""
     _check_model_folder(folder_name)
     general_configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_file)
+    experiment_path = Path(MODELS_DIRECTORY / folder_name)
+
     neptune_log = NeptuneLogs(general_configuration, folder_name=folder_name)
     neptune_log.init_neptune(
-        tags=["feature selection"], training_path=train_data_path, test_path=test_data_path
+        tags=["feature selection"], training_path=train_data_path, test_path=None
     )
     neptune_log.upload_configuration_files(CONFIGURATION_DIRECTORY / configuration_file)
+
+    train_data = Dataset(
+        data_path=train_data_path,
+        configuration=general_configuration,
+        is_train=True,
+        experiment_path=experiment_path,
+    ).load_data()
     features_name = feature_selection_main(
-        train_data_path, test_data_path, configuration_file, folder_name
+        train_data=train_data, configuration_file=configuration_file, folder_name=folder_name
     )
     return features_name
 
 
 # -------------------------------- #
 # Thanks to click commands not being able to be callable via command line and as a function at the same time (see https://github.com/pallets/click/issues/330), this function is doubled ..
-def feature_selection_main(
-    train_data_path, test_data_path, configuration_file, folder_name, with_train=False
-):
+def feature_selection_main(train_data, configuration_file, folder_name, with_train=False):
     """Run feature selection methods."""
     features_name = []
     init_logger(folder_name)
@@ -72,9 +69,10 @@ def feature_selection_main(
     fs_type, fs_params = load_fs(general_configuration)
     log.info("****************************** Load fs ****************************** ")
 
-    features_selection_path = MODELS_DIRECTORY / folder_name / "features_selection"
+    features_selection_path = MODELS_DIRECTORY / folder_name / FEATURES_SELECTION_DIRACTORY
     features_selection_path.mkdir(exist_ok=True, parents=True)
     log.info(f"Features list will be saved under {features_selection_path} ")
+    log.info(f"{len(train_data.features)} features will be used  in feature selection  ")
     fs_configuration = general_configuration["FS"]
     fs_methods = {}
     for fs_type, fs_param in zip(fs_type, fs_params):
@@ -83,14 +81,13 @@ def feature_selection_main(
         _fs_func(
             fs_type=fs_type,
             fs_param=fs_param,
-            train_data_path=train_data_path,
-            test_data_path=test_data_path,
+            train_data=train_data,
             configuration=configuration,
             folder_name=folder_name,
             with_train=with_train,
             features_selection_path=features_selection_path,
         )
-        features_name.append(f"{folder_name}_{fs_type}")
+        features_name.append(fs_type)
         fs_methods[fs_type] = fs_param
     fs_configuration["FS_methods"] = fs_methods
     save_yml(fs_configuration, MODELS_DIRECTORY / folder_name / "FS_configuration.yml")
@@ -101,86 +98,25 @@ def feature_selection_main(
 def _fs_func(  # noqa: CCR001
     fs_type,
     fs_param,
-    train_data_path,
-    test_data_path,
+    train_data,
     configuration,
     folder_name,
     with_train,
     features_selection_path,
 ):
     """Apply features selection."""
-    train_columns = set(get_column_names(train_data_path))
-    test_columns = set(get_column_names(test_data_path))
-    features = train_columns & test_columns
-    df_t = read(train_data_path, usecols=features)
-    df_t.columns = df_t.columns.str.lower()
-
-    # Get all useable columns based on min/max unique values:
-    cols_to_remove = []
-    iterator = df_t.columns.to_list()
-    iterator.remove(configuration["label"].lower())
-    for col in iterator:
-        if (len(df_t[col].dropna().unique()) <= configuration["FS"]["min_unique_values"]) & (
-            df_t[col].dtypes.type == np.object_
-        ):
-            cols_to_remove.append(col)
-    for col in iterator:
-        if (len(df_t[col].dropna().unique()) >= configuration["FS"]["max_unique_values"]) & (
-            df_t[col].dtypes.type == np.object_
-        ):
-            cols_to_remove.append(col)
-
-    # We have to temporarily write the file down to disk with the current structure ...
-    with tempfile.NamedTemporaryFile(prefix="IMtmp_", suffix=".temp") as tmp_file:
-        df_t.to_csv(tmp_file.name, sep="\t", index=False)
-
-        # Usual processing of remaining features
-        df_processed = (
-            Dataset(
-                data_path=FS_CONFIGURATION_DIRECTORY / str(tmp_file.name),
-                features=[x.lower() for x in features],
-                target=configuration["label"],
-                configuration=configuration["processing"],
-                is_train=True,
-                experiment_path=MODELS_DIRECTORY / "temp",
-            )
-            .process_data()
-            .data
-        )
-
-    label_s = df_processed[configuration["label"].lower()]
-    df_processed = df_processed.drop(columns=cols_to_remove)
-    df_processed = df_processed.drop(columns=[configuration["label"].lower()])
-
-    df_processed = df_processed.loc[
-        :, df_processed.isnull().mean() < configuration["FS"]["min_nonNaNValues"]
-    ]
-
-    forceexcludelist = load_yml(FS_CONFIGURATION_DIRECTORY / "FeatureExclude.yml")[
-        "Feature_Exclude_List"
-    ]
-    forceexcludelist = [x.lower() for x in forceexcludelist]
-
-    df_processed = df_processed[
-        [x.lower() for x in df_processed.columns.to_list() if x.lower() not in forceexcludelist]
-    ]
-    features_a = df_processed.columns.to_list()
-
     fs_class = get_model_by_name(fese, fs_type)
-
-    # features_list_paths = []
-    # display += f"\n -{model_type} : \n"
     fs_class(
-        features=features_a,
+        features=train_data.features,
         force_features=configuration["FS"]["force_features"],
-        label_name=configuration["label"],
+        label_name=train_data.label,
         other_params=fs_param,
         folder_name=folder_name,
         n_feat=configuration["FS"]["n_feat"],
         fs_type=fs_type,
         with_train=with_train,
         features_selection_path=features_selection_path,
-    ).select_features(df_processed, label_s)
+    ).select_features(train_data("features"), train_data("label"))
 
 
 def _check_model_folder(folder_name):
@@ -198,8 +134,3 @@ def _check_model_folder(folder_name):
         shutil.rmtree(model_folder_path)
 
     model_folder_path.mkdir(exist_ok=True, parents=True)
-
-
-def get_column_names(file_path: str):
-    """Get the columns names."""
-    return read(file_path, nrows=1).columns.to_list()

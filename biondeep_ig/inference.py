@@ -4,9 +4,10 @@ from pathlib import Path
 import click
 
 import biondeep_ig.src.experiments as exper
-from biondeep_ig.src import MODELS_DIRECTORY
+from biondeep_ig import MODELS_DIRECTORY
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
+from biondeep_ig.src.processing_v1 import Dataset
 from biondeep_ig.src.utils import import_experiment
 from biondeep_ig.src.utils import load_yml
 
@@ -57,10 +58,15 @@ def inference(test_data_path, folder_name, id_name):
     log.info(f"Model Type : {exp_configuration['model_type']}")
     log.info(f"Features   : {exp_configuration['features']}")
     log.info(f"prediction name selector : {prediction_name_selector}")
-
+    test_data = Dataset(
+        data_path=test_data_path,
+        configuration=exp_configuration,
+        is_train=False,
+        experiment_path=best_exp_path.parent,
+    ).load_data()
     experiment = experiment_class(
-        train_data_path=None,
-        test_data_path=test_data_path,
+        train_data=None,
+        test_data=test_data,
         configuration=exp_configuration,
         experiment_name=experiment_name,
         folder_name=folder_name,
@@ -70,7 +76,7 @@ def inference(test_data_path, folder_name, id_name):
         **experiment_params,
     )
 
-    predictions = experiment.inference(experiment.test_data, save_df=False)
+    predictions = experiment.inference(experiment.test_data(), save_df=False)
     predictions.to_csv(prediction_path / f"{file_name}.csv", index=False)
     predictions["prediction"] = predictions[prediction_name_selector]
     predictions[[id_name.lower(), "prediction"]].to_csv(

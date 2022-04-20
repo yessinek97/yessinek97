@@ -22,10 +22,8 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics.pairwise import cosine_similarity
 
-from biondeep_ig.src import FEATURES_DIRECTORY
-from biondeep_ig.src import FS_CONFIGURATION_DIRECTORY
+from biondeep_ig import FS_CONFIGURATION_DIRECTORY
 from biondeep_ig.src.logger import get_logger
-from biondeep_ig.src.utils import get_task_name
 
 log = get_logger("FeatureSelection/FS")
 warnings.filterwarnings("ignore")
@@ -77,7 +75,6 @@ class BaseFeatureSelection(ABC):
     def select_features(self, df_processed, label_s):
         """Select n features method."""
         # get current feature subfolder
-        task = get_task_name(self.label_name)
         df_stats = self.rank_features(df_processed, label_s)
 
         df_stats_sort = df_stats.sort_values(by="Rank", ascending=[False])
@@ -88,12 +85,6 @@ class BaseFeatureSelection(ABC):
         if self.force_features:
             feature_list.extend(self.force_features)
             feature_list = list(set(feature_list))
-        if self.with_train:
-            with open(
-                FEATURES_DIRECTORY / task / f"{self.folder_name}_{self.fs_type}.txt", "w+"
-            ) as outfile:
-                for item in feature_list:
-                    outfile.write(f"{item}\n")
         with open(self.features_selection_path / f"{self.fs_type}.txt", "w+") as outfile:
             for item in feature_list:
                 outfile.write(f"{item}\n")

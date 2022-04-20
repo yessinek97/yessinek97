@@ -5,13 +5,13 @@ import click
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 
-from biondeep_ig.src import CONFIGURATION_DIRECTORY
-from biondeep_ig.src import MODELS_DIRECTORY
-from biondeep_ig.src import SINGLE_MODEL_NAME
+from biondeep_ig import CONFIGURATION_DIRECTORY
+from biondeep_ig import MODELS_DIRECTORY
+from biondeep_ig import SINGLE_MODEL_NAME
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
 from biondeep_ig.src.logger import NeptuneLogs
-from biondeep_ig.src.processing import Dataset
+from biondeep_ig.src.processing import Datasetold
 from biondeep_ig.src.utils import load_models
 from biondeep_ig.src.utils import load_yml
 from biondeep_ig.src.utils import save_yml
@@ -120,7 +120,7 @@ def modulartrain(ctx, train_data_path, test_data_path, configuration_file, folde
     df_train.to_csv(temp_directory / "temp_train.csv", index=False)
     df_test.to_csv(temp_directory / "temp_test.csv", index=False)
 
-    df_train = Dataset(
+    df_train = Datasetold(
         data_path=temp_directory / "temp_train.csv",
         features=feature_l,
         target=general_configuration["label"],
@@ -128,7 +128,7 @@ def modulartrain(ctx, train_data_path, test_data_path, configuration_file, folde
         is_train=True,
         experiment_path=MODELS_DIRECTORY / "temp",
     ).process_data()
-    df_test = Dataset(
+    df_test = Datasetold(
         data_path=temp_directory / "temp_test.csv",
         features=feature_l,
         target=general_configuration["label"],

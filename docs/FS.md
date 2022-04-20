@@ -39,19 +39,11 @@ or in combination with training:
 
 the resulting feature lists will be stored in:
 
-configuration/features/<target>/<FS_Alg_Name>.yml
+configuration/features/target/<FS_Alg_Name>.yml
 
 ### Global variables - FS configuration file
 
 - FS: Feature selection key
-- min_nonNaNValues: Minimum ratio of non-NaN values existing in a feature. If more NaN values exist
-  feature will not be considered for FS.
-- n_feat: Number of features to be selected with decreasing importance
-- min_unique_values: Minimum number of unique values a feature has to have to be considered
-- max_unique_values: Maximum number of unique values a feature has to have to be considered
 - force_features: List of features that will be included in the feature list by force (Note:
   Currently n_feat + len(force_features))
 - FS_methods: List of FS methods to execute
-
-- IMPORTANT: There is a black list for features in: configuration/FS_config/FeatureExclude.yml which
-  is automatically checked and respective features are not taken into consideration for FS.
