@@ -7,29 +7,31 @@ import numpy as np
 import pandas as pd
 
 import biondeep_ig.src.experiments as exper
+from biondeep_ig import CONFIGURATION_DIRECTORY
+from biondeep_ig import DATAPROC_DIRACTORY
+from biondeep_ig import DEFAULT_SEED
+from biondeep_ig import KFOLD_MODEL_NAME
+from biondeep_ig import MODELS_DIRECTORY
+from biondeep_ig import SINGLE_MODEL_NAME
 from biondeep_ig.feature_selection import feature_selection_main
-from biondeep_ig.src import CONFIGURATION_DIRECTORY
-from biondeep_ig.src import DATAPROC_DIRACTORY
-from biondeep_ig.src import ID_NAME
-from biondeep_ig.src import KFOLD_MODEL_NAME
-from biondeep_ig.src import MODELS_DIRECTORY
-from biondeep_ig.src import SINGLE_MODEL_NAME
 from biondeep_ig.src.evaluation import Evaluation
 from biondeep_ig.src.experiments.tuning import Tuning
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
 from biondeep_ig.src.logger import NeptuneLogs
+from biondeep_ig.src.processing_v1 import Dataset
+from biondeep_ig.src.utils import copy_existing_featrues_lists
 from biondeep_ig.src.utils import get_best_experiment
 from biondeep_ig.src.utils import import_experiment
 from biondeep_ig.src.utils import load_experiments
 from biondeep_ig.src.utils import load_models
 from biondeep_ig.src.utils import load_yml
 from biondeep_ig.src.utils import log_summary_results
-from biondeep_ig.src.utils import read
-from biondeep_ig.src.utils import remove_genrated_features
 from biondeep_ig.src.utils import save_yml
+from biondeep_ig.src.utils import seed_basic
 
 log = get_logger("Train")
+seed_basic(DEFAULT_SEED)
 
 
 @click.command()
@@ -60,7 +62,8 @@ log = get_logger("Train")
 )
 def train(train_data_path, test_data_path, unlabeled_path, configuration_file, folder_name):
     """Launch the training of a model based on the provided configuration and the input training file."""
-    _check_model_folder(folder_name)
+    experiment_path = MODELS_DIRECTORY / folder_name
+    _check_model_folder(experiment_path)
     init_logger(folder_name)
     log.info("Started")
     general_configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_file)
@@ -70,17 +73,34 @@ def train(train_data_path, test_data_path, unlabeled_path, configuration_file, f
     log.info("****************************** Load EXP ****************************** ")
     model_types, model_params = load_models(general_configuration)
     log.info("****************************** Load Models ****************************** ")
+
+    train_data, test_data = load_datasets(
+        train_data_path=train_data_path,
+        test_data_path=test_data_path,
+        general_configuration=general_configuration,
+        experiment_path=experiment_path,
+    )
+    log.info("*********************** Load and process Train , Test *********************** ")
+    existing_featrues_lists = general_configuration.get("feature_paths", [])
     if "FS" in general_configuration:
+
         features_names = feature_selection_main(
-            train_data_path, test_data_path, configuration_file, folder_name, with_train=True
+            train_data=train_data,
+            configuration_file=configuration_file,
+            folder_name=folder_name,
+            with_train=True,
         )
-        print("features_names", features_names)
+        log.info(f"features_names : {' '.join(features_names)}")
         log.info("****************************** Finished FS ****************************** ")
 
-        existing_featrues_lists = general_configuration.get("feature_paths", [])
-        print("existing_featrues_lists", existing_featrues_lists)
-        existing_featrues_lists.extend(features_names)
-        general_configuration["feature_paths"] = existing_featrues_lists
+        feature_paths = existing_featrues_lists + features_names
+        general_configuration["feature_paths"] = feature_paths
+
+    copy_existing_featrues_lists(
+        existing_featrues_lists,
+        experiment_path=experiment_path,
+        label_name=general_configuration["label"],
+    )
     displays = "####### Runs Summary #######"
     results = []
     neptune_log = NeptuneLogs(general_configuration, folder_name=folder_name)
@@ -88,8 +108,14 @@ def train(train_data_path, test_data_path, unlabeled_path, configuration_file, f
         tags=["simple train"], training_path=train_data_path, test_path=test_data_path
     )
     neptune_log.upload_configuration_files(CONFIGURATION_DIRECTORY / configuration_file)
-    save_yml(general_configuration, MODELS_DIRECTORY / folder_name / "configuration.yml")
+    save_yml(general_configuration, experiment_path / "configuration.yml")
 
+    comparison_score_metrics = eval_comparison_score(
+        configuration=general_configuration,
+        train_data=train_data().copy(),
+        test_data=test_data().copy(),
+        experiment_path=experiment_path,
+    )
     for experiment_name, experiment_param in zip(experiment_names, experiment_params):
         log.info(f"{experiment_name} :")
         configuration = copy.deepcopy(general_configuration)
@@ -102,43 +128,31 @@ def train(train_data_path, test_data_path, unlabeled_path, configuration_file, f
                 experiment_param=experiment_param,
                 model_type=model_type,
                 model_param=model_param,
-                train_data_path=train_data_path,
-                test_data_path=test_data_path,
+                train_data=train_data,
+                test_data=test_data,
                 unlabeled_path=unlabeled_path,
                 configuration=configuration,
                 folder_name=folder_name,
                 log_handler=log,
                 neptune_log=neptune_log,
+                comparison_score_metrics=comparison_score_metrics,
             )
             results.extend(result)
             displays += display
     log_summary_results(displays)
     best_experiment_id, eval_message = get_best_experiment(
-        results, eval_configuration, path=MODELS_DIRECTORY / folder_name, file_name="results"
+        results, eval_configuration, path=experiment_path, file_name="results"
     )
     log_summary_results(eval_message)
     best_experiment_id = best_experiment_id.split("//")
     neptune_log.upload_experiment(
         experiment_path=(
-            MODELS_DIRECTORY
-            / folder_name
-            / best_experiment_id[0]
-            / best_experiment_id[1]
-            / best_experiment_id[2]
+            experiment_path / best_experiment_id[0] / best_experiment_id[1] / best_experiment_id[2]
         ),
         neptune_sub_folder="best_experiment",
     )
-    _save_best_experiment(best_experiment_id=best_experiment_id, folder_name=folder_name)
-    eval_comparison_score(
-        configuration=general_configuration,
-        train_path=train_data_path,
-        test_path=test_data_path,
-        folder_name=folder_name,
-    )
-    remove_processed_data(folder_name)
-
-    if "FS" in general_configuration:
-        remove_genrated_features(features_names, general_configuration["label"])
+    _save_best_experiment(best_experiment_id=best_experiment_id, experiment_path=experiment_path)
+    remove_processed_data(experiment_path, train_data.remove_proc_data)
 
 
 @click.command()  # noqa
@@ -171,20 +185,27 @@ def train_seed_fold(  # noqa
     train_data_path, test_data_path, unlabeled_path, configuration_file, folder_name
 ):
     """Train with multiple seed and folds."""
-    _check_model_folder(folder_name)
+    experiment_path = MODELS_DIRECTORY / folder_name
+    _check_model_folder(experiment_path)
     init_logger(folder_name)
     general_configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_file)
+    copy_existing_featrues_lists(
+        general_configuration.get("feature_paths", []),
+        experiment_path=experiment_path,
+        label_name=general_configuration["label"],
+    )
     experiment_names, experiment_params = load_experiments(general_configuration)
     model_types, model_params = load_models(general_configuration)
     seeds = general_configuration["processing"]["seeds"]
     folds = general_configuration["processing"]["folds"]
     eval_configuration = general_configuration["evaluation"]
+
     neptune_log = NeptuneLogs(general_configuration, folder_name=folder_name)
     neptune_log.init_neptune(
         tags=["Multi seed fold train"], training_path=train_data_path, test_path=test_data_path
     )
     neptune_log.upload_configuration_files(CONFIGURATION_DIRECTORY / configuration_file)
-    save_yml(general_configuration, MODELS_DIRECTORY / folder_name / "configuration.yml")
+    save_yml(general_configuration, experiment_path / "configuration.yml")
     log.info("****************************** Load YAML ****************************** ")
     log.info("****************************** Load EXP ****************************** ")
     log.info("****************************** Load Models ****************************** ")
@@ -201,13 +222,19 @@ def train_seed_fold(  # noqa
                 log.info(f"      -seed {seed} :")
                 configuration["processing"]["seed"] = seed
                 if experiment_name == "SingleModel":
+                    train_data, test_data = load_datasets(
+                        train_data_path=train_data_path,
+                        test_data_path=test_data_path,
+                        general_configuration=configuration,
+                        experiment_path=experiment_path,
+                    )
                     result, display = _train_func(
                         experiment_name=experiment_name,
                         experiment_param=experiment_param,
                         model_type=model_type,
                         model_param=model_param,
-                        train_data_path=train_data_path,
-                        test_data_path=test_data_path,
+                        train_data=train_data,
+                        test_data=test_data,
                         unlabeled_path=unlabeled_path,
                         configuration=configuration,
                         folder_name=folder_name,
@@ -228,13 +255,19 @@ def train_seed_fold(  # noqa
                     for fold in folds:
                         log.info(f"         -fold : {fold} :")
                         configuration["processing"]["fold"] = fold
+                        train_data, test_data = load_datasets(
+                            train_data_path=train_data_path,
+                            test_data_path=test_data_path,
+                            general_configuration=configuration,
+                            experiment_path=experiment_path,
+                        )
                         result, display = _train_func(
                             experiment_name=experiment_name,
                             experiment_param=experiment_param,
                             model_type=model_type,
                             model_param=model_param,
-                            train_data_path=train_data_path,
-                            test_data_path=test_data_path,
+                            train_data=train_data,
+                            test_data=test_data,
                             unlabeled_path=unlabeled_path,
                             configuration=configuration,
                             folder_name=folder_name,
@@ -254,24 +287,19 @@ def train_seed_fold(  # noqa
                             e["statistic"]["ID"] = (
                                 e["statistic"]["ID"] + f"//seed_{seed}_fold_{fold}"
                             )
-
-                            print(e["statistic"]["ID"])
-                            print(e["validation"]["ID"])
-
                         results.extend(result)
 
                         displays += f"\n -Seed : {seed}  -Fold : {fold}" + display
 
     log_summary_results(displays)
     best_experiment_id, eval_message = get_best_experiment(
-        results, eval_configuration, path=MODELS_DIRECTORY / folder_name, file_name="results"
+        results, eval_configuration, path=experiment_path, file_name="results"
     )
     log_summary_results(eval_message)
     best_experiment_id = best_experiment_id.split("//")
     neptune_log.upload_experiment(
         experiment_path=(
-            MODELS_DIRECTORY
-            / folder_name
+            experiment_path
             / best_experiment_id[0]
             / best_experiment_id[1]
             / best_experiment_id[3]
@@ -279,8 +307,8 @@ def train_seed_fold(  # noqa
         ),
         neptune_sub_folder="best_experiment",
     )
-    _save_best_experiment(best_experiment_id=best_experiment_id, folder_name=folder_name)
-    remove_processed_data(folder_name)
+    _save_best_experiment(best_experiment_id=best_experiment_id, experiment_path=experiment_path)
+    remove_processed_data(experiment_path, train_data.remove_proc_data)
 
 
 @click.command()  # noqa
@@ -311,17 +339,30 @@ def train_seed_fold(  # noqa
 )
 def tune(train_data_path, test_data_path, unlabeled_path, configuration_file, folder_name):
     """Tune model params."""
-    _check_model_folder(folder_name)
+    experiment_path = MODELS_DIRECTORY / folder_name
+    _check_model_folder(experiment_path)
     init_logger(folder_name)
     log.info("Started")
     general_configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_file)
+    copy_existing_featrues_lists(
+        general_configuration.get("feature_paths", []),
+        experiment_path=experiment_path,
+        label_name=general_configuration["label"],
+    )
     log.info("****************************** Load YAML ****************************** ")
     experiment_names, experiment_params = load_experiments(general_configuration)
     log.info("****************************** Load EXP ****************************** ")
     model_types, model_params = load_models(general_configuration)
     log.info("****************************** Load Models ****************************** ")
     results = []
-    save_yml(general_configuration, MODELS_DIRECTORY / folder_name / "configuration.yml")
+    save_yml(general_configuration, experiment_path / "configuration.yml")
+    train_data, test_data = load_datasets(
+        train_data_path=train_data_path,
+        test_data_path=test_data_path,
+        general_configuration=general_configuration,
+        experiment_path=experiment_path,
+    )
+
     for experiment_name, experiment_param in zip(experiment_names, experiment_params):
         log.info(f"-{experiment_name} :")
         configuration = copy.deepcopy(general_configuration)
@@ -338,8 +379,8 @@ def tune(train_data_path, test_data_path, unlabeled_path, configuration_file, fo
                 input_cofiguration["features"] = features_list_path
 
                 tune_model = Tuning(
-                    train_data_path=train_data_path,
-                    test_data_path=test_data_path,
+                    train_data=train_data,
+                    test_data=test_data,
                     unlabeled_path=unlabeled_path,
                     configuration=input_cofiguration,
                     folder_name=folder_name,
@@ -357,8 +398,8 @@ def tune(train_data_path, test_data_path, unlabeled_path, configuration_file, fo
         + f"and the features {best.features}  score {best.score} "
     )
     log.info(results)
-    results.to_csv((MODELS_DIRECTORY / folder_name / "results.csv"), index=False)
-    remove_processed_data(folder_name)
+    results.to_csv((experiment_path / "results.csv"), index=False)
+    remove_processed_data(experiment_path, train_data.remove_proc_data)
 
 
 def _train_func(  # noqa: CCR001
@@ -366,14 +407,15 @@ def _train_func(  # noqa: CCR001
     experiment_param,
     model_type,
     model_param,
-    train_data_path,
-    test_data_path,
+    train_data,
+    test_data,
     unlabeled_path,
     configuration,
     folder_name,
     log_handler,
     neptune_log=None,
     sub_folder_name=None,
+    comparison_score_metrics=None,
 ):
     """Train the same experiment with different features lists."""
     display = ""
@@ -399,8 +441,8 @@ def _train_func(  # noqa: CCR001
 
         experiment_configuration["features"] = features_list_path
         experiment = experiment_class(
-            train_data_path=train_data_path,
-            test_data_path=test_data_path,
+            train_data=train_data,
+            test_data=test_data,
             unlabeled_path=unlabeled_path,
             configuration=experiment_configuration,
             experiment_name=experiment_name,
@@ -410,7 +452,7 @@ def _train_func(  # noqa: CCR001
         )
 
         experiment.train()
-        scores = experiment.eval_exp()
+        scores = experiment.eval_exp(comparison_score_metrics=comparison_score_metrics)
 
         validation_score = scores["validation"][eval_configuration["metric_selector"]].iloc[0]
         if not validation_score:
@@ -431,27 +473,27 @@ def _train_func(  # noqa: CCR001
     return results, display
 
 
-def _check_model_folder(folder_name):
+def _check_model_folder(experiment_path):
     """Check if the checkpoint folder  exists or not."""
-    model_folder_path = MODELS_DIRECTORY / folder_name
-    if model_folder_path.exists():
+    if experiment_path.exists():
         click.confirm(
             (
-                f"The model folder with the name {folder_name} already exists."
+                f"The model folder with the name {experiment_path.name} already exists."
                 "Do you want to continue the training but"
                 "all the checkpoints will be deleted?"
             ),
             abort=True,
         )
-        shutil.rmtree(model_folder_path)
+        shutil.rmtree(experiment_path)
 
-    model_folder_path.mkdir(exist_ok=True, parents=True)
+    experiment_path.mkdir(exist_ok=True, parents=True)
 
 
-def remove_processed_data(folder_name):
+def remove_processed_data(experiment_path, remove):
     """Remove data proc folder."""
-    path = MODELS_DIRECTORY / folder_name / DATAPROC_DIRACTORY
-    shutil.rmtree(path)
+    path = experiment_path / DATAPROC_DIRACTORY
+    if remove:
+        shutil.rmtree(path)
 
 
 def _genrate_single_exp_config(
@@ -468,13 +510,12 @@ def _genrate_single_exp_config(
     return configuration
 
 
-def _save_best_experiment(best_experiment_id, folder_name):
+def _save_best_experiment(best_experiment_id, experiment_path):
     """Save best experiment."""
     if len(best_experiment_id) == 4:
         ## TODO change the saving folder order to match 0,1,2,3 instead of 0,1,3,2
         path = (
-            MODELS_DIRECTORY
-            / folder_name
+            experiment_path
             / best_experiment_id[0]
             / best_experiment_id[1]
             / best_experiment_id[3]
@@ -482,127 +523,127 @@ def _save_best_experiment(best_experiment_id, folder_name):
         )
     else:
         path = (
-            MODELS_DIRECTORY
-            / folder_name
-            / best_experiment_id[0]
-            / best_experiment_id[1]
-            / best_experiment_id[2]
+            experiment_path / best_experiment_id[0] / best_experiment_id[1] / best_experiment_id[2]
         )
     best_experiment_path = path
-    destination_path = MODELS_DIRECTORY / folder_name / "best_experiment"
+    destination_path = experiment_path / "best_experiment"
     shutil.copytree(best_experiment_path, destination_path)
 
 
-def eval_comparison_score(configuration, train_path, test_path, folder_name):  # noqa
+def load_datasets(train_data_path, test_data_path, general_configuration, experiment_path):
+    """Load train , test data for a given paths."""
+    train_data = Dataset(
+        data_path=train_data_path,
+        configuration=general_configuration,
+        is_train=True,
+        experiment_path=experiment_path,
+    ).load_data()
+    test_data = Dataset(
+        data_path=test_data_path,
+        configuration=general_configuration,
+        is_train=False,
+        experiment_path=experiment_path,
+    ).load_data()
+    return train_data, test_data
+
+
+def eval_comparison_score(configuration, train_data, test_data, experiment_path):  # noqa
     """Eval comparation score."""
     comparison_score = configuration["evaluation"].get("comparison_score", None)
     if comparison_score:
         log.info(f"Eval {comparison_score}")
         results = {}
-        train_df = read(train_path)
-        test = read(test_path)
-        test.columns = [col.lower() for col in test.columns]
-        train_df.columns = [col.lower() for col in train_df.columns]
-        train_df[ID_NAME] = range(len(train_df))
 
-        train_df = train_df[
-            (train_df[configuration["label"]] == 1) | (train_df[configuration["label"]] == 0)
-        ]
-        if len(test[(test[configuration["label"]] == "1") | (test[configuration["label"]] == "0")]):
-            test = test[
-                (test[configuration["label"]] == "1") | (test[configuration["label"]] == "0")
-            ]
-        test[configuration["label"]] = test[configuration["label"]].astype(int)
-
-        test[comparison_score].fillna(test[comparison_score].mean(), inplace=True)
-        train_df[comparison_score].fillna(train_df[comparison_score].mean(), inplace=True)
+        test_data[comparison_score].fillna(test_data[comparison_score].mean(), inplace=True)
+        train_data[comparison_score].fillna(train_data[comparison_score].mean(), inplace=True)
 
         experiment_names, _ = load_experiments(configuration)
         if SINGLE_MODEL_NAME in experiment_names:
-            curve_plot_directory = (
-                MODELS_DIRECTORY / folder_name / "comparison_score" / SINGLE_MODEL_NAME
-            )
-            curve_plot_directory.mkdir(exist_ok=True, parents=True)
-            evaluator = Evaluation(
-                label_name=configuration["label"],
-                eval_configuration=configuration["evaluation"],
-                curve_plot_directory=curve_plot_directory,
-            )
-            split_validation_path = (
-                MODELS_DIRECTORY
-                / folder_name
-                / "splits"
-                / f"validation_split_{configuration['processing']['seed']}.csv"
-            )
-            if split_validation_path.exists():
+            validation_column = configuration["experiments"][SINGLE_MODEL_NAME]["validation_column"]
+            if validation_column in train_data.columns:
+
+                curve_plot_directory = experiment_path / "comparison_score" / SINGLE_MODEL_NAME
+                curve_plot_directory.mkdir(exist_ok=True, parents=True)
+                evaluator = Evaluation(
+                    label_name=configuration["label"],
+                    eval_configuration=configuration["evaluation"],
+                    curve_plot_directory=curve_plot_directory,
+                )
+
                 log.info(SINGLE_MODEL_NAME)
-                validation_column = configuration["experiments"][SINGLE_MODEL_NAME][
-                    "validation_column"
-                ]
-                split = read(split_validation_path)
-                train_df = train_df.merge(split, on=[ID_NAME], how="left")
+
                 evaluator.compute_metrics(
-                    data=train_df[train_df[validation_column] == 0],
+                    data=train_data[train_data[validation_column] == 0],
                     prediction_name=comparison_score,
                     data_name="train",
                 )
                 evaluator.compute_metrics(
-                    data=train_df[train_df[validation_column] == 1],
+                    data=train_data[train_data[validation_column] == 1],
                     prediction_name=comparison_score,
                     data_name="validation",
                 )
                 results[SINGLE_MODEL_NAME] = evaluator.get_evals()
 
         if KFOLD_MODEL_NAME in experiment_names:
-            curve_plot_directory = (
-                MODELS_DIRECTORY / folder_name / "comparison_score" / KFOLD_MODEL_NAME
-            )
-            curve_plot_directory.mkdir(exist_ok=True, parents=True)
-            evaluator = Evaluation(
-                label_name=configuration["label"],
-                eval_configuration=configuration["evaluation"],
-                curve_plot_directory=curve_plot_directory,
-            )
-            split_kfold_path = (
-                MODELS_DIRECTORY
-                / folder_name
-                / "splits"
-                / (
-                    f"kfold_split_{configuration['processing']['fold']}"
-                    f"_{configuration['processing']['seed']}"
-                    ".csv"
-                )
-            )
-            if split_kfold_path.exists():
+            split_column = configuration["experiments"][KFOLD_MODEL_NAME]["split_column"]
+            if split_column in train_data.columns:
                 log.info(KFOLD_MODEL_NAME)
-                split_column = configuration["experiments"][KFOLD_MODEL_NAME]["split_column"]
-                split_kfold = read(split_kfold_path)
-                train_df = train_df.merge(split_kfold, on=[ID_NAME], how="left")
-                for split in np.sort(train_df[split_column].unique()):
+                curve_plot_directory = experiment_path / "comparison_score" / KFOLD_MODEL_NAME
+                curve_plot_directory.mkdir(exist_ok=True, parents=True)
+                evaluator = Evaluation(
+                    label_name=configuration["label"],
+                    eval_configuration=configuration["evaluation"],
+                    curve_plot_directory=curve_plot_directory,
+                )
+                for split in np.sort(train_data[split_column].unique()):
                     log.info(split)
                     evaluator.compute_metrics(
-                        data=train_df[train_df[split_column] != split],
+                        data=train_data[train_data[split_column] != split],
                         prediction_name=comparison_score,
                         data_name=f"train_{split}",
                     )
                     evaluator.compute_metrics(
-                        data=train_df[train_df[split_column] == split],
+                        data=train_data[train_data[split_column] == split],
                         prediction_name=comparison_score,
                         data_name=f"validation_{split}",
                     )
                 results[KFOLD_MODEL_NAME] = evaluator.get_evals()
         log.info("Test")
-        curve_plot_directory = MODELS_DIRECTORY / folder_name / "comparison_score"
+        curve_plot_directory = experiment_path / "comparison_score"
         evaluator = Evaluation(
             label_name=configuration["label"],
             eval_configuration=configuration["evaluation"],
             curve_plot_directory=curve_plot_directory,
         )
-        evaluator.compute_metrics(data=test, prediction_name=comparison_score, data_name="test")
+        evaluator.compute_metrics(
+            data=test_data, prediction_name=comparison_score, data_name="test"
+        )
         results["test"] = evaluator.get_evals()
         save_yml(
             results,
-            MODELS_DIRECTORY / folder_name / "comparison_score" / f"eval_{comparison_score}.yml",
+            experiment_path / "comparison_score" / f"eval_{comparison_score}.yml",
         )
-        return results
+
+        return parse_comparasion_score_metrics_to_df(results, comparison_score)
     return None
+
+
+def parse_comparasion_score_metrics_to_df(metrics, comparison_score):
+    """Parse comparasion score metrics to dataframe object."""
+    results = []
+    for key, values in metrics.items():
+        for prediction, scores in values.items():
+            result = {}
+            result["experiments"] = key
+            splites_pred = prediction.split("_")
+            result["prediction"] = (
+                "prediction" if len(splites_pred) == 1 else f"prediction_{splites_pred[-1]}"
+            )
+            result["split"] = prediction if len(splites_pred) == 0 else splites_pred[0]
+            result["topk"] = scores[comparison_score]["global"]["topk"]
+            result["roc"] = scores[comparison_score]["global"]["roc"]
+            results.append(result)
+
+    results_cs = pd.DataFrame(results)
+    results_cs["type"] = "Comparison score"
+    return results_cs

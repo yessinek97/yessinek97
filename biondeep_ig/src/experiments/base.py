@@ -11,15 +11,17 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 import biondeep_ig.src.models as src_model
-from biondeep_ig.src import Evals
-from biondeep_ig.src import FEATURES_DIRECTORY
-from biondeep_ig.src import MODELS_DIRECTORY
-from biondeep_ig.src import SINGLE_MODEL_NAME
+from biondeep_ig import Evals
+from biondeep_ig import FEATURES_SELECTION_DIRACTORY
+from biondeep_ig import MODELS_DIRECTORY
+from biondeep_ig import SINGLE_MODEL_NAME
 from biondeep_ig.src.evaluation import Evaluation
 from biondeep_ig.src.logger import get_logger
-from biondeep_ig.src.processing import Dataset
+from biondeep_ig.src.processing import Datasetold
+from biondeep_ig.src.processing_v1 import Dataset
 from biondeep_ig.src.utils import get_model_by_name
 from biondeep_ig.src.utils import load_features
 from biondeep_ig.src.utils import plotting_kfold_shap_values
@@ -50,8 +52,8 @@ class BaseExperiment(ABC):
 
     def __init__(
         self,
-        train_data_path: str,
-        test_data_path: str,
+        train_data: Dataset,
+        test_data: Dataset,
         configuration: Dict[str, Any],
         folder_name: str,
         experiment_name: Optional[str] = None,
@@ -61,16 +63,18 @@ class BaseExperiment(ABC):
         features_file_path: Optional[str] = None,
     ):
         """Class init."""
-        self.test_data_path = Path(test_data_path)
-        self.train_data_path = Path(train_data_path) if train_data_path else None
+        self.train_data = train_data
+        self.test_data = test_data
         self.unlabeled_path = unlabeled_path
+
+        self.test_data_path = test_data.data_path
+        self.train_data_path = train_data.data_path if isinstance(train_data, Dataset) else None
 
         self.configuration = configuration
         self.experiment_name = experiment_name
         self.folder_name = folder_name
         self.sub_folder_name = sub_folder_name
         self.experiment_directory = self._get_experiment_directory(experiment_directory)
-        self.splits_path = MODELS_DIRECTORY / self.folder_name / "splits"
         self.checkpoint_directory = self.experiment_directory / "checkpoint"
         self.prediction_directory = self.experiment_directory / "prediction"
 
@@ -83,7 +87,9 @@ class BaseExperiment(ABC):
             else self.features_directory / self.configuration["features"]
         )
         self.features = [x.lower() for x in load_features(self.features_file_path)]
-
+        self.features = [
+            feature for feature in self.features if feature not in self.exclude_features
+        ]
         self.save_model = True
         self.evaluator = Evaluation(
             label_name=self.label_name,
@@ -125,9 +131,7 @@ class BaseExperiment(ABC):
     @property
     def features_directory(self):
         """Return features list directory."""
-        if self.task:
-            return FEATURES_DIRECTORY / self.task
-        return FEATURES_DIRECTORY
+        return MODELS_DIRECTORY / self.folder_name / FEATURES_SELECTION_DIRACTORY
 
     @property
     def eval_configuration(self):
@@ -138,6 +142,14 @@ class BaseExperiment(ABC):
     def validation_strategy(self):
         """Return validation_strategy."""
         return self.configuration["processing"].get("validation_strategy", True)
+
+    @property
+    def exclude_features(self):
+        """Return the excluded features list."""
+        return [
+            feature.lower()
+            for feature in self.configuration["processing"].get("exclude_features", [])
+        ]
 
     @property
     def model_configuration(self):
@@ -157,17 +169,22 @@ class BaseExperiment(ABC):
         """Predict method."""
 
     @abstractmethod
-    def eval_exp(self):
+    def eval_exp(self, comparison_score_metrics):
         """Evaluation method."""
 
     @abstractmethod
     def inference(self, data: pd.DataFrame, save_df: bool, file_name: str = ""):
         """Inference method."""
 
+    @abstractmethod
+    def plot_comparison_score_vs_predictions(
+        self, comparison_score_metrics, predictions_metrics: pd.DataFrame
+    ):
+        """Process metrics data and plot scores of the comparison score and the predications."""
+
     def initialize_checkpoint_directory(self, tuning_option: bool = False):
         """Init a ckpt directory."""
         self.experiment_directory.mkdir(exist_ok=True, parents=True)
-        self.splits_path.mkdir(exist_ok=True, parents=True)
         save_yml(self.configuration, self.experiment_directory / "configuration.yml")
         if not tuning_option:
             self.experiment_directory.mkdir(exist_ok=True, parents=True)
@@ -177,10 +194,11 @@ class BaseExperiment(ABC):
             self.curve_plot_directory.mkdir(exist_ok=True, parents=True)
             save_features(self.features, self.experiment_directory)
 
+    # Not needed for the moment
     def load_data_set(self) -> None:
         """Load data set."""
         if self.train_data_path:
-            self.train_data = Dataset(
+            self.train_data = Datasetold(
                 data_path=self.train_data_path,
                 features=self.features,
                 target=self.label_name,
@@ -191,7 +209,7 @@ class BaseExperiment(ABC):
             ).process_data()
 
         if self.unlabeled_path:
-            self.unlabeled_data = Dataset(
+            self.unlabeled_data = Datasetold(
                 data_path=self.unlabeled_path,
                 features=self.features,
                 target=self.label_name,
@@ -204,7 +222,7 @@ class BaseExperiment(ABC):
             # Concatenate unlabeled to train data
             self.train_data.data = self.train_data.data.append(self.unlabeled_data.data)
 
-        self.test_data = Dataset(
+        self.test_data = Datasetold(
             data_path=self.test_data_path,
             features=self.features,
             target=self.label_name,
@@ -219,7 +237,6 @@ class BaseExperiment(ABC):
     def restore(self) -> None:
         """Restoring a ckpt."""
         if self.experiment_directory.exists() & (not self.is_checkpoint_directory_empty):
-            # self.configuration = load_yml(self.experiment_directory / "configuration.yml")
             self.features = load_features(self.experiment_directory / "features")
         else:
             sys.exit(
@@ -230,7 +247,6 @@ class BaseExperiment(ABC):
                 )
             )
 
-    # TODO replace Any with the Model class
     def create_model(self, model_path: Path, features: List[str], prediction_name: str) -> Any:
         """Creating a model.
 
@@ -295,11 +311,10 @@ class BaseExperiment(ABC):
 
         model.eval_model(data=train, data_name="train", evaluator=self.evaluator)
         model.eval_model(data=validation, data_name="validation", evaluator=self.evaluator)
-        model.eval_model(data=self.test_data, data_name="test", evaluator=self.evaluator)
+        model.eval_model(data=self.test_data(), data_name="test", evaluator=self.evaluator)
 
         return model
 
-    # TODO Specify Any
     def multiple_fit(
         self, train: pd.DataFrame, split_column: str, sub_model_directory: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -353,10 +368,11 @@ class BaseExperiment(ABC):
 
         return models
 
-    # TODO Dict
     def eval_test(self) -> Dict[str, Any]:
         """Eval method for single data set."""
-        test_data = self.inference(self.test_data, file_name=self.test_data_path.stem, save_df=True)
+        test_data = self.inference(
+            self.test_data(), file_name=self.test_data_path.stem, save_df=True
+        )
         if self.experiment_name == SINGLE_MODEL_NAME:
             prediction_columns_name = self.prediction_columns_name
         else:
@@ -395,10 +411,6 @@ class BaseExperiment(ABC):
             "statistic": statistic_scores,
         }
 
-    def plot_comparison_score(self, eval_comparison_score: str):
-        """Plot comparison score  scores."""
-        # TODO to be implemented
-
     def check_and_return_model_type(self, model_type: str) -> str:
         """Checking an returning model type."""
         if model_type not in [
@@ -416,153 +428,54 @@ class BaseExperiment(ABC):
             )
         return model_type
 
-    def subplot1(self, test_metrics, train_metrics):
-        """Plots an experiment - preprocessing."""
-        dict_l = {}
-        for key, val in test_metrics.items():
-            if val:
-                dict_l[key] = val["global"]
-        df_test_metrics = pd.DataFrame(dict_l)
-        df_train_metrics = pd.DataFrame(train_metrics)
+    def columns_to_save(self, is_train: bool = True) -> List[str]:
+        """Return list of columns to be saved."""
+        columns = self.test_data.ids_columns + self.features
+        columns.append(self.label_name)
 
-        cols = [col for col in df_test_metrics.columns if "_all" not in col]
-        df_test_metrics = df_test_metrics[cols]
-        cols = [col for col in df_train_metrics.columns if "_all" not in col]
-        df_train_metrics = df_train_metrics[cols]
-        if self.comparison_score:
-            df_test_metrics_cs = df_test_metrics[self.comparison_score]
-            df_test_metrics = df_test_metrics.drop(columns=self.comparison_score)
-            df_test_metrics = df_test_metrics.append(
-                pd.DataFrame(
-                    (
-                        np.ones(len(df_test_metrics.columns)) * df_test_metrics_cs.loc["topk"]
-                    ).reshape(1, -1),
-                    columns=list(df_test_metrics),
-                ),
-                ignore_index=True,
+        if is_train:
+            return columns + ["prediction"]
+
+        columns = columns + self.prediction_columns_name
+        if hasattr(self, "kfold_prediction_name"):
+            columns = columns + self.kfold_prediction_name
+        return columns
+
+    def plotting_summary_scores(self, results: pd.DataFrame):
+        """Plot the computed scores for Ig model and the comparasion score."""
+        fig, axs = plt.subplots(2, 3, figsize=(18, 12))
+        palette = {
+            "IG_model": np.asarray([38, 122, 55]) / 255,
+            "Comparison score": np.asarray([42, 203, 74]) / 255,
+        }
+        for i, split in enumerate(["train", "validation", "test"]):
+            split_results = results[results.split == split]
+            sns.barplot(
+                data=split_results,
+                x="prediction",
+                y="topk",
+                hue="type",
+                ax=axs[0, i],
+                palette=palette,
             )
-            df_test_metrics = df_test_metrics.append(
-                pd.DataFrame(
-                    (np.ones(len(df_test_metrics.columns)) * df_test_metrics_cs.loc["auc"]).reshape(
-                        1, -1
-                    ),
-                    columns=list(df_test_metrics),
-                ),
-                ignore_index=True,
+            sns.barplot(
+                data=split_results,
+                x="prediction",
+                y="roc",
+                hue="type",
+                ax=axs[1, i],
+                palette=palette,
             )
+            axs[0, i].legend(loc="lower left")
+            axs[1, i].legend(loc="lower left")
+            axs[0, i].set_title(f"Global TopK ({split})")
+            axs[1, i].set_title(f"AUC-ROC  ({split})")
+            axs[0, i].set_xticklabels(axs[0, i].get_xticklabels(), rotation=45)
+            axs[1, i].set_xticklabels(axs[1, i].get_xticklabels(), rotation=45)
 
-            cs_cols = [x for x in df_train_metrics.columns if self.comparison_score in x]
-            df_train_metrics_cs = df_train_metrics[cs_cols]
-            df_train_metrics = df_train_metrics.drop(columns=cs_cols)
-            df_train_metrics = df_train_metrics.append(
-                pd.DataFrame(
-                    df_train_metrics_cs.loc["topk"].values.reshape(1, -1),
-                    columns=list(df_train_metrics),
-                ),
-                ignore_index=True,
-            )
-            df_train_metrics = df_train_metrics.append(
-                pd.DataFrame(
-                    df_train_metrics_cs.loc["auc"].values.reshape(1, -1),
-                    columns=list(df_train_metrics),
-                ),
-                ignore_index=True,
-            )
-
-        df_test_metrics["Mean"] = df_test_metrics.mean(axis=1)
-        df_train_metrics["Mean"] = df_train_metrics.mean(axis=1)
-
-        return df_test_metrics, df_train_metrics
-
-    def subplot2(self, fig, ax, df_cur, plot_cols, title_string, i, j):
-        """Plots an experiment - performs actual plot."""
-        ax[j, i] = df_cur.transpose()[plot_cols].plot.bar(
-            rot=90,
-            ax=ax[j, i],
-            color=[np.asarray([38, 122, 55]) / 255, np.asarray([42, 203, 74]) / 255],
-        )
-        ax[j, i].legend(loc="lower left")
-        if i == 0:
-            ax[j, i].set_title(title_string[0])
-        else:
-            ax[j, i].set_title(title_string[1])
-            # overwrite label names for SV as they should not be the same as for V (maybe do this smarter in a newer version)
-            labels = [item.get_text() for item in ax[j, i].get_xticklabels()]
-            labels_new = []
-            for _ in range(len(labels) - 4):
-                labels_new.append(self.split_column)
-
-            k = 4
-            for _ in range(4):
-                labels_new.append(labels[-k])
-                k = k - 1
-            ax[j, i].set_xticklabels(labels_new)
-        ax[j, i].set_ylim([0.0, 1.0])
-
-        return ax, fig
-
-    def plotting(self, test_metrics, train_metrics):
-        """Plots an experiment."""
-        plot_cols_topk = ["topk"]
-        plot_cols_auc = ["auc"]
-
-        df_test_metrics, df_train_metrics = self.subplot1(test_metrics, train_metrics)
-
-        if self.comparison_score:
-            df_test_metrics.index = [
-                "logloss",
-                "auc",
-                "topk",
-                "top_k_retrieval",
-                "topk_CS",
-                "auc_CS",
-            ]
-            df_train_metrics.index = [
-                "logloss",
-                "auc",
-                "topk",
-                "top_k_retrieval",
-                "topk_CS",
-                "auc_CS",
-            ]
-            plot_cols_topk = ["topk", "topk_CS"]
-            plot_cols_auc = ["auc", "auc_CS"]
-
-        iterator = 2  # two datasets: Validation/Train, Test
-
-        fig, ax = plt.subplots(iterator, 2, figsize=(12, iterator * 6))
-
-        for i in range(iterator):
-            # posshist = 0
-            if i == 0:
-                df_cur = df_train_metrics
-
-            else:
-                df_cur = df_test_metrics
-                # posshist = len(self.test_data.loc[self.test_data[self.label_name] == 1])
-            ax, fig = self.subplot2(
-                fig,
-                ax,
-                df_cur,
-                plot_cols_topk,
-                ["Global TopK per KFold (V)", "Global TopK per KFold (SV)"],
-                i,
-                0,
-            )
-
-            ax, fig = self.subplot2(
-                fig,
-                ax,
-                df_cur,
-                plot_cols_auc,
-                ["AUC-ROC per KFold (V)", "AUC-ROC per KFold (SV)"],
-                i,
-                1,
-            )
-
-        fig.tight_layout()
-        fig.savefig(self.eval_directory / "ScoreSummary.pdf")
-        plt.close("all")
+            fig.tight_layout()
+            fig.savefig(self.eval_directory / "ScoreSummary.png")
+            plt.close("all")
 
     @abstractmethod
     def _parse_metrics_to_data_frame(self, eval_metrics: Evals, file_name: str = "results"):

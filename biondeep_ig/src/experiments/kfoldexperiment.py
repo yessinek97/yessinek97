@@ -2,10 +2,11 @@
 import numpy as np
 import pandas as pd
 
-from biondeep_ig.src import Evals
-from biondeep_ig.src import ID_NAME
+from biondeep_ig import Evals
+from biondeep_ig import KFOLD_MODEL_NAME
 from biondeep_ig.src.experiments.base import BaseExperiment
 from biondeep_ig.src.logger import get_logger
+from biondeep_ig.src.processing_v1 import Dataset
 from biondeep_ig.src.utils import load_pkl
 from biondeep_ig.src.utils import maybe_int
 from biondeep_ig.src.utils import save_yml
@@ -18,8 +19,8 @@ class KfoldExperiment(BaseExperiment):
 
     def __init__(
         self,
-        train_data_path,
-        test_data_path,
+        train_data,
+        test_data,
         configuration,
         folder_name,
         experiment_name=None,
@@ -30,8 +31,8 @@ class KfoldExperiment(BaseExperiment):
     ):
         """Initialize the KFold experiment."""
         super().__init__(
-            train_data_path=train_data_path,
-            test_data_path=test_data_path,
+            train_data=train_data,
+            test_data=test_data,
             unlabeled_path=unlabeled_path,
             configuration=configuration,
             experiment_name=experiment_name,
@@ -45,38 +46,15 @@ class KfoldExperiment(BaseExperiment):
         self.plot_kfold_shap_values = kwargs.get("plot_kfold_shap_values", False)
         self.kfold_operations = kwargs.get("operation", ["mean"])
         self.statistics_opts = kwargs.get("statistics", ["mean"])
-
-        self.validation_split_path = self.splits_path / (
-            (
-                f'kfold_split_{self.configuration["processing"]["fold"]}_'
-                f'{self.configuration["processing"]["seed"]}.csv'
-            )
-        )
-
-        self.load_data_set()
-        if self.train_data_path:
+        if isinstance(self.train_data, Dataset):
             self.initialize_checkpoint_directory()
-            if self.validation_strategy:
-                if self.validation_split_path.exists():
-                    validation_split = pd.read_csv(self.validation_split_path)
-                    self.train_data = self.train_data.data.merge(
-                        validation_split, on=[ID_NAME], how="left"
-                    )
-                else:
-                    self.train_data.kfold_split()
-                    self.train_data = self.train_data.data
-                    self.train_data[[ID_NAME, self.split_column]].to_csv(
-                        self.validation_split_path, index=False
-                    )
-            else:
-                self.train_data = self.train_data.data
-            if self.split_column not in self.train_data.columns:
+            if self.split_column not in self.train_data().columns:
                 raise KeyError(f"{self.split_column} column is missing")
 
     @property
     def prediction_columns_name(self):
         """Return prediction columns name variable."""
-        return [f"prediction_{split}" for split in range(self.configuration["processing"]["fold"])]
+        return [f"prediction_{split}" for split in self.train_data()[self.split_column].unique()]
 
     @property
     def kfold_prediction_name(self):
@@ -85,26 +63,28 @@ class KfoldExperiment(BaseExperiment):
 
     def train(self):
         """Training method."""
-        models = self.multiple_fit(train=self.train_data, split_column=self.split_column)
+        models = self.multiple_fit(train=self.train_data(), split_column=self.split_column)
         return models
 
     def predict(self, save_df=True):
         """Predict method."""
-        test_data = self.inference(self.test_data, save_df, file_name="test")
+        test_data = self.inference(self.test_data(), save_df, file_name="test")
 
         train_data = []
         for model_path in self.checkpoint_directory.iterdir():
             split = maybe_int(model_path.name.replace("split_", ""))
             model = load_pkl(model_path / "model.pkl")
-
-            data = self.train_data[self.train_data[self.split_column] == split].copy()
+            data = self.train_data().copy()
+            data = data[data[self.split_column] == split].copy()
             data["prediction"] = model.predict(data, with_label=False)
 
             train_data.append(data)
         train_data = pd.concat(train_data)
 
         if save_df:
-            train_data.to_csv(self.prediction_directory / "train.csv")
+            train_data[self.columns_to_save(is_train=True)].to_csv(
+                self.prediction_directory / "train.csv", index=False
+            )
         return train_data, test_data
 
     def inference(self, data, save_df=False, file_name=""):
@@ -122,12 +102,13 @@ class KfoldExperiment(BaseExperiment):
             )
 
         if save_df:
-            prediction_data.to_csv(self.prediction_directory / (file_name + ".csv"), index=False)
+            prediction_data[self.columns_to_save(is_train=False)].to_csv(
+                self.prediction_directory / (file_name + ".csv"), index=False
+            )
         return prediction_data
 
-    def eval_exp(self):
+    def eval_exp(self, comparison_score_metrics):
         """Evaluate method."""
-        _, test_data = self.predict()
         validation_data, test_data = self.predict()
         if self.evaluator.print_evals:
             log.info("           -Kfold predictions")
@@ -143,6 +124,11 @@ class KfoldExperiment(BaseExperiment):
                 data=test_data, prediction_name=f"prediction_{operation}", data_name="test"
             )
         results = self._parse_metrics_to_data_frame(eval_metrics=self.evaluator.get_evals())
+
+        if isinstance(comparison_score_metrics, pd.DataFrame):
+            self.plot_comparison_score_vs_predictions(
+                comparison_score_metrics=comparison_score_metrics, predictions_metrics=results
+            )
         (
             best_validation_scores,
             best_test_scores,
@@ -168,6 +154,40 @@ class KfoldExperiment(BaseExperiment):
             "test": best_test_scores,
             "statistic": statistic_scores,
         }
+
+    def plot_comparison_score_vs_predictions(
+        self, comparison_score_metrics, predictions_metrics: pd.DataFrame
+    ):
+        """Process metrics data and plot scores of the comparison score and the predications."""
+        comparison_score = comparison_score_metrics[
+            comparison_score_metrics.experiments == KFOLD_MODEL_NAME
+        ]
+        comparison_score_test = comparison_score_metrics[
+            comparison_score_metrics.experiments == "test"
+        ]
+        comparison_score_test.iloc[
+            :, comparison_score_test.columns.get_loc("experiments")
+        ] = KFOLD_MODEL_NAME
+        comparison_score_test = pd.concat(
+            [comparison_score_test for i in range(len(comparison_score) // 2)]
+        )
+        comparison_score_test["prediction"] = [
+            f"prediction_{i}" for i in range(len(comparison_score) // 2)
+        ]
+        comparison_score = pd.concat([comparison_score, comparison_score_test])
+
+        predictions_metrics["experiments"] = KFOLD_MODEL_NAME
+        predictions_metrics["type"] = "IG_model"
+        predictions_metrics = predictions_metrics[comparison_score.columns]
+        predictions_metrics = predictions_metrics[
+            predictions_metrics.prediction.isin(comparison_score.prediction)
+        ]
+        scores = pd.concat([predictions_metrics, comparison_score])
+        mean_scores = scores.groupby(["split", "type"]).mean().reset_index()
+        mean_scores["prediction"] = "prediction_mean"
+        mean_scores["experiments"] = "KfoldExperiment"
+        scores = pd.concat([scores, mean_scores])
+        self.plotting_summary_scores(scores)
 
     def _parse_metrics_to_data_frame(self, eval_metrics: Evals, file_name: str = "results"):
         """Convert eval metrics from dict format to pandas dataframe."""

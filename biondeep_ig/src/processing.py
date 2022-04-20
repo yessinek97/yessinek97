@@ -9,17 +9,17 @@ from sklearn import preprocessing
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 
-from biondeep_ig.src import DATAPROC_DIRACTORY
-from biondeep_ig.src import FEATURIZER_DIRECTORY
-from biondeep_ig.src import ID_NAME
+from biondeep_ig import DATAPROC_DIRACTORY
+from biondeep_ig import FEATURIZER_DIRECTORY
+from biondeep_ig import ID_NAME
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.utils import load_pkl
 from biondeep_ig.src.utils import save_as_pkl
 
-log = get_logger("Processing")
+log = get_logger("Processing_old")
 
 
-class Dataset:
+class Datasetold:
     """Class to handle data processing and cleaning."""
 
     # ----------------------------------------------
@@ -37,6 +37,7 @@ class Dataset:
         self.data_path = data_path
         self.configuration = configuration
         self.seed = configuration["seed"]
+
         self.is_train = is_train
         self.experiment_path = experiment_path
         self.target = target.lower()

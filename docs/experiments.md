@@ -37,10 +37,11 @@ Multiple experiments can be defined in the global configuration file.
 
 ## Available models
 
-- XGBoost
-- CatBoost
-- Lgbm
-- Logistic Regression
+- `XgboostModel`
+- `LgbmModel`
+- `CatBoostModel`
+- `LogisticRegressionModel`
+- `LabelPropagationModel`
 
 ## Train seed fold
 

@@ -1,7 +1,7 @@
 model_type: XgboostModel
 model_config:
   general_params:
-    num_boost_round: 1000000000
+    num_boost_round: 20000000
     verbose_eval: 10
     early_stopping_rounds: 15
   model_params:

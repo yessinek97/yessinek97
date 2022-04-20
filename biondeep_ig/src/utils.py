@@ -1,7 +1,10 @@
 """Module de define some helper functions."""
 import inspect
 import json
+import os
 import pickle
+import random
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -9,15 +12,17 @@ from typing import Dict
 from typing import Tuple
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import shap
 import yaml
 
-from biondeep_ig.src import FEATURES_DIRECTORY
-from biondeep_ig.src import FS_CONFIGURATION_DIRECTORY
-from biondeep_ig.src import MODEL_CONFIGURATION_DIRECTORY
-from biondeep_ig.src import MODELS_DIRECTORY
+from biondeep_ig import FEATURES_DIRECTORY
+from biondeep_ig import FEATURES_SELECTION_DIRACTORY
+from biondeep_ig import FS_CONFIGURATION_DIRECTORY
+from biondeep_ig import MODEL_CONFIGURATION_DIRECTORY
+from biondeep_ig import MODELS_DIRECTORY
 from biondeep_ig.src.logger import get_logger
 
 log = get_logger("utils")
@@ -309,12 +314,11 @@ def load_features(file):
     """Load a list of features previously saved in text format ."""
     if not file.suffix:
         file = file.parent / (file.name + ".txt")
-
     if not file.exists():
         raise FileExistsError(
             (
                 f"feature list {file.name}  does not exist"
-                "in the configuration/features folder please check the file name."
+                f"in the {FEATURES_SELECTION_DIRACTORY} folder please check the file name."
             )
         )
     with open(file, "r") as f:
@@ -337,14 +341,7 @@ def get_task_name(label_name):
     raise ValueError("label name not known in fs ...")
 
 
-def remove_genrated_features(features_names, label_name):
-    """Remove Genrated features files by feature selection process."""
-    task = get_task_name(label_name)
-    for features_name in features_names:
-        (FEATURES_DIRECTORY / task / f"{features_name}.txt").unlink()
-
-
-def read(file_path: str, **kwargs):
+def read_data(file_path: str, **kwargs):
     """Read data."""
     extension = Path(file_path).suffix
     if extension == ".csv":
@@ -360,3 +357,22 @@ def read(file_path: str, **kwargs):
         raise ValueError(f"extension {extension} not supported")
 
     return df
+
+
+def copy_existing_featrues_lists(feature_list, experiment_path, label_name):
+    """Move features list from features directory to the experiment directory."""
+    original_diractory = FEATURES_DIRECTORY / get_task_name(label_name=label_name)
+    features_selection_diractory = experiment_path / FEATURES_SELECTION_DIRACTORY
+    features_selection_diractory.mkdir(exist_ok=True, parents=True)
+    for feature in feature_list:
+        shutil.copyfile(
+            original_diractory / f"{feature}.txt",
+            experiment_path / FEATURES_SELECTION_DIRACTORY / f"{feature}.txt",
+        )
+
+
+def seed_basic(seed):
+    """Seed every thing."""
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)

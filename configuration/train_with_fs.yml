@@ -27,20 +27,27 @@ experiments:
       - max
       - min
       - median
-
 label: cd8_any
 feature_paths:
+  - train_features
 processing:
+  remove_proc_data: false
+  trainable_features: "features"
+  #exclude_features:
+  validation_strategy: True
   isunlabelled: false
+  #normalizer:
   fill_nan_method: keep
+  seed: 1994
   validation_ratio: 0.1
-  folds: [3]
-  seeds: [1994]
+  fold: 5
 models:
   - xgboost_config.yml
+  - lgbm_config.yml
+
 evaluation:
   print_evals: True
-  comparison_score: tested_score_biondeep_mhci
+  comparison_score: presentation_score
   eval_id_name: patientid
   observations_number: 20
   threshold: 0.3
@@ -60,3 +67,23 @@ evaluation:
     - topk
     - topk_20_patientid
     - topk_patientid
+FS:
+  n_feat: 20
+  force_features:
+    - "tested_score_biondeep_mhci"
+    - "expression"
+    - "presentation_score"
+  FS_methods:
+    - Fspca.yml
+    - Fsxgboost.yml
+    - Fsxgboostshap.yml
+    - Fsrfgini.yml
+    - Fscossim.yml
+    - Fscorr.yml
+    - Fssfmlr.yml
+    - Fsrfelr.yml
+    - Fssfmxgboost.yml
+    - Fsrfexgboost.yml
+    - Fsrelief.yml
+    - Fsmi.yml
+    - Fsboruta.yml

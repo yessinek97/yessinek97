@@ -31,7 +31,16 @@ Multiple models can be defined in the global configuration file.
   - Column name in the datasets with scores of a comparison model.
 - print_evals:
   - print model convergence.
-- processing
+- processing :
+
+  - remove_proc_data :
+    - If True the `data_proc` directory will be removed from the checkpoint when the train ends
+  - trainable_features :
+    - Name of the features dictionary file which contains the list of the `float` , `int` ,
+      `categorical` features with the useful `ids` list and `id` column. The file must be saved
+      under `configuration/features`
+  - exclude_features :
+    - List of features which will be excluded from the trainable features
   - validation_strategy:
     - If True use the available validation strategy splitter to generate the `split_column` if it's
       False use the provided `split_column` in the train data.
@@ -45,18 +54,21 @@ Multiple models can be defined in the global configuration file.
     - In case of SingleModel experiment determines the size of the validation set.
   - fold:
     - In case of KFold experiment determines how many folds will be created.
-  - models:
-    - List of model configuration files located at
-      `biondeep-ig/biondeep_ig/configuration/model_config/<model>.yml`. All models in the list will
-      be run per experiment.
+  - normalizer :
+
+- models:
+  - List of model configuration files located at
+    `biondeep-ig/biondeep_ig/configuration/model_config/<model>.yml`. All models in the list will be
+    run per experiment.
+- evaluation :
   - threshold: for precision, recall and f1
-  - Metrics: Available metrics to testtopk, roc, logloss, precision, recall, f1
-  - Metric_selector: What's the metric you can use for selecting best model it can be
+  - metrics: Available metrics to test topk, roc, logloss, precision, recall, f1
+  - metric_selector: What's the metric you can use for selecting best model it can be
     topk_20_patientid
-  - Metrics_selector_higher: It can be True or False
-  - Data_name_selector: It can be test or validation
-  - Prediction_name_selector: Generally prediction_mean
-  - Monitoring_metrics: metrics to monitor among these or all of them (roc, topk ,
+  - metrics_selector_higher: It can be True or False
+  - data_name_selector: It can be test or validation
+  - prediction_name_selector: Generally `prediction_mean`
+  - monitoring_metrics: metrics to monitor among these or all of them (roc, topk ,
     topk_20_patientid, topk_patientid)
 
 ## Global variables - Hyper-Parameters Tuning configuration file

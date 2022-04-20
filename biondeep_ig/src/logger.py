@@ -9,9 +9,9 @@ from neptune.api_exceptions import ServerError
 from requests.exceptions import HTTPError
 from requests.exceptions import Timeout
 
-from biondeep_ig.src import FEATURES_DIRECTORY
-from biondeep_ig.src import MODEL_CONFIGURATION_DIRECTORY
-from biondeep_ig.src import MODELS_DIRECTORY
+from biondeep_ig import FEATURES_DIRECTORY
+from biondeep_ig import MODEL_CONFIGURATION_DIRECTORY
+from biondeep_ig import MODELS_DIRECTORY
 
 
 def init_logger(folder_name=None, file_name=None):

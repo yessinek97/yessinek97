@@ -1,9 +1,10 @@
 """Classes to launch training using a single model."""
 import pandas as pd
 
-from biondeep_ig.src import Evals
-from biondeep_ig.src import ID_NAME
+from biondeep_ig import Evals
+from biondeep_ig import SINGLE_MODEL_NAME
 from biondeep_ig.src.experiments.base import BaseExperiment
+from biondeep_ig.src.processing_v1 import Dataset
 from biondeep_ig.src.utils import load_pkl
 from biondeep_ig.src.utils import save_yml
 
@@ -13,8 +14,8 @@ class SingleModel(BaseExperiment):
 
     def __init__(
         self,
-        train_data_path,
-        test_data_path,
+        train_data,
+        test_data,
         configuration,
         folder_name,
         experiment_name=None,
@@ -25,8 +26,8 @@ class SingleModel(BaseExperiment):
     ):
         """Initialize the single model experiment."""
         super().__init__(
-            train_data_path=train_data_path,
-            test_data_path=test_data_path,
+            train_data=train_data,
+            test_data=test_data,
             unlabeled_path=unlabeled_path,
             configuration=configuration,
             experiment_name=experiment_name,
@@ -37,31 +38,14 @@ class SingleModel(BaseExperiment):
 
         self.validation_column = kwargs["validation_column"]
         self.plot_shap_values = kwargs.get("plot_shap_values", False)
-        self.validation_split_path = self.splits_path / (
-            f'validation_split_{self.configuration["processing"]["seed"]}.csv'
-        )
-        self.load_data_set()
-        if self.train_data_path:
+        if isinstance(self.train_data, Dataset):
             self.initialize_checkpoint_directory()
-            if self.validation_strategy:
-                if self.validation_split_path.exists():
-                    validation_split = pd.read_csv(self.validation_split_path)
-                    self.train_data = self.train_data.data.merge(
-                        validation_split, on=[ID_NAME], how="left"
-                    )
-                else:
-                    self.train_data.train_val_split()
-                    self.train_data = self.train_data.data
-                    self.train_data[[ID_NAME, self.validation_column]].to_csv(
-                        self.validation_split_path, index=False
-                    )
-            else:
-                self.train_data = self.train_data.data
-            if self.validation_column not in self.train_data.columns:
+            if self.validation_column not in self.train_data().columns:
                 raise KeyError(f"{self.validation_column} column is missing")
-
-            self.validation = self.train_data[self.train_data[self.validation_column] == 1]
-            self.train_data = self.train_data[self.train_data[self.validation_column] == 0]
+            self.validation_split = self.train_data()[
+                self.train_data()[self.validation_column] == 1
+            ]
+            self.train_split = self.train_data()[self.train_data()[self.validation_column] == 0]
 
     @property
     def prediction_columns_name(self):
@@ -70,9 +54,10 @@ class SingleModel(BaseExperiment):
 
     def train(self):
         """Training method."""
+        print(len(self.train_split), len(self.validation_split), len(self.test_data()))
         model = self.single_fit(
-            self.train_data,
-            self.validation,
+            self.train_split,
+            self.validation_split,
             self.checkpoint_directory,
             prediction_name=self.prediction_columns_name[0],
         )
@@ -80,9 +65,9 @@ class SingleModel(BaseExperiment):
 
     def predict(self, save_df=True):
         """Predict method."""
-        test_data = self.inference(self.test_data, save_df=save_df, file_name="test")
-        validation = self.inference(self.validation, save_df=save_df, file_name="validation")
-        train_data = self.inference(self.train_data, save_df=save_df, file_name="train")
+        test_data = self.inference(self.test_data(), save_df=save_df, file_name="test")
+        validation = self.inference(self.validation_split, save_df=save_df, file_name="validation")
+        train_data = self.inference(self.train_split, save_df=save_df, file_name="train")
         return train_data, validation, test_data
 
     def inference(self, data, save_df=False, file_name=""):
@@ -95,13 +80,19 @@ class SingleModel(BaseExperiment):
         )
 
         if save_df:
-            prediction_data.to_csv(self.prediction_directory / (file_name + ".csv"), index=False)
+            prediction_data[self.columns_to_save()].to_csv(
+                self.prediction_directory / (file_name + ".csv"), index=False
+            )
         return prediction_data
 
-    def eval_exp(self):
+    def eval_exp(self, comparison_score_metrics=None):
         """Evaluate method."""
         self.predict()
         results = self._parse_metrics_to_data_frame(self.evaluator.get_evals())
+        if isinstance(comparison_score_metrics, pd.DataFrame):
+            self.plot_comparison_score_vs_predictions(
+                comparison_score_metrics=comparison_score_metrics, predictions_metrics=results
+            )
         (
             best_validation_scores,
             best_test_scores,
@@ -114,6 +105,27 @@ class SingleModel(BaseExperiment):
         )
         self._save_prediction_name_selector(best_prediction_name)
         return {"validation": best_validation_scores, "test": best_test_scores}
+
+    def plot_comparison_score_vs_predictions(
+        self, comparison_score_metrics, predictions_metrics: pd.DataFrame
+    ):
+        """Process metrics data and plot scores of the comparison score and the predications."""
+        comparison_score = comparison_score_metrics[
+            comparison_score_metrics.experiments == SINGLE_MODEL_NAME
+        ]
+        comparison_score_test = comparison_score_metrics[
+            comparison_score_metrics.experiments == "test"
+        ]
+
+        comparison_score_test.iloc[
+            :, comparison_score_test.columns.get_loc("experiments")
+        ] = SINGLE_MODEL_NAME
+        comparison_score = pd.concat([comparison_score, comparison_score_test])
+        predictions_metrics["experiments"] = SINGLE_MODEL_NAME
+        predictions_metrics["type"] = "IG_model"
+        predictions_metrics = predictions_metrics[comparison_score.columns]
+        scores = pd.concat([predictions_metrics, comparison_score])
+        self.plotting_summary_scores(scores)
 
     def _parse_metrics_to_data_frame(
         self, eval_metrics: Evals, file_name: str = "results"

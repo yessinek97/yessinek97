@@ -9,9 +9,9 @@ from hyperopt import tpe
 from hyperopt import Trials
 from hyperopt.fmin import fmin
 
-from biondeep_ig.src import Evals
-from biondeep_ig.src import ID_NAME
-from biondeep_ig.src import MODELS_DIRECTORY
+from biondeep_ig import Evals
+from biondeep_ig import ID_NAME
+from biondeep_ig import MODELS_DIRECTORY
 from biondeep_ig.src.experiments.base import BaseExperiment
 from biondeep_ig.src.metrics import topk_global
 from biondeep_ig.src.utils import convert_int_params
@@ -187,7 +187,7 @@ class Tuning(BaseExperiment):
             "score": score,
         }
 
-    def eval_exp(self):
+    def eval_exp(self, comparison_score_metrics=None):
         """Eval method."""
         return
 
@@ -197,6 +197,12 @@ class Tuning(BaseExperiment):
 
     def predict(self, save_df):
         """Predict method."""
+        return
+
+    def plot_comparison_score_vs_predictions(
+        self, comparison_score_metrics, predictions_metrics: pd.DataFrame
+    ):
+        """Process metrics data and plot scores of the comparison score and the predications."""
         return
 
     def _initialize_single_fit(self, experiment_param):

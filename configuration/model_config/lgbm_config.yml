@@ -1,7 +1,7 @@
 model_type: LgbmModel
 model_config:
   general_params:
-    num_boost_round: 20000000
+    num_boost_round: 1000000
     early_stopping_rounds: 15
     verbose_eval: 20
 
