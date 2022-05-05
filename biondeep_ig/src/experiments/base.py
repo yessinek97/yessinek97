@@ -61,6 +61,7 @@ class BaseExperiment(ABC):
         unlabeled_path: Optional[str] = None,
         experiment_directory: Optional[Path] = None,
         features_file_path: Optional[str] = None,
+        is_compute_metrics: Optional[bool] = True,
     ):
         """Class init."""
         self.train_data = train_data
@@ -95,6 +96,7 @@ class BaseExperiment(ABC):
             label_name=self.label_name,
             eval_configuration=self.eval_configuration,
             curve_plot_directory=self.curve_plot_directory,
+            is_compute_metrics=is_compute_metrics,
         )
         self.plot_shap_values: bool
         self.plot_kfold_shap_values: Optional[bool]
@@ -295,9 +297,7 @@ class BaseExperiment(ABC):
             else None
         )
         model = self.create_model(
-            model_path,
-            features=self.features,
-            prediction_name=prediction_name,
+            model_path, features=self.features, prediction_name=prediction_name
         )
         model.fit(train, validation)
         # model_path could be None only when the  checkpoints arg  is None and the checkpoints is None only when single_fit method is called from the Tuning class  therefore plotting_shape_values could be called only when model_path is not None

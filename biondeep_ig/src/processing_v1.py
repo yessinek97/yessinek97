@@ -170,7 +170,7 @@ class Dataset:
                 )
             )
 
-        raise KeyError("trainable_features_name key should be defined in the processing section")
+        raise KeyError("trainable_features key should be defined in the processing section")
 
     def load_data(self):
         """Return processed data whatever is it the saved or the processed from the begining."""

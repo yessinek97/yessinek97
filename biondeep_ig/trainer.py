@@ -387,17 +387,18 @@ def tune(train_data_path, test_data_path, unlabeled_path, configuration_file, fo
                     experiment_name=experiment_name,
                     experiment_param=experiment_param,
                     sub_folder_name=features_list_path_name,
+                    is_compute_metrics=False,
                 )
                 result = tune_model.train(features_list_path_name)
                 results.append(result)
     results = pd.DataFrame(results)
-    results.sort_values(["score"], ascending=not tune_model.maximize, inplace=True)
+    results.sort_values(["score"], inplace=True)
     best = results.iloc[0]
     log.info(
-        f"best run goes for the model {best.model} using the exp {best.experiment} "
-        + f"and the features {best.features}  score {best.score} "
+        f"best run goes to the model {best.model} using  {best.experiment} "
+        + f"and the features {best.features} with  score {best.score:.3f} "
     )
-    log.info(results)
+    log.info(results.to_string(index=False))
     results.to_csv((experiment_path / "results.csv"), index=False)
     remove_processed_data(experiment_path, train_data.remove_proc_data)
 

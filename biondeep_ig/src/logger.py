@@ -31,6 +31,7 @@ def init_logger(folder_name=None, file_name=None):
         filename=log_file_path,
     )
     logging.getLogger("matplotlib").setLevel(logging.CRITICAL)
+    logging.getLogger("hyperopt").setLevel(logging.CRITICAL)
 
 
 def get_logger(name):
