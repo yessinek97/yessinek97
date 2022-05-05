@@ -24,6 +24,9 @@ setup(
     include_package_data=True,
     entry_points={
         "console_scripts": [
+            # ablation study
+            "ablation_study=biondeep_ig.ablation_study:main",
+            "ablation_post=biondeep_ig.ablation_study:postprocess",
             # data generation
             "agg_scores=biondeep_ig.data_gen.ig.data_gen.parse_score_files:main",
             "tcr_gen=biondeep_ig.data_gen.ig.data_gen.tcr.generate_tcrs:main",
