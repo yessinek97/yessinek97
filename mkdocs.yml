@@ -65,5 +65,6 @@ nav:
       - config: config.md
       - available experiments: experiments.md
   - Eval: eval.md
+  - Ablation study: ablation.md
   - Contributing: contributing.md
   - Changelog: changelog.md
