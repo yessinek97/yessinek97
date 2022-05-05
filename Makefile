@@ -82,6 +82,7 @@ ig_build:
 ig_run:
 	docker run -it -d -e MACHINE_ID=`hostname`   --name $(IG_CONTAINER_NAME)  -v ${PWD}:/home/appuser/biondeep_ig  $(IG_IMAGE_NAME):latest
 ig_bash:
+	docker start  $(IG_CONTAINER_NAME)
 	docker exec -it $(IG_CONTAINER_NAME) sh -c "pip install --user -e . && /bin/bash"
 ig_rm:
 	docker stop  $(IG_CONTAINER_NAME)

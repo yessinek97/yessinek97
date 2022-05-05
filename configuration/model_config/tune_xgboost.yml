@@ -3,7 +3,7 @@ model_config:
   general_params:
     num_boost_round: 10000000
     verbose_eval: false
-    early_stopping_rounds: 15
+    early_stopping_rounds: 50
 
   model_params:
     eta:

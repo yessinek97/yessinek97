@@ -32,7 +32,11 @@ class Evaluation:
     """
 
     def __init__(
-        self, label_name: str, eval_configuration: Dict[str, Any], curve_plot_directory: Path
+        self,
+        label_name: str,
+        eval_configuration: Dict[str, Any],
+        curve_plot_directory: Path,
+        is_compute_metrics: bool,
     ):
         """Initialize the Evaluation class."""
         self.label_name = label_name
@@ -40,6 +44,7 @@ class Evaluation:
         self.curve_plot_directory = curve_plot_directory
         self.metrics = self.get_metrics_from_string()
         self.evals: Evals = defaultdict(lambda: defaultdict(dict))
+        self.is_compute_metrics = is_compute_metrics
 
     @property
     def eval_id_name(self) -> str:
@@ -120,51 +125,53 @@ class Evaluation:
             prediction_name: str  prediction column name
             data_name: str split name (train,validation,test)
         """
-        prediction_metrics_evaluation = {}
-        prediction_eval_message = ""
-        data = data.loc[(data[self.label_name] == 0) | (data[self.label_name] == 1)]
-        for metric_name, metric_fuc in self.metrics.items():
-            prediction_metrics_evaluation[metric_name] = float(
-                metric_fuc(
-                    labels=data[self.label_name],
-                    scores=data[prediction_name],
-                    threshold=self.threshold,
+        if self.is_compute_metrics:
+
+            prediction_metrics_evaluation = {}
+            prediction_eval_message = ""
+            data = data.loc[(data[self.label_name] == 0) | (data[self.label_name] == 1)]
+            for metric_name, metric_fuc in self.metrics.items():
+                prediction_metrics_evaluation[metric_name] = float(
+                    metric_fuc(
+                        labels=data[self.label_name],
+                        scores=data[prediction_name],
+                        threshold=self.threshold,
+                    )
                 )
-            )
-            prediction_eval_message += (
-                f"{metric_name}: {prediction_metrics_evaluation[metric_name]:0.3f} "
-            )
-        if self.eval_id_name and data_name == "test":
-            evals_per_id_name = src_metrics.per_split_evaluation(
-                data=data,
-                target_name=self.label_name,
-                prediction_name=prediction_name,
-                eval_id_name=self.eval_id_name,
-                metrics_list=self.metrics,
-                threshold=self.threshold,
-                observations_number=self.observations_number,
-            )
+                prediction_eval_message += (
+                    f"{metric_name}: {prediction_metrics_evaluation[metric_name]:0.3f} "
+                )
+            if self.eval_id_name and data_name == "test":
+                evals_per_id_name = src_metrics.per_split_evaluation(
+                    data=data,
+                    target_name=self.label_name,
+                    prediction_name=prediction_name,
+                    eval_id_name=self.eval_id_name,
+                    metrics_list=self.metrics,
+                    threshold=self.threshold,
+                    observations_number=self.observations_number,
+                )
 
-            global_per_id_name = evals_per_id_name["global"]
+                global_per_id_name = evals_per_id_name["global"]
 
-            metric_name = f"topk_{self.observations_number}_{self.eval_id_name}"
-            prediction_eval_message += f"{metric_name}: {global_per_id_name[metric_name]:0.3f} "
-            metric_name = f"topk_{self.eval_id_name}"
-            prediction_eval_message += f"{metric_name}: {global_per_id_name[metric_name]:0.3f} "
+                metric_name = f"topk_{self.observations_number}_{self.eval_id_name}"
+                prediction_eval_message += f"{metric_name}: {global_per_id_name[metric_name]:0.3f} "
+                metric_name = f"topk_{self.eval_id_name}"
+                prediction_eval_message += f"{metric_name}: {global_per_id_name[metric_name]:0.3f} "
 
-            prediction_metrics_evaluation.update(global_per_id_name)
-            self.evals[data_name][prediction_name][self.eval_id_name] = evals_per_id_name
+                prediction_metrics_evaluation.update(global_per_id_name)
+                self.evals[data_name][prediction_name][self.eval_id_name] = evals_per_id_name
 
-        self.evals[data_name][prediction_name]["global"] = prediction_metrics_evaluation
-        if self.print_evals:
-            log.info(f"             *{data_name}: {prediction_eval_message}")
-        if self.curve_plot_directory:
-            self.plot_curve(
-                data=data,
-                prediction_name=prediction_name,
-                plot_path=self.curve_plot_directory
-                / f"{prediction_name}_{data_name}_precision_recall_curve.png",
-            )
+            self.evals[data_name][prediction_name]["global"] = prediction_metrics_evaluation
+            if self.print_evals:
+                log.info(f"             *{data_name}: {prediction_eval_message}")
+            if self.curve_plot_directory:
+                self.plot_curve(
+                    data=data,
+                    prediction_name=prediction_name,
+                    plot_path=self.curve_plot_directory
+                    / f"{prediction_name}_{data_name}_precision_recall_curve.png",
+                )
 
     def get_evals(self) -> Evals:
         """Return evaluation dict."""

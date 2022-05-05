@@ -54,7 +54,6 @@ class SingleModel(BaseExperiment):
 
     def train(self):
         """Training method."""
-        print(len(self.train_split), len(self.validation_split), len(self.test_data()))
         model = self.single_fit(
             self.train_split,
             self.validation_split,
