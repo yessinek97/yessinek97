@@ -29,6 +29,7 @@ class Evaluation:
         label_name: target name
         eval_configuration: the fll eval configuration
         curve_plot_directory: path where  the curve plot will be saved
+        is_compute_metrics: whether to compute the prediction metrics.
     """
 
     def __init__(
@@ -36,7 +37,7 @@ class Evaluation:
         label_name: str,
         eval_configuration: Dict[str, Any],
         curve_plot_directory: Path,
-        is_compute_metrics: bool,
+        is_compute_metrics: bool = True,
     ):
         """Initialize the Evaluation class."""
         self.label_name = label_name
