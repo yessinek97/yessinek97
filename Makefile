@@ -71,7 +71,7 @@ bash: build
 	docker run -it $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE) sh -c "pip install --user -e . && /bin/bash"
 
 docs: build
-	docker run $(DOCKER_RUN_FLAGS) -p 8000:8000 $(DOCKER_IMAGE) mkdocs serve
+	docker run $(DOCKER_RUN_FLAGS) -p 8080:8080 $(DOCKER_IMAGE) mkdocs serve
 
 #IG Docker
 IG_IMAGE_NAME=ig_train
