@@ -1,6 +1,6 @@
 ## IG Data Generation (TCR-pMHC)
 
-![Data IG generation pipeline](data_ig_pipeline.png "Data IG generation pipeline")
+![Data IG generation pipeline](./static/data_ig_pipeline.png "Data IG generation pipeline")
 
 The `biondeep-ig.biondeep_ig.data_gen` module takes care of generating pMHC and TCR-pMHC structures
 for a given (**allele**, **peptide**) pair. The pipeline is divided into 3 step:

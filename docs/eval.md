@@ -1,14 +1,18 @@
-## Inference on a single model with a bunch of datasets:
+## Inference using on a single model
 
-You can launch Inference with a single test.
+Inference using a single model on a given dataset is performed using the command.
 
-```
+```bash
 inference -d  <data_Test_paths>  -n <models_folder_name> -id <id_name>
+```
 
+Example:
+
+```bash
 inference -d test.csv  -n a_trained_model -id ID
 ```
 
-```
+```bash
 Options:
   - d       TEXT    Path to dataset [required]
   - n       TEXT    Path to model folder name [required]
@@ -16,17 +20,21 @@ Options:
 
 ```
 
-## Eval trained models on a separate dataset
+## Evaluation of trained models on given datasets
 
-You can launch a compute metrics with a single test or multiple test sets.
+Evaluation metrics can be computed from a single or several test datasets using the command:
 
-```
+```bash
 compute-metrics -d  <data_Test_paths>  -n <models_folder_name>
+```
 
+Exemple:
+
+```bash
 compute-metrics -n a_trained_model -d   test1.tsv -d test2.tsv
 ```
 
-```
+```bash
 Options:
   - d       TEXT    Path to dataset [required]
   - n       TEXT    Path to model folder name [required]

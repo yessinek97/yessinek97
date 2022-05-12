@@ -53,18 +53,21 @@ plugins:
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Docker: docker.md
   - Data:
       - Overview: data.md
       - Data IG generation: data_gen.md
   - Feature selection: FS.md
-  - Train:
-      - Train: train.md
-      - Framework: layout.md
-  - Experiments:
-      - config: config.md
-      - available experiments: experiments.md
-  - Eval: eval.md
+  - Model training:
+      - Configuration: config.md
+      - Models: models.md
+      - Experiments: experiments.md
+      - Execution:
+          - Training: train.md
+          - Training with list of seeds and folds: train_seed_fold.md
+          - Hyper-parameters tuning: tune.md
+          - Modular training: modular_train.md
+      - Output: layout.md
+  - Inference: eval.md
   - Ablation study: ablation.md
   - Contributing: contributing.md
   - Changelog: changelog.md
