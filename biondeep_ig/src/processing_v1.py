@@ -252,12 +252,12 @@ class Dataset:
             self.data[self.ids_columns + splits_columns].to_csv(
                 self.validation_splits_path, index=False
             )
-        except KeyError:
+        except KeyError as err:
             raise KeyError(
                 f" [{', '.join(splits_columns)}]  columns are not defined"
                 + " in the provided train data : Check the name of these columns or"
                 + " set validation strategy to True."
-            )
+            ) from err
 
     def train_val_split(self, split_column):
         """Split data into train and val set."""
@@ -284,9 +284,6 @@ class Dataset:
     def save_features_configuration(self, features_configuration):
         """Save features configuration."""
         save_yml(features_configuration, self.features_configuration_path)
-
-    def get_split_columns(self):
-        """Return the name of the split columns for all the available experiment type."""
 
     def __call__(self, kind="all"):
         """Return processed data with the needed features using the argument kind."""
