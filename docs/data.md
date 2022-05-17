@@ -1,7 +1,7 @@
-## Datasets
-
 The following datasets have been provided by BioNTech are **confidiential**. These datasets must not
 be downloaded and used on local machines. Please use the Paris DGX station or a GCP VM instance.
+
+## BionDeep Binding score
 
 ### Training/validation dataset : Public
 
@@ -27,14 +27,44 @@ The **cleaned** `sahin` dataset is available on GCP:
 gs://biondeep-data/IG/10_03_2022/sahin_clean_2022_04_06.csv
 ```
 
-The **raw** version of this dataset is found on BioNTech sftp server:
+### Features configuration
+
+The file must be downloaded to `/configuartion/features/`
 
 ```bash
-/biontech-de-sftp-bucket/BNTpub/ImmuneResponse_20220310/sahin_20211121_out_TCGA_updated_pres.tsv
+gs://biondeep-data/IG/10_03_2022/features.yml
 ```
 
-Connection to this sftp server is **only** possible via the Paris DGX station using the command:
+## NetMHCpan score
+
+### Training/validation dataset : Public
+
+The **cleaned** `public` dataset is available on GCP:
 
 ```bash
-sftp -i ~/.ssh//bnt_rsa biontech-de@s-b2c3dbdb082e4f01b.server.transfer.us-east-1.amazonaws.com
+#TODO: to be completed
+```
+
+### Test dataset : Optima
+
+The **cleaned** `optima` dataset is available on GCP:
+
+```bash
+#TODO: to be completed
+```
+
+### Test dataset - Sahin et al.
+
+The **cleaned** `sahin` dataset is available on GCP:
+
+```bash
+#TODO: to be completed
+```
+
+### Features configuration
+
+The file must be downloaded to `/configuartion/features/`
+
+```bash
+#TODO: to be completed
 ```
