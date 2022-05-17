@@ -468,8 +468,14 @@ class BaseExperiment(ABC):
             )
             axs[0, i].legend(loc="lower left")
             axs[1, i].legend(loc="lower left")
-            axs[0, i].set_title(f"Global TopK ({split})")
-            axs[1, i].set_title(f"AUC-ROC  ({split})")
+            for container in axs[0, i].containers:
+                axs[0, i].bar_label(container, fmt="%0.3f")
+            for container in axs[1, i].containers:
+                axs[1, i].bar_label(container, fmt="%0.3f")
+
+            axs[0, i].set_title(f"Global TopK {split}")
+            axs[1, i].set_title(f"AUC-ROC {split} ")
+
             axs[0, i].set_xticklabels(axs[0, i].get_xticklabels(), rotation=45)
             axs[1, i].set_xticklabels(axs[1, i].get_xticklabels(), rotation=45)
 
