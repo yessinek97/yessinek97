@@ -14,6 +14,5 @@ biondeep_ig.egg-info
 
 ##Data folder
 data
-biondeep_ig/data
 #Checkpoint folder
-biondeep_ig/models
+models
