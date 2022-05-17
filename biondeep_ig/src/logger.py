@@ -16,7 +16,7 @@ from biondeep_ig import MODELS_DIRECTORY
 
 def init_logger(folder_name=None, file_name=None):
     """Init logging function."""
-    log_file_path = None
+    log_file_path = file_name
     if folder_name:
         model_folder_path = MODELS_DIRECTORY / folder_name
         if not model_folder_path.exists():
