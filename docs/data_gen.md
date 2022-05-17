@@ -141,3 +141,32 @@ chmod +x ./biondeep_ig/data_gen/pipeline/PosGeneration/gen_tcr_pmhc_poses_parall
 ```
 
 All the TCR-pMHC structures will be generated in `/home/app/generated_tcr_pmhc` folder.
+
+## Step 4: Merging TCR-pMHC structures into existing datasets.
+
+Once the TCR-pMHC structures are generated, they can be merged into existing datasets used for
+training or testing using the following command:
+
+```bash
+merge_tcr_pmhc -i <path_to_existing_dataset> -t <path_to_tcr_pmhc_structures> -o <output_directory> -c <configuration_file>
+```
+
+A default configuration file is available at
+`biondeep_ig/data_gen/ig/data_gen/config_merge_tcrpmhc.yml`. The mandatory attributes and
+corresponding example values are as follows:
+
+```yaml
+binding_energy_column: "dg_separated" # Column name corresponding to the binding energy score.
+right_on: # List of columns name from the tcr-pMHC data on which the merge is performed.
+  - "peptide"
+  - "allele"
+left_on: # List of columns name the target dataset on which the merge is performed.
+  - "tested_peptide_biondeep_mhci"
+  - "tested_allele_biondeep_mhci"
+select_on:
+  "min" # Statistics applied to binding energy use to select and aggregate features.
+  # Can be one of:
+  # - "mean"
+  # - "min"
+  # - float in ]0;1[
+```
