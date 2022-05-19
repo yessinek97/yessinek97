@@ -138,6 +138,11 @@ class Dataset:
         """Return remove proc data bool variable."""
         return self.processing_configuration.get("remove_proc_data", False)
 
+    @property
+    def use_validation_strategy(self):
+        """Return validation strategy bool varibale."""
+        return self.processing_configuration.get("validation_strategy", True)
+
     def load_features_configuration(self):
         """Load features configuration from different sources.
 
@@ -181,7 +186,7 @@ class Dataset:
             self.process()
             self.save_processed_data()
 
-        if self.processing_configuration["validation_strategy"] and self.is_train:
+        if self.is_train:
             self.validation_splits()
         return self
 
@@ -232,18 +237,27 @@ class Dataset:
         splits_columns = []
         if SINGLE_MODEL_NAME in experiments.keys():
             single_model_split_name = experiments[SINGLE_MODEL_NAME]["validation_column"]
-            self.train_val_split(single_model_split_name)
             splits_columns.append(single_model_split_name)
+            if self.use_validation_strategy:
+                self.train_val_split(single_model_split_name)
         if KFOLD_MODEL_NAME in experiments.keys() or DKFOLD_MODEL_NAME in experiments.keys():
             try:
                 kfold_split_name = experiments[KFOLD_MODEL_NAME]["split_column"]
             except KeyError:
                 kfold_split_name = experiments[DKFOLD_MODEL_NAME]["split_column"]
-            self.kfold_split(kfold_split_name)
             splits_columns.append(kfold_split_name)
-        self.data[self.ids_columns + splits_columns].to_csv(
-            self.validation_splits_path, index=False
-        )
+            if self.use_validation_strategy:
+                self.kfold_split(kfold_split_name)
+        try:
+            self.data[self.ids_columns + splits_columns].to_csv(
+                self.validation_splits_path, index=False
+            )
+        except KeyError as err:
+            raise KeyError(
+                f" [{', '.join(splits_columns)}]  columns are not defined"
+                + " in the provided train data : Check the name of these columns or"
+                + " set validation strategy to True."
+            ) from err
 
     def train_val_split(self, split_column):
         """Split data into train and val set."""
