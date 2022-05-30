@@ -1,6 +1,8 @@
 """Main scirpt."""
 import click
 
+from biondeep_ig.buckets import pull
+from biondeep_ig.buckets import push
 from biondeep_ig.compute_metrics import compute_metrics
 from biondeep_ig.feature_selection import featureselection
 from biondeep_ig.inference import inference
@@ -22,7 +24,8 @@ main.add_command(train_seed_fold)
 main.add_command(tune)
 main.add_command(compute_metrics)
 main.add_command(inference)
-
+main.add_command(push)
+main.add_command(pull)
 
 if __name__ == "__main__":
     main()
