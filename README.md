@@ -1,6 +1,6 @@
 - 👋 Hi, I’m Yessine Khanfir @yessinek97, I am an AI Research Intern At Instadeep Ltd. and Data Science student at Esprit University in Tunisia.
 - 👀 Interested in Artificial Intelligence and web development
-- 🌱 Currently learning advanced deep learning
+- 🌱 Currently working on advanced deep learning projects
 - 💞️ Always looking to collaborate on data science projects
 - 📫 E-mail: mail.yessinekhanfir@gmail.com, Phone: +216 56435313
 
