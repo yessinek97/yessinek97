@@ -68,6 +68,7 @@ nav:
           - Modular training: modular_train.md
       - Output: layout.md
   - Inference: eval.md
+  - ensemble: ensembling.md
   - Ablation study: ablation.md
   - push pull GCP: push_pull.md
   - Contributing: contributing.md
