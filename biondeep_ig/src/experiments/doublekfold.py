@@ -49,11 +49,9 @@ class DoubleKfold(BaseExperiment):
             self.initialize_checkpoint_directory()
             if self.split_column not in self.train_data().columns:
                 raise KeyError(f"{self.split_column} column is missing")
-
-    @property
-    def prediction_columns_name(self):
-        """Return prediction columns name variable."""
-        return [f"prediction_{split}" for split in self.train_data()[self.split_column].unique()]
+            self.prediction_columns_name = [
+                f"prediction_{split}" for split in self.train_data()[self.split_column].unique()
+            ]
 
     @property
     def kfold_prediction_name(self):
@@ -106,6 +104,7 @@ class DoubleKfold(BaseExperiment):
         """Inference method."""
         self.restore()
         prediction_data = data.copy()
+        prediction_columns_name = []
         for sub_model_paths in self.checkpoint_directory.iterdir():
             sub_model_split = sub_model_paths.name.replace("split_", "")
             prediction_data[f"prediction_{sub_model_split}"] = 0
@@ -116,7 +115,10 @@ class DoubleKfold(BaseExperiment):
                 prediction_data[f"prediction_{sub_model_split}"] += model.predict(
                     data, with_label=False
                 )
-        prediction_data[f"prediction_{sub_model_split}"] /= nfold
+            prediction_data[f"prediction_{sub_model_split}"] /= nfold
+            prediction_columns_name.append(f"prediction_{sub_model_split}")
+
+        self.prediction_columns_name = prediction_columns_name
         for operation in self.kfold_operations:
             prediction_data[f"prediction_{operation}"] = getattr(np, operation)(
                 prediction_data[self.prediction_columns_name], axis=1
