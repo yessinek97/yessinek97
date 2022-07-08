@@ -50,11 +50,9 @@ class KfoldExperiment(BaseExperiment):
             self.initialize_checkpoint_directory()
             if self.split_column not in self.train_data().columns:
                 raise KeyError(f"{self.split_column} column is missing")
-
-    @property
-    def prediction_columns_name(self):
-        """Return prediction columns name variable."""
-        return [f"prediction_{split}" for split in self.train_data()[self.split_column].unique()]
+            self.prediction_columns_name = [
+                f"prediction_{split}" for split in self.train_data()[self.split_column].unique()
+            ]
 
     @property
     def kfold_prediction_name(self):
@@ -91,10 +89,14 @@ class KfoldExperiment(BaseExperiment):
         """Inference method."""
         self.restore()
         prediction_data = data.copy()
+        prediction_columns_name = []
         for model_path in self.checkpoint_directory.iterdir():
             split = model_path.name.replace("split_", "")
             model = load_pkl(model_path / "model.pkl")
             prediction_data[f"prediction_{split}"] = model.predict(data, with_label=False)
+            prediction_columns_name.append(f"prediction_{split}")
+
+        self.prediction_columns_name = prediction_columns_name
 
         for operation in self.kfold_operations:
             prediction_data[f"prediction_{operation}"] = getattr(np, operation)(
