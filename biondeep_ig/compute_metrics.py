@@ -50,7 +50,7 @@ def compute_metrics(test_data_paths, folder_name, eval_id_name):  # noqa
     log.info("****************************** Load YAML ****************************** ")
     experiment_names, experiment_params = load_experiments(general_configuration)
     log.info("****************************** Load EXP ****************************** ")
-    model_types, model_params = load_models(general_configuration)
+    model_types, model_params = load_models(general_configuration, experiment_path)
     log.info("****************************** Load Models ****************************** ")
     features_list_paths = copy.deepcopy(general_configuration["feature_paths"])
     log.info("****************************** Load Features lists *****************************")

@@ -21,6 +21,7 @@ from biondeep_ig.src.logger import init_logger
 from biondeep_ig.src.logger import NeptuneLogs
 from biondeep_ig.src.processing_v1 import Dataset
 from biondeep_ig.src.utils import copy_existing_featrues_lists
+from biondeep_ig.src.utils import copy_models_configuration_files
 from biondeep_ig.src.utils import get_best_experiment
 from biondeep_ig.src.utils import import_experiment
 from biondeep_ig.src.utils import load_experiments
@@ -71,7 +72,12 @@ def train(train_data_path, test_data_path, unlabeled_path, configuration_file, f
     log.info("****************************** Load YAML ****************************** ")
     experiment_names, experiment_params = load_experiments(general_configuration)
     log.info("****************************** Load EXP ****************************** ")
-    model_types, model_params = load_models(general_configuration)
+    copy_models_configuration_files(
+        general_configuration=general_configuration, experiment_path=experiment_path
+    )
+    model_types, model_params = load_models(
+        general_configuration=general_configuration, experiment_path=experiment_path
+    )
     log.info("****************************** Load Models ****************************** ")
 
     train_data, test_data = load_datasets(
