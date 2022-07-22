@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ import seaborn as sns
 import shap
 import yaml
 
+from biondeep_ig import EXPERIMENT_MODEL_CONFIGURATION_DIRECTORY
 from biondeep_ig import FEATURES_DIRECTORY
 from biondeep_ig import FEATURES_SELECTION_DIRACTORY
 from biondeep_ig import FS_CONFIGURATION_DIRECTORY
@@ -118,13 +120,29 @@ def load_experiments(config):
     return list(experiments.keys()), list(experiments.values())
 
 
-def load_models(config):
+def copy_models_configuration_files(
+    general_configuration: Dict[str, Any], experiment_path: Path
+) -> None:
+    """Copy model configuration file to  the experiment folder."""
+    models_configuration_directory = experiment_path / EXPERIMENT_MODEL_CONFIGURATION_DIRECTORY
+    models_configuration_directory.mkdir(exist_ok=True, parents=True)
+    for models_configuration_name in general_configuration["models"]:
+        shutil.copyfile(
+            MODEL_CONFIGURATION_DIRECTORY / models_configuration_name,
+            models_configuration_directory / models_configuration_name,
+        )
+
+
+def load_models(
+    general_configuration: Dict[str, Any], experiment_path: Path
+) -> Tuple[List[str], List[Dict[str, Any]]]:
     """Load the available models from the configuration file."""
-    models = config["models"]
+    models_configuration_directory = experiment_path / EXPERIMENT_MODEL_CONFIGURATION_DIRECTORY
+    models = general_configuration["models"]
     model_types = []
     model_config = []
     for config_path in models:
-        model = load_yml(MODEL_CONFIGURATION_DIRECTORY / config_path)
+        model = load_yml(models_configuration_directory / config_path)
         model_types.append(model["model_type"])
         model_config.append(model["model_config"])
     return model_types, model_config
