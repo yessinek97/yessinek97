@@ -45,6 +45,7 @@ setup(
             # push pull GCP command
             "push=biondeep_ig.buckets:push",
             "pull=biondeep_ig.buckets:pull",
+            "compute_comparison_score=biondeep_ig.trainer:compute_comparison_score",
         ]
     },
 )

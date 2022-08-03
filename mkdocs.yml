@@ -62,6 +62,7 @@ nav:
       - Models: models.md
       - Experiments: experiments.md
       - Execution:
+          - Comparison score: comparison_score.md
           - Training: train.md
           - Training with list of seeds and folds: train_seed_fold.md
           - Hyper-parameters tuning: tune.md

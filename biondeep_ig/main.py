@@ -9,6 +9,7 @@ from biondeep_ig.ensemble import ensoneexp
 from biondeep_ig.feature_selection import featureselection
 from biondeep_ig.inference import inference
 from biondeep_ig.modular import modulartrain
+from biondeep_ig.trainer import compute_comparison_score
 from biondeep_ig.trainer import train
 from biondeep_ig.trainer import train_seed_fold
 from biondeep_ig.trainer import tune
@@ -30,6 +31,8 @@ main.add_command(push)
 main.add_command(pull)
 main.add_command(ensemblexprs)
 main.add_command(ensoneexp)
+main.add_command(compute_comparison_score)
+
 
 if __name__ == "__main__":
     main()
