@@ -1,6 +1,7 @@
 """Module used to define the training command."""
 import copy
 import shutil
+from pathlib import Path
 
 import click
 import numpy as np
@@ -19,6 +20,7 @@ from biondeep_ig.src.experiments.tuning import Tuning
 from biondeep_ig.src.logger import get_logger
 from biondeep_ig.src.logger import init_logger
 from biondeep_ig.src.logger import NeptuneLogs
+from biondeep_ig.src.metrics import topk_global
 from biondeep_ig.src.processing_v1 import Dataset
 from biondeep_ig.src.utils import copy_existing_featrues_lists
 from biondeep_ig.src.utils import copy_models_configuration_files
@@ -552,6 +554,53 @@ def load_datasets(train_data_path, test_data_path, general_configuration, experi
         experiment_path=experiment_path,
     ).load_data()
     return train_data, test_data
+
+
+@click.command()
+@click.option(
+    "--data_path",
+    "-d",
+    type=str,
+    required=True,
+    help="Path to the dataset.",
+)
+@click.option(
+    "--label_name",
+    "-l",
+    type=str,
+    required=True,
+    default="cd8_any",
+    help="label name.",
+)
+@click.option(
+    "--column_name",
+    "-c",
+    type=str,
+    required=True,
+    help="label name.",
+)
+def compute_comparison_score(data_path, label_name, column_name):
+    """Compute The comparison scores for given column name."""
+    data_path = Path(data_path)
+    data = pd.read_csv(data_path)
+    log.info(f"Evaluating {column_name} in {data_path.name}")
+    if data[column_name].isna().sum():
+        ratio, topk_ = topk_global(data[label_name], data[column_name])
+        log.info(f"Topk : {ratio:0.3} where {topk_} positive label is captured ")
+
+        log.info(
+            (
+                f"{column_name} contains missing values, {data[column_name].isna().sum()}",
+                "rows will be dropped",
+            )
+        )
+        data = data[~data[column_name].isna()]
+    if len(data):
+        ratio, topk_ = topk_global(data[label_name], data[column_name])
+        log.info("The new Topk")
+        log.info(f"Topk : {ratio:0.3} where {topk_} positive label is captured ")
+    else:
+        log.info(f"data is empty check {column_name} column.")
 
 
 def eval_comparison_score(configuration, train_data, test_data, experiment_path):  # noqa

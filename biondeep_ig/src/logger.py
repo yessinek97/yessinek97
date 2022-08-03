@@ -43,6 +43,7 @@ def get_logger(name):
     stdout_handler.setLevel(logging.INFO)
     stdout_handler.setFormatter(formatter)
     logger.addHandler(stdout_handler)
+    logger.setLevel(logging.INFO)
 
     return logger
 
