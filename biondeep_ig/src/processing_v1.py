@@ -164,6 +164,11 @@ class Dataset:
         """Return nan ratio."""
         return self.processing_configuration.get("nan_ratio", 0.6)
 
+    @property
+    def process_data(self):
+        """Return  process_data flag."""
+        return self.processing_configuration.get("process_data", True)
+
     def load_features_configuration(self):
         """Load features configuration from different sources.
 
@@ -216,11 +221,12 @@ class Dataset:
         log.info(f"load data set from {self.data_path}")
         self.data = read_data(str(self.data_path))
         self.features_lower_case()
-        self.clean_target()
-        self.rename_expression_column()
-        self.check_features_matching()
-        self.replace_missing_values_by_nan()
-        self.check_data_qulaity()
+        if self.process_data:
+            self.clean_target()
+            self.rename_expression_column()
+            self.check_features_matching()
+            self.replace_missing_values_by_nan()
+            self.check_data_qulaity()
 
         if self.is_train:
             log.debug("Train mode featureizer is created")
