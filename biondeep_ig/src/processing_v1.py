@@ -1,5 +1,7 @@
 """Holds functions for data preprocessing."""
+from collections import defaultdict
 from pathlib import Path
+from xml.dom import NotFoundErr
 
 import numpy as np
 from sklearn import preprocessing
@@ -36,6 +38,7 @@ class Dataset:
         self.experiment_proc_data_folder = self.experiment_path / DATAPROC_DIRACTORY
         self.experiment_proc_data_folder.mkdir(exist_ok=True, parents=True)
         self.features_configuration = self.load_features_configuration()
+        self.splits_columns = []
 
     @property
     def processing_configuration(self):
@@ -48,6 +51,16 @@ class Dataset:
         return self.configuration["label"].lower()
 
     @property
+    def expression_name(self):
+        """Return expression column name from the configuration file."""
+        return self.processing_configuration.get("expression_name", None)
+
+    @property
+    def expression_column_name(self):
+        """Return the used expression column name from the configuration file."""
+        return self.processing_configuration.get("expression_column_name", "expression")
+
+    @property
     def excluded_features(self):
         """Return the excluded features list."""
         return [
@@ -57,29 +70,32 @@ class Dataset:
     @property
     def float_features(self):
         """Return float features list."""
-        return [
-            feature.lower()
-            for feature in self.features_configuration.get("float", [])
-            if feature.lower() in self.data.columns
-        ]
+        # return [
+        #     feature.lower()
+        #     for feature in self.features_configuration.get("float", [])
+        #     if feature.lower() in self.data.columns
+        # ]
+        return [feature.lower() for feature in self.features_configuration.get("float", [])]
 
     @property
     def int_features(self):
         """Return int features list."""
-        return [
-            feature.lower()
-            for feature in self.features_configuration.get("int", [])
-            if feature.lower() in self.data.columns
-        ]
+        # return [
+        #     feature.lower()
+        #     for feature in self.features_configuration.get("int", [])
+        #     if feature.lower() in self.data.columns
+        # ]
+        return [feature.lower() for feature in self.features_configuration.get("int", [])]
 
     @property
     def categorical_features(self):
         """Return categorical features list."""
-        return [
-            feature.lower()
-            for feature in self.features_configuration.get("categorical", [])
-            if feature.lower() in self.data.columns
-        ]
+        # return [
+        #     feature.lower()
+        #     for feature in self.features_configuration.get("categorical", [])
+        #     if feature.lower() in self.data.columns
+        # ]
+        return [feature.lower() for feature in self.features_configuration.get("categorical", [])]
 
     @property
     def ids_columns(self):
@@ -97,8 +113,8 @@ class Dataset:
     @property
     def features(self):
         """Return all features."""
-        features = self.float_features + self.int_features + self.categorical_features
-        return [feature for feature in features if feature not in self.excluded_features]
+        all_features = self.float_features + self.int_features + self.categorical_features
+        return [feature for feature in all_features if feature not in self.excluded_features]
 
     @property
     def processed_data_path(self):
@@ -142,6 +158,11 @@ class Dataset:
     def use_validation_strategy(self):
         """Return validation strategy bool varibale."""
         return self.processing_configuration.get("validation_strategy", True)
+
+    @property
+    def nan_ratio(self):
+        """Return nan ratio."""
+        return self.processing_configuration.get("nan_ratio", 0.6)
 
     def load_features_configuration(self):
         """Load features configuration from different sources.
@@ -192,9 +213,15 @@ class Dataset:
 
     def process(self):
         """Load and process data."""
+        log.info(f"load data set from {self.data_path}")
         self.data = read_data(str(self.data_path))
         self.features_lower_case()
-        log.info(f"load data set from {self.data_path}")
+        self.clean_target()
+        self.rename_expression_column()
+        self.check_features_matching()
+        self.replace_missing_values_by_nan()
+        self.check_data_qulaity()
+
         if self.is_train:
             log.debug("Train mode featureizer is created")
             self.featureizer = Featureizer(
@@ -221,9 +248,91 @@ class Dataset:
         """Make data columns in lowercase format."""
         self.data.columns = [col.lower() for col in self.data.columns]
 
+    def check_features_matching(self):
+        """Check if teh data has all the needed features."""
+        features_missing = [
+            feature for feature in self.features if feature not in self.data.columns.tolist()
+        ]
+        if len(features_missing):
+            raise KeyError(f"data is missing the follwoing features: {' '.join(features_missing)}")
+
+    def clean_target(self):
+        """Clean Label columns by Keeping only 0 and 1 values."""
+        self.data = self.data[self.data[self.label].isin([0, 1, "1", "0", "0.0", "1.0"])]
+        self.data[self.label] = self.data[self.label].astype(int)
+
+    def rename_expression_column(self):
+        """Rename real expression column name to expression."""
+        if self.expression_column_name in self.features:
+            if self.expression_name:
+                if self.expression_name in self.data.columns:
+                    self.data.rename(
+                        columns={self.expression_name: self.expression_column_name}, inplace=True
+                    )
+                else:
+                    raise KeyError(
+                        (
+                            f"{self.expression_name}: does not exist in the given data please",
+                            "check the expression name in the configuration file.",
+                        )
+                    )
+            else:
+                raise NotFoundErr(
+                    (
+                        "expression feature is available in the list of ",
+                        "features but it's not defined in the configuration file.",
+                    )
+                )
+
+    def replace_missing_values_by_nan(self):
+        """Replace unknown characters with NaN."""
+        self.data = self.data.replace("\n", "", regex=True)
+        self.data = self.data.replace("\t", "", regex=True)
+        nan_strings = ["NA", "NaN", "NAN", "NE", "n.d.", "nan", "na", "?", ""]
+        for col in self.data.columns:
+            for nanstr in nan_strings:
+                self.data[col] = self.data[col].replace(nanstr, np.nan)
+
+    def check_data_qulaity(self):
+        """Check data qulaity by checking the ratio of the missing values and the duplicated column."""
+        # check nan perctange.
+        log.info("Check Nan ratio")
+        nan_percentage = self.data[self.features].isna().mean()
+        if (nan_percentage > self.nan_ratio).sum():
+            log.warning(
+                (
+                    f" {','.join(nan_percentage[nan_percentage>self.nan_ratio].index)}",
+                    " have more than 60% of nan values.",
+                )
+            )
+        # Check duplicated columns
+        log.info("Check duplicated columns by name")
+        unique_columns = self.data[self.features].columns.value_counts()
+        duplicate_to_drop = unique_columns[unique_columns > 1].index.tolist()
+        if len(duplicate_to_drop):
+            log.warning(f" {','.join(duplicate_to_drop)} are duplicated by name")
+
+        # Check duplicated columns by value
+        log.info("Check duplicated columns by values")
+        all_duplicated_columns = []
+        duplicate_column_names = defaultdict(list)
+        for pos, column in enumerate(self.features):
+            if column not in all_duplicated_columns:
+                column_value = self.data[column]
+                for other_column in self.features[pos + 1 :]:
+                    other_column_value = self.data[other_column]
+                    if column_value.equals(other_column_value):
+                        duplicate_column_names[column].append(other_column)
+                        all_duplicated_columns.append(other_column)
+        if len(all_duplicated_columns) > 0:
+            log.warning("Duplicated columns found:")
+            for key, values in duplicate_column_names.items():
+                log.warning(f"{key} : {','.join(values)}")
+
     def save_processed_data(self):
         """Save processed data."""
-        self.data.to_csv(self.processed_data_path, index=False)
+        columns = self.ids_columns + [self.label] + self.features + self.splits_columns
+        self.data[columns].to_csv(self.processed_data_path, index=False)
         log.info(f"save processed data to {self.processed_data_path}")
 
     def save_featureizer(self):
@@ -234,10 +343,9 @@ class Dataset:
     def validation_splits(self):
         """Apply cross validations strategy  for each specif experiment."""
         experiments = self.configuration.get("experiments")
-        splits_columns = []
         if SINGLE_MODEL_NAME in experiments.keys():
             single_model_split_name = experiments[SINGLE_MODEL_NAME]["validation_column"]
-            splits_columns.append(single_model_split_name)
+            self.splits_columns.append(single_model_split_name)
             if self.use_validation_strategy:
                 self.train_val_split(single_model_split_name)
         if KFOLD_MODEL_NAME in experiments.keys() or DKFOLD_MODEL_NAME in experiments.keys():
@@ -245,16 +353,16 @@ class Dataset:
                 kfold_split_name = experiments[KFOLD_MODEL_NAME]["split_column"]
             except KeyError:
                 kfold_split_name = experiments[DKFOLD_MODEL_NAME]["split_column"]
-            splits_columns.append(kfold_split_name)
+            self.splits_columns.append(kfold_split_name)
             if self.use_validation_strategy:
                 self.kfold_split(kfold_split_name)
         try:
-            self.data[self.ids_columns + splits_columns].to_csv(
+            self.data[self.ids_columns + self.splits_columns].to_csv(
                 self.validation_splits_path, index=False
             )
         except KeyError as err:
             raise KeyError(
-                f" [{', '.join(splits_columns)}]  columns are not defined"
+                f" [{', '.join(self.splits_columns)}]  columns are not defined"
                 + " in the provided train data : Check the name of these columns or"
                 + " set validation strategy to True."
             ) from err
