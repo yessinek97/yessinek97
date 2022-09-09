@@ -20,6 +20,7 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
+  process_data: False
   remove_proc_data: false
   trainable_features: features_float.biondeep_02_06_2022_transformer_public_v2
   # exclude_features:

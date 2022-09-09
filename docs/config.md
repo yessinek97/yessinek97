@@ -16,6 +16,7 @@ feature_paths:# Paths to the text files listing the features to be evaluated.
   # All feature lists in this list will be evaluated per experiment and model.
 
 processing:
+  process_data: #True/False if True allows the framework to process the data if the provided data is not processed if False the framework will not do any processing to the data,Default value is set to True
   remove_proc_data: # If True the `data_proc` directory will be removed from the checkpoint when the train ends
   trainable_features:# Name of the features dictionary file which contains the list of the `float` , `int` ,
     # `categorical` features with the useful `ids` list and `id` column. The file must be saved

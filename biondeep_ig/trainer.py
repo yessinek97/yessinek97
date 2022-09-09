@@ -365,7 +365,12 @@ def tune(train_data_path, test_data_path, unlabeled_path, configuration_file, fo
     log.info("****************************** Load YAML ****************************** ")
     experiment_names, experiment_params = load_experiments(general_configuration)
     log.info("****************************** Load EXP ****************************** ")
-    model_types, model_params = load_models(general_configuration)
+    copy_models_configuration_files(
+        general_configuration=general_configuration, experiment_path=experiment_path
+    )
+    model_types, model_params = load_models(
+        general_configuration=general_configuration, experiment_path=experiment_path
+    )
     log.info("****************************** Load Models ****************************** ")
     results = []
     save_yml(general_configuration, experiment_path / "configuration.yml")
