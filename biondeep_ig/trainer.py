@@ -203,7 +203,12 @@ def train_seed_fold(  # noqa
         label_name=general_configuration["label"],
     )
     experiment_names, experiment_params = load_experiments(general_configuration)
-    model_types, model_params = load_models(general_configuration)
+    copy_models_configuration_files(
+        general_configuration=general_configuration, experiment_path=experiment_path
+    )
+    model_types, model_params = load_models(
+        general_configuration=general_configuration, experiment_path=experiment_path
+    )
     seeds = general_configuration["processing"]["seeds"]
     folds = general_configuration["processing"]["folds"]
     eval_configuration = general_configuration["evaluation"]
