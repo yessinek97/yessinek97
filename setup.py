@@ -42,6 +42,8 @@ setup(
             # inference
             "inference=biondeep_ig.inference:inference",
             "compute-metrics=biondeep_ig.compute_metrics:compute_metrics",
+            "ensemblexprs=biondeep_ig.ensemble:ensemblexprs",
+            "ensoneexp=biondeep_ig.ensemble:ensoneexp",
             # push pull GCP command
             "push=biondeep_ig.buckets:push",
             "pull=biondeep_ig.buckets:pull",

@@ -33,7 +33,7 @@ feature_paths:
   - train_features
 processing:
   remove_proc_data: false
-  trainable_features: "features"
+  trainable_features: "features_float.biondeep_02_06_2022_transformer_public_v2"
   #exclude_features:
   validation_strategy: false
   isunlabelled: false

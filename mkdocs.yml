@@ -52,6 +52,7 @@ plugins:
               - "!^test"
 nav:
   - Home: index.md
+  - Quickstart.md
   - Installation: installation.md
   - Data:
       - Overview: data.md
