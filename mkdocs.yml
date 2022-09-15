@@ -52,8 +52,8 @@ plugins:
               - "!^test"
 nav:
   - Home: index.md
-  - Quickstart.md
   - Installation: installation.md
+  - Quickstart: Quickstart.md
   - Data:
       - Overview: data.md
       - Data IG generation: data_gen.md
