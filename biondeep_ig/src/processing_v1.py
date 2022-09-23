@@ -27,12 +27,21 @@ class Dataset:
     """Class to handle data processing and cleaning."""
 
     # ----------------------------------------------
-    def __init__(self, data_path, configuration, is_train, experiment_path, is_unlabeled=False):
+    def __init__(
+        self,
+        data_path,
+        configuration,
+        is_train,
+        experiment_path,
+        is_unlabeled=False,
+        forced_processing=False,
+    ):
         """Initialize the Dataset class."""
         self.data_path = data_path if isinstance(data_path, Path) else Path(data_path)
         self.is_train = is_train
         self.experiment_path = experiment_path
         self.is_unlabeled = is_unlabeled
+        self.forced_processing = forced_processing
         self.configuration = configuration
 
         self.experiment_proc_data_folder = self.experiment_path / DATAPROC_DIRACTORY
@@ -221,7 +230,7 @@ class Dataset:
         log.info(f"load data set from {self.data_path}")
         self.data = read_data(str(self.data_path))
         self.features_lower_case()
-        if self.process_data:
+        if self.process_data or self.forced_processing:
             self.clean_target()
             self.rename_expression_column()
             self.check_features_matching()

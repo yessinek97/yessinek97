@@ -30,13 +30,15 @@ log = get_logger("Inference")
     help="unique id for the data set",
 )
 @click.option("--folder_name", "-n", type=str, required=True, help="Experiment name.")
-def inference(test_data_path, folder_name, id_name):
+@click.option("--process", "-p", is_flag=True, help="process and clean the provided data set")
+def inference(test_data_path, folder_name, id_name, process):
     """Inferring Method.
 
     Args:
         test_data_path: test path
         folder_name: checkpoint name
         id_name: the unique id for each row in teh data set
+        process: if True process and clean the provided data set
     """
     init_logger(folder_name, "Inference")
 
@@ -63,6 +65,7 @@ def inference(test_data_path, folder_name, id_name):
         configuration=exp_configuration,
         is_train=False,
         experiment_path=best_exp_path.parent,
+        forced_processing=process,
     ).load_data()
     experiment = experiment_class(
         train_data=None,

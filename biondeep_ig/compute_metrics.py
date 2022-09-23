@@ -36,7 +36,8 @@ log = get_logger("Eval")
     help="column name to eval per split.",
 )
 @click.option("--folder_name", "-n", type=str, required=True, help="Experiment name.")
-def compute_metrics(test_data_paths, folder_name, eval_id_name):  # noqa
+@click.option("--process", "-p", is_flag=True, help="process and clean the provided data set")
+def compute_metrics(test_data_paths, folder_name, eval_id_name, process):  # noqa
     """Evaluation  on a seperate datasets."""
     init_logger(folder_name=folder_name, file_name="InfoEval")
     experiment_path = MODELS_DIRECTORY / folder_name
@@ -60,6 +61,7 @@ def compute_metrics(test_data_paths, folder_name, eval_id_name):  # noqa
             configuration=general_configuration,
             is_train=False,
             experiment_path=experiment_path,
+            forced_processing=process,
         ).load_data()
         file_name = Path(test_data_path).stem
         log.info(f"{'#'* 20} \n")
