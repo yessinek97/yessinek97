@@ -17,6 +17,8 @@ Options:
   - d       TEXT    Path to dataset [required]
   - n       TEXT    Path to model folder name [required]
   - id      TEXT    Unique id column [required]
+  - p       FLAG    Process the data or not
+
 
 ```
 

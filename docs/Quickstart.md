@@ -45,8 +45,14 @@ Before running any command, please make sure to change the config files accordin
 - trainable_features: "features_Quickstart"
 - validation_strategy: True
 
-You need to foce the below features for training: force_features: - "tested_score_biondeep_mhci" -
-"expression" - "tested_presentation_biondeep_mhci"
+You need to force the below features for training:
+
+```bash
+force_features:
+- "tested_score_biondeep_mhci"
+- "expression"
+- "tested_presentation_biondeep_mhci"
+```
 
 # Training
 
@@ -134,6 +140,7 @@ Options:
   - d       TEXT    Path to dataset [required]
   - n       TEXT    Path to model folder name [required]
   - id      TEXT    Unique id column [required]
+  - p       FLAG    Process the data or not [optional]
 
 ```
 
@@ -151,6 +158,8 @@ compute-metrics -n Quickstart_training -d  Quickstart/test.csv
 Options:
   - d       TEXT    Path to dataset [required]
   - n       TEXT    Path to model folder name [required]
+  - p       FLAG    Process the data or not [optional]
+
 ```
 
 # Ensembling
