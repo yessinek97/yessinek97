@@ -59,7 +59,7 @@ force_features:
 For training all you have to do it run the command below to test how the training is done:
 
 ```bash
- train -train Quickstart/train.csv  -test Quickstart/test.csv  -c  train_with_fs.yml -n  Quickstart_training
+ train -train Quickstart/train.csv  -test Quickstart/test.csv  -c  train_Quickstart.yml -n  Quickstart_training
 ```
 
 ```bash

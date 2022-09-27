@@ -32,7 +32,7 @@ feature_paths:
   - train_features
 processing:
   remove_proc_data: false
-  trainable_features: "features_float.biondeep_02_06_2022_transformer_public_v2"
+  trainable_features: "features_Quickstart"
   #exclude_features:
   validation_strategy: True
   isunlabelled: false
@@ -74,7 +74,6 @@ FS:
   force_features:
     - "tested_score_biondeep_mhci"
     - "expression"
-    - "presentation_score"
   FS_methods:
     - Fspca.yml
     - Fsxgboost.yml
