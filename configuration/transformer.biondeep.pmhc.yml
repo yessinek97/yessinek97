@@ -22,9 +22,9 @@ label: cd8_any
 processing:
   process_data: False
   remove_proc_data: false
-  trainable_features: features_IG_19_08_2022_transformer_bnt_biondeep
+  trainable_features: features_IG_19_08_2022_transformer_biondeep_pmhc
   # exclude_features:
-  validation_strategy: true
+  validation_strategy: false
   isunlabelled: false
   #normalizer:
   fill_nan_method: keep
@@ -34,7 +34,6 @@ processing:
   nan_ratio: 0.6
   expression_name: geneexpression_final
   expression_column_name: expression
-
 models:
   - xgboost_config.yml
 
@@ -54,7 +53,7 @@ evaluation:
   metric_selector: topk
   metrics_selector_higher: True
   data_name_selector: test # test , validation
-  prediction_name_selector: "prediction_mean"
+  #prediction_name_selector: "prediction_mean"
   monitoring_metrics:
     - roc
     - topk
@@ -64,7 +63,6 @@ FS:
   n_feat: 20
   force_features:
     - "tested_score_biondeep_mhci"
-    - "expression"
     - "tested_presentation_biondeep_mhci"
   FS_methods:
     - Fspca.yml

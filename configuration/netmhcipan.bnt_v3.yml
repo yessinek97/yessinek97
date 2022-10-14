@@ -1,0 +1,106 @@
+neptune_logs: False
+experiments:
+  KfoldExperiment:
+    split_column: fold
+    plot_shap_values: True
+    plot_kfold_shap_values: True # False when using Logistic regression
+    operation:
+      - mean
+      - max
+      - min
+      - median
+    statics:
+      - mean
+      - max
+      - min
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: True
+label: cd8_any
+# feature_paths:
+#   - transformer
+processing:
+  process_data: false
+  nan_ratio: 0.6
+  expression_name: expression_for_model
+  expression_column_name: expression
+  remove_proc_data: false
+  trainable_features: features_IG_19_08_2022_Netmhcipan_V3_bnt
+  exclude_features:
+    - alleles_pred_netmhcpan_mhci
+    - tested_allele_netmhcpan4.1
+    - tested_length_netmhcpan4.1
+    - tested_peptide_netmhcpan4.1
+    - tested_icore_netmhcpan4.1
+    - tested_score_netmhcpan4.1
+    - tested_best_rank_netmhcpan4.1
+    - nontested_allele_netmhcpan4.1
+    - nontested_length_netmhcpan4.1
+    - nontested_peptide_netmhcpan4.1
+    - nontested_icore_netmhcpan4.1
+    - nontested_score_netmhcpan4.1
+    - nontested_best_rank_netmhcpan4.1
+    - supertype_allele_netmhcpan4.1
+    - alleles_pred_netmhcpan_mhcii
+    - tested_allele_flanks_netmhciipan4.0
+    - tested_length_flanks_netmhciipan4.0
+    - tested_core_peptide_flanks_netmhciipan4.0
+    - tested_peptide_flanks_netmhciipan4.0
+    - tested_score_flanks_netmhciipan4.0
+    - tested_best_rank_flanks_netmhciipan4.0
+    - nontested_allele_flanks_netmhciipan4.0
+    - nontested_length_flanks_netmhciipan4.0
+    - nontested_core_peptide_flanks_netmhciipan4.0
+    - nontested_peptide_flanks_netmhciipan4.0
+    - nontested_score_flanks_netmhciipan4.0
+    - nontested_best_rank_flanks_netmhciipan4.0
+    - supertype_allele_flanks_netmhciipan4.0
+  validation_strategy: false
+  isunlabelled: false
+  #normalizer:
+  fill_nan_method: keep
+  seed: 1994
+  validation_ratio: 0.1
+  fold: 5
+models:
+  - xgboost_config.yml
+
+evaluation:
+  print_evals: True
+  comparison_score: tested_score_netmhcpan4.1
+  eval_id_name: patientid
+  observations_number: 20
+  threshold: 0.3
+  metrics:
+    - topk
+    - roc
+    - logloss
+    - precision
+    - recall
+    - f1
+  metric_selector: topk
+  metrics_selector_higher: True
+  data_name_selector: test # test , validation
+  prediction_name_selector: "prediction_mean"
+  monitoring_metrics:
+    - roc
+    - topk
+    - topk_20_patientid
+    - topk_patientid
+FS:
+  n_feat: 20
+  force_features:
+  FS_methods:
+    - Fspca.yml
+    - Fsxgboost.yml
+    - Fsxgboostshap.yml
+    - Fsrfgini.yml
+    - Fscossim.yml
+    - Fscorr.yml
+    - Fssfmlr.yml
+    - Fsrfelr.yml
+    - Fssfmxgboost.yml
+    - Fsrfexgboost.yml
+    - Fsrelief.yml
+    - Fsmi.yml
+    - Fsboruta.yml

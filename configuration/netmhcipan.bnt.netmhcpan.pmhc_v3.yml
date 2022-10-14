@@ -20,27 +20,38 @@ label: cd8_any
 # feature_paths:
 #   - transformer
 processing:
-  process_data: False
+  process_data: false
+  nan_ratio: 0.6
+  expression_name: expression_for_model
+  expression_column_name: expression
   remove_proc_data: false
-  trainable_features: features_IG_19_08_2022_transformer_bnt_biondeep
-  # exclude_features:
-  validation_strategy: true
+  trainable_features: features_IG_19_08_2022_Netmhcipan_V3_bnt_netmhcpan_pmhc
+  exclude_features:
+    - tested_length_flanks_netmhciipan4.0
+    - tested_core_peptide_flanks_netmhciipan4.0
+    - tested_peptide_flanks_netmhciipan4.0
+    - tested_score_flanks_netmhciipan4.0
+    - tested_best_rank_flanks_netmhciipan4.0
+    - nontested_allele_flanks_netmhciipan4.0
+    - nontested_length_flanks_netmhciipan4.0
+    - nontested_core_peptide_flanks_netmhciipan4.0
+    - nontested_peptide_flanks_netmhciipan4.0
+    - nontested_score_flanks_netmhciipan4.0
+    - nontested_best_rank_flanks_netmhciipan4.0
+    - supertype_allele_flanks_netmhciipan4.0
+  validation_strategy: false
   isunlabelled: false
   #normalizer:
   fill_nan_method: keep
   seed: 1994
   validation_ratio: 0.1
   fold: 5
-  nan_ratio: 0.6
-  expression_name: geneexpression_final
-  expression_column_name: expression
-
 models:
   - xgboost_config.yml
 
 evaluation:
   print_evals: True
-  comparison_score: tested_score_biondeep_mhci
+  comparison_score: tested_score_netmhcpan4.1
   # eval_id_name: patientid
   observations_number: 20
   threshold: 0.3
@@ -63,9 +74,9 @@ evaluation:
 FS:
   n_feat: 20
   force_features:
-    - "tested_score_biondeep_mhci"
-    - "expression"
-    - "tested_presentation_biondeep_mhci"
+    - tested_score_netmhcpan4.1
+    - expression
+
   FS_methods:
     - Fspca.yml
     - Fsxgboost.yml

@@ -2,7 +2,7 @@ FS_type: Fsrfgini
 FS_config:
   max_depth: 7
   learning_rate: 0.03
-  nthread: 4
+  nthread: 24
   rand_seed: 1994
   n_estimators: 100
   max_features: 30
