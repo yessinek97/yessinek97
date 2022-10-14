@@ -22,9 +22,34 @@ label: cd8_any
 processing:
   process_data: False
   remove_proc_data: false
-  trainable_features: features_IG_19_08_2022_transformer_bnt_biondeep
-  # exclude_features:
-  validation_strategy: true
+  trainable_features: "features_IG_19_08_2022_transformer_bnt"
+  exclude_features:
+    - tested_peptide_biondeep_mhci
+    - tested_allele_biondeep_mhci
+    - tested_score_biondeep_mhci
+    - tested_best_rank_biondeep_mhci
+    - tested_length_biondeep_mhci
+    - supertype_allele_biondeep_mhci
+    - nontested_peptide_biondeep_mhci
+    - nontested_allele_biondeep_mhci
+    - nontested_score_biondeep_mhci
+    - nontested_best_rank_biondeep_mhci
+    - alleles_pred_biondeep_mhci
+    - nontested_length_biondeep_mhci
+    - tested_peptide_biondeep_flanks_mhcii
+    - tested_allele_biondeep_flanks_mhcii
+    - tested_score_biondeep_flanks_mhcii
+    - tested_best_rank_biondeep_flanks_mhcii
+    - tested_length_biondeep_flanks_mhcii
+    - supertype_allele_biondeep_flanks_mhcii
+    - nontested_peptide_biondeep_flanks_mhcii
+    - nontested_allele_biondeep_flanks_mhcii
+    - nontested_score_biondeep_flanks_mhcii
+    - nontested_best_rank_biondeep_flanks_mhcii
+    - alleles_pred_biondeep_mhcii
+    - nontested_length_biondeep_flanks_mhcii
+    - tested_presentation_biondeep_mhci
+  validation_strategy: false
   isunlabelled: false
   #normalizer:
   fill_nan_method: keep
@@ -34,14 +59,13 @@ processing:
   nan_ratio: 0.6
   expression_name: geneexpression_final
   expression_column_name: expression
-
 models:
   - xgboost_config.yml
 
 evaluation:
   print_evals: True
-  comparison_score: tested_score_biondeep_mhci
-  # eval_id_name: patientid
+  comparison_score: tested_presentation_biondeep_mhci
+  eval_id_name: patientid
   observations_number: 20
   threshold: 0.3
   metrics:
@@ -58,14 +82,14 @@ evaluation:
   monitoring_metrics:
     - roc
     - topk
-    # - topk_20_patientid
-    # - topk_patientid
+    - topk_20_patientid
+    - topk_patientid
 FS:
   n_feat: 20
   force_features:
-    - "tested_score_biondeep_mhci"
-    - "expression"
-    - "tested_presentation_biondeep_mhci"
+    #  - "tested_score_biondeep_mhci"
+    #  - "expression"
+    #  - "tested_presentation_biondeep_mhci"
   FS_methods:
     - Fspca.yml
     - Fsxgboost.yml

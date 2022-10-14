@@ -1,0 +1,22 @@
+model_type: XgboostModel
+model_config:
+  general_params:
+    early_stopping_rounds: 20
+    num_boost_round: 10000000
+    verbose_eval: true
+  model_params:
+    alpha: 0.27
+    booster: gbtree
+    colsample_bytree: 0.9
+    eta: 0.029
+    eval_metric: logloss
+    gamma: 0.0
+    lambda: 0.47000000000000003
+    max_delta_step: 0
+    max_depth: 3
+    min_child_weight: 4
+    nthread: 32
+    objective: binary:logistic
+    seed: 2020
+    subsample: 1
+    tree_method: auto
