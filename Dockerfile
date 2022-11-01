@@ -1,6 +1,6 @@
 # To replace with the following image once it is available on the registry
 # FROM registry.gitlab.com/instadeep/biondeep-ig/py-pyrosetta-rosetta-tmlgn:38-443f-313
-FROM registry.gitlab.com/instadeep/bio-gnn/py-pyrosetta-rosetta-tmlgn:38-443f-313 AS ci
+FROM registry.gitlab.com/instadeep/biondeep-ig/py-pyrosetta-rosetta-tmlgn:38-443f-313 AS ci
 
 # Set different env variables linked to TF
 # Do not take all the GPUs memory by default
