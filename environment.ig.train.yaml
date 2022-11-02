@@ -1,4 +1,4 @@
-name: biondeep_ig_train
+name: biondeep
 channels:
   - conda-forge
   - defaults
@@ -6,4 +6,4 @@ dependencies:
   - python=3.8.11
   - pip
   - pip:
-      - -r file:requirements.txt
+      - -r requirements.txt
