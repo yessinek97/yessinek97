@@ -3,7 +3,7 @@
 
 # Python requirements installed in the docker
 !requirements.txt
-
+!requirements-docs.txt
 # Allow to use the repository as a package
 !setup.py
 !biondeep_ig

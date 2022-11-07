@@ -24,11 +24,12 @@ DOCKER_IMAGE_NAME = registry.gitlab.com/instadeep/biondeep-ig
 DOCKER_IMAGE_TAG = $(VERSION)
 DOCKER_IMAGE = $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
 DOCKER_IMAGE_CI = $(DOCKER_IMAGE_NAME):$(CI_COMMIT_SHORT_SHA)
-
+DOCKER_IMAGE_DOCS = ig_docs
 DOCKER_RUN_FLAGS = --rm --volume $(PWD):$(DOCKER_HOME_DIRECTORY)
 
 DOCKERFILE = Dockerfile
-
+HOST_MKDOCS_PORT=6030
+DOCKER_MKDOCS_PORT=8000
 # Build commands
 
 .PHONY: build build-arm build-ci
@@ -73,14 +74,21 @@ bash: build
 docs: build
 	docker run $(DOCKER_RUN_FLAGS) -p 8080:8080 $(DOCKER_IMAGE) mkdocs serve
 
+## Docs Docker
+build-docs-dev:
+	docker build -t $(DOCKER_IMAGE_DOCS) --build-arg HOME_DIRECTORY=$(DOCKER_HOME_DIRECTORY) -f Dockerfile.docs .
+
+docs-serve-dev: build-docs-dev
+	docker run -it $(DOCKER_RUN_FLAGS) -p $(HOST_MKDOCS_PORT):$(DOCKER_MKDOCS_PORT) $(DOCKER_IMAGE_DOCS) mkdocs serve -a 0.0.0.0:$(DOCKER_MKDOCS_PORT)
+
 #IG Docker
 IG_IMAGE_NAME=ig_train
 IG_CONTAINER_NAME=ig_container
 ig_build:
-	docker build -t $(IG_IMAGE_NAME) --build-arg gid=$$(id -g)  --build-arg uid=$$(id -u)  -f Dockerfile.ig .
+	docker build -t $(IG_IMAGE_NAME) --build-arg gid=$$(id -g)  --build-arg uid=$$(id -u) --build-arg HOME_DIRECTORY=$(DOCKER_HOME_DIRECTORY) -f Dockerfile.ig .
 
 ig_run:
-	docker run -it -d -e MACHINE_ID=`hostname`   --name $(IG_CONTAINER_NAME)  -v ${PWD}:/home/appuser/biondeep_ig  $(IG_IMAGE_NAME):latest
+	docker run -it -d -e MACHINE_ID=`hostname`   --name $(IG_CONTAINER_NAME)  -v ${PWD}:$(DOCKER_HOME_DIRECTORY)  $(IG_IMAGE_NAME):latest
 ig_bash:
 	docker start  $(IG_CONTAINER_NAME)
 	docker exec -it $(IG_CONTAINER_NAME) sh -c "pip install --user -e . && /bin/bash"
