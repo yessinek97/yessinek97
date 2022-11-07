@@ -10,6 +10,16 @@ Please clone the repository via SSH or HTTPs.
 2. For Linux, please execute the
    [post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/).
 
+### Mkdocs container
+
+You can use Docker to open the Mkdocs server in the localhost machine to browser the documentation
+pages locally.
+
+```bash
+# Build and run Mkdocs server
+make docs-serve-dev
+```
+
 ### IG Docker container
 
 You can use Docker for training the models or inference on a separate dataset. There are three
