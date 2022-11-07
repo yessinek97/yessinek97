@@ -1,8 +1,0 @@
-binding_energy_column: "dg_separated" # Column name corresponding to the binding energy score.
-right_on: # List of columns name from the tcr-pMHC data on which the merge is performed.
-  - "peptide"
-  - "allele"
-left_on: # List of columns name the target dataset on which the merge is performed.
-  - "tested_peptide_biondeep_mhci"
-  - "tested_allele_biondeep_mhci"
-select_on: 0.25 # Statistics applied to binding energy use to select and aggregate features.
