@@ -1,6 +1,6 @@
 # To replace with the following image once it is available on the registry
 # FROM registry.gitlab.com/instadeep/biondeep-ig/py-pyrosetta-rosetta-tmlgn:38-443f-313
-FROM registry.gitlab.com/instadeep/biondeep-ig/py-pyrosetta-rosetta-tmlgn:38-443f-313 AS ci
+FROM python:3.8-slim-buster AS ci
 
 # Set different env variables linked to TF
 # Do not take all the GPUs memory by default
@@ -13,7 +13,7 @@ ENV TF_CPP_MIN_LOG_LEVEL=3
 # Update and upgrade your base image
 RUN apt-get update && \
         apt-get upgrade -y
-
+RUN apt-get  install sudo libgomp1 -y
 # Install required system dependencies and clear cache
 RUN DEBIAN_FRONTEND=noninteractive apt-get install git parallel -y && \
         apt-get clean
