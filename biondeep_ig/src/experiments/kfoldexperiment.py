@@ -161,34 +161,39 @@ class KfoldExperiment(BaseExperiment):
         self, comparison_score_metrics, predictions_metrics: pd.DataFrame
     ):
         """Process metrics data and plot scores of the comparison score and the predications."""
+        kfold_columns = self.prediction_columns_name + [self.evaluator.prediction_name_selector]
         comparison_score = comparison_score_metrics[
             comparison_score_metrics.experiments == KFOLD_MODEL_NAME
         ]
         comparison_score_test = comparison_score_metrics[
             comparison_score_metrics.experiments == "test"
         ]
+        comparison_score = comparison_score[
+            comparison_score.prediction.isin(self.prediction_columns_name)
+        ]
         comparison_score_test.iloc[
             :, comparison_score_test.columns.get_loc("experiments")
         ] = KFOLD_MODEL_NAME
         comparison_score_test = pd.concat(
-            [comparison_score_test for i in range(len(comparison_score) // 2)]
+            [comparison_score_test for i in range(len(self.prediction_columns_name) + 1)]
         )
-        comparison_score_test["prediction"] = [
-            f"prediction_{i}" for i in range(len(comparison_score) // 2)
-        ]
+        comparison_score_test["prediction"] = kfold_columns
         comparison_score = pd.concat([comparison_score, comparison_score_test])
-
         predictions_metrics["experiments"] = KFOLD_MODEL_NAME
         predictions_metrics["type"] = "IG_model"
         predictions_metrics = predictions_metrics[comparison_score.columns]
+
         predictions_metrics = predictions_metrics[
-            predictions_metrics.prediction.isin(comparison_score.prediction)
+            predictions_metrics.prediction.isin(kfold_columns)
+        ]
+        predictions_metrics.to_csv("./predictions_metrics.csv", index=False)
+        predictions_metrics = predictions_metrics[
+            np.logical_not(
+                (predictions_metrics.prediction == self.evaluator.prediction_name_selector)
+                & (predictions_metrics.split == "validation")
+            )
         ]
         scores = pd.concat([predictions_metrics, comparison_score])
-        mean_scores = scores.groupby(["split", "type"]).mean().reset_index()
-        mean_scores["prediction"] = "prediction_mean"
-        mean_scores["experiments"] = "KfoldExperiment"
-        scores = pd.concat([scores, mean_scores])
         self.plotting_summary_scores(scores)
 
     def _parse_metrics_to_data_frame(self, eval_metrics: Evals, file_name: str = "results"):
