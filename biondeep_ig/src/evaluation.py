@@ -46,6 +46,9 @@ class Evaluation:
         self.metrics = self.get_metrics_from_string()
         self.evals: Evals = defaultdict(lambda: defaultdict(dict))
         self.is_compute_metrics = is_compute_metrics
+        self.prediction_name_selector = self.eval_configuration.get(
+            "prediction_name_selector", None
+        )
 
     @property
     def eval_id_name(self) -> str:
@@ -86,11 +89,6 @@ class Evaluation:
     def data_name_selector(self) -> str:
         """Get the data_name_selector variable."""
         return self.eval_configuration.get("data_name_selector", "test")
-
-    @property
-    def prediction_name_selector(self) -> str:
-        """Get the prediction_name_selector variable."""
-        return self.eval_configuration.get("prediction_name_selector", None)
 
     def get_metrics_from_string(self) -> Dict[str, Any]:
         """Import metrics from string name."""
@@ -212,6 +210,7 @@ class Evaluation:
             best_prediction_name = self.prediction_name_selector
         else:
             best_prediction_name = metrics.iloc[-1]["prediction"]
+            self.prediction_name_selector = best_prediction_name
         best_validation_scores = results[
             (results["prediction"] == best_prediction_name) & (results["split"] == "validation")
         ]
