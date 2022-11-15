@@ -75,11 +75,11 @@ def feature_selection_main(train_data, configuration_file, folder_name, with_tra
     log.info(f"{len(train_data.features)} features will be used  in feature selection  ")
     fs_configuration = general_configuration["FS"]
     fs_methods = {}
-    for fs_type, fs_param in zip(fs_type, fs_params):
-        log.info(f"{fs_type} :")
+    for fs_types, fs_param in zip(fs_type, fs_params):
+        log.info(f"{fs_types} :")
         configuration = copy.deepcopy(general_configuration)
         _fs_func(
-            fs_type=fs_type,
+            fs_type=fs_types,
             fs_param=fs_param,
             train_data=train_data,
             configuration=configuration,
@@ -87,8 +87,8 @@ def feature_selection_main(train_data, configuration_file, folder_name, with_tra
             with_train=with_train,
             features_selection_path=features_selection_path,
         )
-        features_name.append(fs_type)
-        fs_methods[fs_type] = fs_param
+        features_name.append(fs_types)
+        fs_methods[fs_types] = fs_param
     fs_configuration["FS_methods"] = fs_methods
     save_yml(fs_configuration, MODELS_DIRECTORY / folder_name / "FS_configuration.yml")
     return features_name

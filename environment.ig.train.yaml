@@ -1,4 +1,4 @@
-name: biondeep
+name: biondeep_ig
 channels:
   - conda-forge
   - defaults
