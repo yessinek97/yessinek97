@@ -53,7 +53,7 @@ Install `anaconda` if it is not already available on your system. Please follow 
 
 ```
 # Create a conda env
-conda env create -f environment.ig.train.yaml && conda activate biondeep_ig_train
+conda env create -f environment.ig.train.yaml && conda activate biondeep_ig
 ```
 
 For local code development, **please make sure you install the pre-commit before committing any
