@@ -16,12 +16,21 @@ pip3 install -U "anc2vec @ git+https://github.com/aedera/anc2vec.git"
 
 ## Gene ontology generation
 
-If you want to include the go features in a specific dataset:
+If you want to generate and reduce the Go features embeddings then later include the reduced
+embeddings, alongside the Go term CC RNA representations and finally merge them with specific
+dataset use this command:
 
 ```bash
-python biondeep_ig/generate_go_anc2vec.py -data path_to_data -go 'go_term_mf go_term_bp go_term_cc' -o data/new_data_with_go_feat.csv
+python biondeep_ig/gene_ontology_pipeline.py -data path_to_data -go 'go_term_mf go_term_bp go_term_cc'  -c 3 -t pca -o data/final_data_with_go_feat_and_go_cc_rna_rep.csv
 
-Examle:
-python biondeep_ig/generate_go_anc2vec.py -data 'data/BioNDeep_transformer_publicMUT_20220601_BioNDeep_transformer_v2_struc.tsv' -go 'go_term_mf go_term_bp go_term_cc' -o data/new_data_with_go_feat.csv
+where:
+    -data: The input dataset path.
+    -go: String separated go terms.
+    -c: The number of components for Dimensionality Reduction.
+    -t: The Dimensionality Reduction technique (pca,lsa,tsne).
+    -o: The output path to save the dataset.
+
+Example:
+python biondeep_ig/gene_ontology_pipeline.py -data 'data/BioNDeep_transformer_publicMUT_20220601_BioNDeep_transformer_v2_struc.tsv' -go 'go_term_mf go_term_bp go_term_cc' -c 3 -t pca -o data/new_data_with_go_feat.csv
 
 ```
