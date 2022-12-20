@@ -297,7 +297,8 @@ def apply_generation(data: pd.DataFrame, rna_indicator: str, go_term: str) -> pd
     "--save_embeddings",
     "-s",
     type=str,
-    required=True,
+    default=True,
+    required=False,
     help="Save the generated Gene Ontology embedding vectors (200 elements)",
 )
 def main(
