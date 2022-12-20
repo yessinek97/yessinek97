@@ -1,9 +1,9 @@
-"""This module contains the pipeline that generates, reduces
-and merges the Gene Ontology embeddings and Go term CC RNA representations to
-the original dataset."""
+"""This module contains the implementation of the Gene Ontology pipeline."""
 import logging
 import os
+from ast import literal_eval
 from pathlib import Path
+from typing import Any
 from typing import Dict
 from typing import List
 
@@ -23,14 +23,15 @@ logger.setLevel(logging.DEBUG)
 
 
 def read_data(file_path: str) -> pd.DataFrame:
-    """Read input data file.
+    """This function is used to read the input dataset.
 
     Args:
-        file_path: Path of the input file.
+        file_path: Path of the input dataset.
 
     Returns:
-        df: Input dataframe."""
-    logging.info(f"Reading {file_path}")
+        df: The input dataframe.
+    """
+    logging.info(f"Loading {file_path}")
     extension = Path(file_path).suffix
     if extension == ".csv":
         df = pd.read_csv(file_path)
@@ -99,69 +100,103 @@ def generate_embeddings(data: pd.DataFrame, go_feature: str, embed_feature: str)
     return data
 
 
+def process_vectors(data: pd.DataFrame, embedding_feature: str) -> np.ndarray:
+    """This function is used to clean the embedded feature vectors.
+
+    Args:
+        data: The embeddings data.
+        embedding_feature: The Gene Ontology embedding to clean.
+
+    Returns:
+        vectors: The clean embeddings vectors.
+    """
+    try:
+
+        vectors = data[embedding_feature]
+
+        vectors = vectors.str.strip("[]").replace("\n", "").str.split()
+        vectors = vectors.apply(lambda x: np.array([literal_eval(i) for i in x]))
+        vectors = np.stack(vectors, axis=0)
+    except TypeError:
+        pass
+
+    return vectors
+
+
+def get_dimensionality_reduction(technique: str, n_components: int) -> Any:
+    """This helper function prepares the specified dimensionality technique object with an input arguments.
+
+    Args:
+        technique: Dimensionality reduction technique ('pca','lsa','tsne').
+        n_components: Number of components for the output reduced vector.
+
+    Returns:
+        dim_reduction_object: The dimensionality reduction object.
+    """
+    dim_reduction = {
+        "pca": decomposition.PCA(n_components=n_components),
+        "lsa": TruncatedSVD(n_components=n_components, n_iter=7, random_state=42),
+        "tsne": TSNE(
+            n_components=n_components,
+            learning_rate="auto",
+            init="random",
+            perplexity=3,
+            random_state=42,
+        ),
+    }
+    dim_reduction_object = dim_reduction[technique]
+
+    return dim_reduction_object
+
+
 def reduce_vectors(
     embeddings_df: pd.DataFrame,
     embedding_features: List[str],
+    embeddings_path: str,
     n_components: int = 3,
     technique: str = "pca",
-):
-    """This function allows applying the dimensionality reduction of a feature
-    vector using a specific technique.
+) -> pd.DataFrame:
+    """This function allows applying the dimensionality reduction of a feature vector using a specific technique.
 
     Args:
         embeddings_df: The go term embeddings dataframe.
         embedding_features: The embedded go feature names.
         n_components: Number of components for the output reduced vector.
         technique: Dimensionality reduction technique ('pca','lsa','tsne').
+        embeddings_path: Path of ready-to-use generated Go embeddings.
 
     Returns:
         embeddings_df: The final dataset the reduced embeddings.
     """
-
     try:
-        logging.info(
-            f"Reducing the go term embeddings to {n_components} elements using {technique}"
-        )
+
+        if technique not in ["pca", "lsa", "tsne"]:
+            logging.error(f"The specified {technique} is not allowed")
+        else:
+            logging.info(
+                f"Reducing the go term embeddings to {n_components} elements using {technique}"
+            )
 
         for embedded_feature in embedding_features:
 
-            embeddings = embeddings_df[embedded_feature].values
-            embeddings = np.stack(embeddings, axis=0)
+            if os.path.exists(embeddings_path):
+                logging.info(f"Processing the ready-to-use GO embeddings for {embedded_feature}")
+                embeddings = process_vectors(embeddings_df, embedded_feature)
+            else:
+                embeddings = embeddings_df[embedded_feature].values
+                embeddings = np.stack(embeddings, axis=0)
+
             # Standardize the go term embeddings
             embeddings_sc = StandardScaler().fit_transform(embeddings)
 
-            if technique == "pca":
-
-                pca = decomposition.PCA(n_components=n_components)
-
-                pca_data = pca.fit_transform(embeddings_sc)
-
-                # Create the reduced vectors
-                for i in range(n_components):
-                    embeddings_df[embedded_feature + f"_{i}"] = pca_data[:, i]
-            elif technique == "lsa":
+            if technique == "lsa":
                 embeddings_sc = csr_matrix(embeddings_sc)
-                svd = TruncatedSVD(n_components=n_components, n_iter=7, random_state=42)
-                svd_data = svd.fit_transform(embeddings_sc)
-                # Create the reduced vectors
 
-                for i in range(n_components):
-
-                    embeddings_df[embedded_feature + f"_{i}"] = svd_data[:, i]
-
-            elif technique == "tsne":
-
-                tsne = TSNE(
-                    n_components=n_components, learning_rate="auto", init="random", perplexity=3
-                )
-                tsne_data = tsne.fit_transform(embeddings_sc)
-                # Create the reduced vectors
-
-                for i in range(n_components):
-
-                    embeddings_df[embedded_feature + f"_{i}"] = tsne_data[:, i]
-            else:
-                logging.error(f"The specified {technique} is not allowed")
+            dim_reduction = get_dimensionality_reduction(technique, n_components)
+            reduced_data = dim_reduction.fit_transform(embeddings_sc)
+            # Create the reduced vectors
+            for i in range(n_components):
+                embeddings_df[embedded_feature + f"_{i}"] = reduced_data[:, i]
 
             logging.info(f"The {embedded_feature} vector has been reduced successfully!")
 
@@ -171,25 +206,47 @@ def reduce_vectors(
     return embeddings_df
 
 
-def generate_rna_representation(sequence: str, indicator: str):
-    """This function finds the rna localization element within
-        a go term sequence.
+def generate_rna_representation(sequence: str, indicator: str) -> int:
+    """This function finds the rna localization element within a go term sequence.
 
     Args:
         sequence: The sequence including Go terms.
-        indicator: a string indicator to map Go term CC RNA localization."""
+        indicator: a string indicator to map Go term CC RNA localization.
+
+    Returns:
+        representation: The Go term CC RNA representations.
+    """
     try:
 
         sequence_list = sequence.split(";")
+        representation = 0
         if indicator in sequence_list:
 
             representation = 1
         else:
             representation = 0
-        return representation
 
     except AttributeError:
-        pass
+        representation = np.nan
+
+    return representation
+
+
+def apply_generation(data: pd.DataFrame, rna_indicator: str, go_term: str) -> pd.DataFrame:
+    """This helper function applies the generation of Go term CC RNA representations to all the sequences.
+
+    Args:
+        data: The input data.
+        rna_indicator: The rna indicator to index with.
+        go_term: The specified Go term CC to map.
+
+    Returns:
+        data: The output dataset.
+    """
+    data[f"{rna_indicator}"] = data["go_term_cc"].apply(
+        lambda sequence: generate_rna_representation(sequence, go_term)
+    )
+    return data
 
 
 @click.command()
@@ -215,6 +272,14 @@ def generate_rna_representation(sequence: str, indicator: str):
     help="Output Path to save the new dataset",
 )
 @click.option(
+    "--embeddings_path",
+    "-e",
+    type=str,
+    default="",
+    required=False,
+    help="Input path of existing Gene Ontology embeddings",
+)
+@click.option(
     "--n_components",
     "-c",
     type=int,
@@ -228,30 +293,61 @@ def generate_rna_representation(sequence: str, indicator: str):
     required=True,
     help="The dimensionality reduction technique (pca,lsa,tsne)",
 )
-def main(data_path, go_terms, output_path, n_components=3, technique="pca"):
+@click.option(
+    "--save_embeddings",
+    "-s",
+    type=str,
+    required=True,
+    help="Save the generated Gene Ontology embedding vectors (200 elements)",
+)
+def main(
+    data_path: str,
+    go_terms: str,
+    output_path: str,
+    embeddings_path: str,
+    n_components: int = 3,
+    technique: str = "pca",
+    save_embeddings=False,
+) -> None:
     """Run the script to generate the go embedding vectors.
 
     The Gene Ontology terms include cell compound (CC), molecular function(MF)
     and biological process(BP).
 
     data_path: path to the dataset containing the go features.
-    go_terms: a list including the go terms included in the dataset.
+    go_terms: a string including the go terms used in the dataset.
     output_path: path to save the dataset with the go features embeddings.
     n_components: number of the components for dimensionality reduction.
     technique: dimensionality reduction technique.
+    embeddings_path: Path of ready-to-use generated Go embeddings.
+    save_embeddings: A boolean to control saving the embeddings only.
     """
     data = read_data(data_path)
     embeddings_df = data.copy()
     # Split the go terms string input
-    go_terms = go_terms.split()
-    embeddings_df = embeddings_df[["id"] + go_terms]
+    go_sequence = go_terms.split()
+    embeddings_df = embeddings_df[["id"] + go_sequence]
+    if os.path.exists(embeddings_path):
+        # Using the already generated Go embeddings
+        logging.info(f"Loading the ready-to-use GO feature from {embeddings_path}")
+        embeddings_df = pd.read_csv(embeddings_path)
 
-    for go_feature in go_terms:
-        # Generate the gene embeddings for each Go term
-        logging.info(f"Generating the vector embeddings for {go_feature}")
-        embeddings_df = generate_embeddings(embeddings_df, go_feature, go_feature + "_embed_vector")
-        embeddings_df = embeddings_df.fillna(np.nan)
-    embedded_features = [go_feature + "_embed_vector" for go_feature in go_terms]
+    else:
+        # Generate Gene Ontology embeddings if they don't exist
+        for go_feature in go_sequence:
+            # Generate the gene embeddings for each Go term
+            logging.info(f"Generating the vector embeddings for {go_feature}")
+            embeddings_df = generate_embeddings(
+                embeddings_df, go_feature, go_feature + "_embed_vector"
+            )
+            embeddings_df = embeddings_df.fillna(np.nan)
+    if save_embeddings:
+        embeddings_output_path = (
+            os.path.dirname(data_path) + "/go_embeddings_" + os.path.basename(data_path)
+        )
+        embeddings_df.to_csv(embeddings_output_path, index=False)
+
+    embedded_features = [go_feature + "_embed_vector" for go_feature in go_sequence]
     reduced_features = [
         embedded_feature + f"_{i}"
         for i in range(n_components)
@@ -260,8 +356,15 @@ def main(data_path, go_terms, output_path, n_components=3, technique="pca"):
 
     # Drop the missing values for the embedded feature
     embeddings_df = embeddings_df.dropna(subset=embedded_features)
-    reduced_df = reduce_vectors(embeddings_df, embedded_features, n_components, technique)
-    reduced_df = reduced_df[reduced_features + ["id"]]
+
+    reduced_df = reduce_vectors(
+        embeddings_df, embedded_features, embeddings_path, n_components, technique
+    )
+    reduced_df = reduced_df[
+        reduced_features
+        + ["id", "go_term_cc_embed_vector", "go_term_bp_embed_vector", "go_term_mf_embed_vector"]
+    ]
+
     # Merge the reduced features with the original dataset
     merged_data = pd.merge(data, reduced_df, on="id", how="left")
     # Go terms rna localization indicators
@@ -279,14 +382,12 @@ def main(data_path, go_terms, output_path, n_components=3, technique="pca"):
     logging.info("Generating the Go term CC RNA representations")
 
     for rna_indicator, go_term in go_rna_indicators.items():
+        merged_data = apply_generation(merged_data, rna_indicator, go_term)
 
-        merged_data[f"{rna_indicator}"] = merged_data["go_term_cc"].apply(
-            lambda sequence: generate_rna_representation(sequence, go_term)
-        )
+    logging.info("The Go term CC RNA representations have been generated successfully!")
 
     save_path = os.path.join(output_path)
-    merged_data.to_csv(save_path)
-
+    merged_data.to_csv(save_path, index=False)
     logging.info(f"The final dataset is saved to {save_path}")
 
 
