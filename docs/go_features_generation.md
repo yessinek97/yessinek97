@@ -21,7 +21,7 @@ embeddings, alongside the Go term CC RNA representations and finally merge them 
 dataset use this command:
 
 ```bash
-python biondeep_ig/gene_ontology_pipeline.py -data path_to_data -go 'go_term_mf go_term_bp go_term_cc'  -c 3 -t pca -o data/final_data_with_go_feat_and_go_cc_rna_rep.csv
+python biondeep_ig/gene_ontology_pipeline.py -data path_to_data -go 'go_term_mf go_term_bp go_term_cc'  -c 3 -t pca -o data/final_data_with_go_feat_and_go_cc_rna_rep.csv -e 'path of your Go embeddings'
 
 where:
     -data: The input dataset path.
@@ -29,8 +29,27 @@ where:
     -c: The number of components for Dimensionality Reduction.
     -t: The Dimensionality Reduction technique (pca,lsa,tsne).
     -o: The output path to save the dataset.
+    -e: Path of ready-to-use Go terms embeddings.
+    -s: A boolean to save embeddings only.
 
 Example:
-python biondeep_ig/gene_ontology_pipeline.py -data 'data/BioNDeep_transformer_publicMUT_20220601_BioNDeep_transformer_v2_struc.tsv' -go 'go_term_mf go_term_bp go_term_cc' -c 3 -t pca -o data/new_data_with_go_feat.csv
+- To generat the Go embeddings run this command:
+
+```
+
+python biondeep_ig/gene_ontology_pipeline.py -data notebooks/data/optima.clean.csv -go 'go_term_mf
+go_term_bp go_term_cc' -o notebooks/data/final_dataset_optima.csv -c 3 -t pca -s True
+
+```
+
+- To use your already generated Go embeddings run this command after specifying the embeddings path:
+
+```
+
+python biondeep_ig/gene_ontology_pipeline.py -data notebooks/data/optima.clean.csv -go 'go_term_mf
+go_term_bp go_term_cc' -o notebooks/data/final_dataset_optima.csv -e
+notebooks/data/final_dataset_optima_test.csv -c 3 -t pca -s True
+
+```
 
 ```
