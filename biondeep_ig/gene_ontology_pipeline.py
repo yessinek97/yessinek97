@@ -296,7 +296,6 @@ def apply_generation(data: pd.DataFrame, rna_indicator: str, go_term: str) -> pd
 @click.option(
     "--save_embeddings",
     "-s",
-    type=str,
     is_flag=True,
     help="Save the generated Gene Ontology embedding vectors (200 elements)",
 )
