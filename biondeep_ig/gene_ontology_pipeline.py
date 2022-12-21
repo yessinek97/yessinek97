@@ -262,7 +262,7 @@ def apply_generation(data: pd.DataFrame, rna_indicator: str, go_term: str) -> pd
     "-go",
     type=str,
     required=True,
-    help="Go terms seperated by a space.",
+    help="Go terms column names separated by a space.",
 )
 @click.option(
     "--output_path",
@@ -297,8 +297,7 @@ def apply_generation(data: pd.DataFrame, rna_indicator: str, go_term: str) -> pd
     "--save_embeddings",
     "-s",
     type=str,
-    default=True,
-    required=False,
+    is_flag=True,
     help="Save the generated Gene Ontology embedding vectors (200 elements)",
 )
 def main(
@@ -347,6 +346,7 @@ def main(
             os.path.dirname(data_path) + "/go_embeddings_" + os.path.basename(data_path)
         )
         embeddings_df.to_csv(embeddings_output_path, index=False)
+        logging.info(f"Saved the Gene Ontology features in {embeddings_output_path}")
 
     embedded_features = [go_feature + "_embed_vector" for go_feature in go_sequence]
     reduced_features = [
