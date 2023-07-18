@@ -1,4 +1,5 @@
 # BionDeep IG
 
-Please refer to [https://instadeep.gitlab.io/biondeep-ig](https://instadeep.gitlab.io/biondeep-ig/)
-for the documentation.
+Please refer to the biondeep-structure
+[documentation](https://instadeep.gitlab.io/bioai-group/biondeep-structure) for more information
+about the IG project.

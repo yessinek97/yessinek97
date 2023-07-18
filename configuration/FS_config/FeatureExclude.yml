@@ -15,8 +15,8 @@ Feature_Exclude_List: # These features will be excluded
   - "CD8_any"
   - "CD4_any"
   - "RegrTar"
-  - "mt_pos" # this should not be taken as it is derived for the 27mer in Optima but in the public on the 9-12mer - this results in a correlations of features in public that are not existant in Public and could thus bias the model ...
-  - "length_tested_peptide" # same logic as for mt_pos (# this should not be taken as it is derived for the 27mer in Optima but in the public on the 9-12mer - this results in a correlations of features in public that are not existant in Public and could thus bias the model ...)
+  - "mt_pos" # this should not be taken as it is derived for the 27mer in Optima but in the public on the 9-12mer - this results in a correlations of features in public that are not existent in Public and could thus bias the model ...
+  - "length_tested_peptide" # same logic as for mt_pos (# this should not be taken as it is derived for the 27mer in Optima but in the public on the 9-12mer - this results in a correlations of features in public that are not existent in Public and could thus bias the model ...)
   - "antigen_identification_method"
   - "mhc_ligand_binding_method"
   - "Mutation_type"

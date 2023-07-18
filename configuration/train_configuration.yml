@@ -1,0 +1,94 @@
+neptune_logs: True
+experiments:
+  KfoldExperiment:
+    split_column: fold
+    plot_shap_values: True
+    plot_kfold_shap_values: True # False when using Logistic regression
+    operation:
+      - mean
+    statics:
+      - mean
+      # KfoldMultiSeedExperiment:
+      #   split_column: fold
+      #   plot_shap_values: True
+      #   plot_kfold_shap_values: True # False when using Logistic regression
+      #   model_seed: false
+      #   split_seed: true
+      #   nbr_seeds: 10
+      #   print_seeds_evals: False
+      #   operation:
+      #     - mean
+      #   statics:
+      - mean
+label: cd8_any
+# feature_paths:
+#   - transformer
+processing:
+  process_data: False
+  remove_unnecessary_folders: false
+  trainable_features: "features.yml"
+  # exclude_features: # You can use prefixes(neofox..),suffixes(mhci,pmhc) patterns(tested) or the full feature name
+  #   - neofox
+  #   - tested
+  #   - mhci
+  #   - pmhc
+  #   - gene_ontology
+  #   - rna_localization
+  #   - go_cc_rna_loc
+  #   - rnalocalization_p_membrane
+  validation_strategy: false
+  isunlabelled: false
+  #normalizer:
+  fill_nan_method: keep
+  seed: 1994
+  validation_ratio: 0.1
+  fold: 5
+  nan_ratio: 0.6
+  expression_name: expression_for_model
+  expression_column_name: expression
+models:
+  - xgboost_config.yml
+
+evaluation:
+  print_evals: True
+  comparison_score: tested_pres_score_biondeep_mhci
+  eval_id_name: patientid
+  observations_number: 20
+  threshold: 0.3
+  metrics:
+    - topk
+    - roc
+    - logloss
+    - precision
+    - recall
+    - f1
+  metric_selector: topk
+  metrics_selector_higher: True
+  data_name_selector: validation # test , validation
+  prediction_name_selector: "prediction_mean"
+  monitoring_metrics:
+    - roc
+    - topk
+    - topk_20_patientid
+    - topk_patientid
+FS:
+  n_feat: 20
+  keep_features_number: False
+  separate_forced_features: False
+  force_features:
+    - expression
+  n_thread: 10
+  FS_methods:
+    # - Fspca.yml
+    - Fsxgboost.yml
+    # - Fsxgboostshap.yml
+    # - Fsrfgini.yml
+    # - Fscossim.yml
+    # - Fscorr.yml
+    # - Fssfmlr.yml
+    # - Fsrfelr.yml
+    # - Fssfmxgboost.yml
+    # - Fsrfexgboost.yml
+    # - Fsrelief.yml
+    # - Fsmi.yml
+    # - Fsboruta.yml

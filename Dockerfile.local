@@ -1,0 +1,22 @@
+FROM python:3.8-slim-buster
+
+ARG host_uid
+ARG host_gid
+ENV USER=app
+
+RUN apt-get update
+RUN apt-get  install sudo libgomp1 git -y
+# Install python requirements
+RUN pip install -U "anc2vec @ git+https://github.com/aedera/anc2vec.git"
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --upgrade --quiet pip setuptools && pip install --no-cache-dir -r /tmp/requirements.txt && rm -rf /tmp/*
+
+RUN groupadd -f -g $host_gid  $USER
+RUN useradd -r -m -u $host_uid -g $host_gid -o -s /bin/bash $USER
+USER $USER
+
+ENV PATH="/home/app/.local/bin:${PATH}"
+ENV PATH=$PATH:/home/app/.local/bin
+ENV PYTHONWARNINGS="ignore::UserWarning"
+
+WORKDIR /home/$USER/ig

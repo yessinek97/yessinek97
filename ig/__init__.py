@@ -1,0 +1,37 @@
+"""Init."""
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Union
+
+import pandas as pd
+
+SINGLE_MODEL_NAME = "SingleModel"
+KFOLD_MODEL_NAME = "KfoldExperiment"
+DKFOLD_MODEL_NAME = "DoubleKfold"
+KFOLD_MULTISEED_MODEL_NAME = "KfoldMultiSeedExperiment"
+KFOLD_EXP_NAMES = [KFOLD_MODEL_NAME, DKFOLD_MODEL_NAME, KFOLD_MULTISEED_MODEL_NAME]
+EXP_NAMES = [SINGLE_MODEL_NAME] + KFOLD_EXP_NAMES
+CURRENT_DIRECTORY = Path(__file__).resolve().parent
+
+
+stage = os.environ.get("stage")
+if stage == "test":
+    ROOT_DIRECTORY = CURRENT_DIRECTORY.parent / "tests"
+else:
+    ROOT_DIRECTORY = CURRENT_DIRECTORY.parent
+
+
+CONFIGURATION_DIRECTORY = ROOT_DIRECTORY / "configuration"
+FEATURES_DIRECTORY = CONFIGURATION_DIRECTORY / "features"
+MODELS_DIRECTORY = ROOT_DIRECTORY / "models"
+DATA_DIRECTORY = ROOT_DIRECTORY / "data"
+MODEL_CONFIGURATION_DIRECTORY = CONFIGURATION_DIRECTORY / "model_config"
+FS_CONFIGURATION_DIRECTORY = CONFIGURATION_DIRECTORY / "FS_config"
+DATAPROC_DIRECTORY = "data_proc"
+FEATURIZER_DIRECTORY = "featurizer"
+FEATURES_SELECTION_DIRECTORY = "features"
+ID_NAME = "ID_column"
+EXPERIMENT_MODEL_CONFIGURATION_DIRECTORY = "models_configuration"
+DEFAULT_SEED = 0
+MAX_RANDOM_SEED = 10_000
+PROC_SEC_ID = "second_id"

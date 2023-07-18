@@ -1,0 +1,47 @@
+experiments:
+  BNT:
+    # dataset: # Uncomment this section if you want to use a custom dataset
+    #   train: data/go_IG_16_11_2022/netmhcpan_16_11_2022/generated/public.clean.go.csv
+    #   test: data/go_IG_16_11_2022/netmhcpan_16_11_2022/generated/optima.clean.go.csv
+    processing:
+      trainable_features: /mnt/dataset/IG16112022Biondeep/features_IG_16_11_2022_ensemble_expression_presentation_bnt.yml
+    FS:
+      force_features:
+        - expression
+
+  BNT_Biondeep:
+    # dataset: # Uncomment this section if you want to use a custom dataset
+    #   train: data/go_IG_16_11_2022/netmhcpan_16_11_2022/generated/public.clean.go.csv
+    #   test: data/go_IG_16_11_2022/netmhcpan_16_11_2022/generated/optima.clean.go.csv
+    processing:
+      trainable_features: /mnt/dataset/IG16112022Biondeep/features_IG_16_11_2022_ensemble_expression_presentation_bnt_biondeep.yml
+    FS:
+      force_features:
+        - expression
+
+  BNT_Biondeep_pmhc:
+    # dataset: # Uncomment this section if you want to use a custom dataset
+    #   train: data/go_IG_16_11_2022/netmhcpan_16_11_2022/generated/public.clean.go.csv
+    #   test: data/go_IG_16_11_2022/netmhcpan_16_11_2022/generated/optima.clean.go.csv
+    processing:
+      trainable_features: /mnt/dataset/IG16112022Biondeep/features_IG_16_11_2022_ensemble_expression_presentation_bnt_biondeep_pmhc.yml
+    FS:
+      force_features:
+        - expression
+        - tested_score_biondeep_mhci
+        - tested_pres_score_biondeep_mhci
+
+  BNT_pmhc:
+    # dataset: # Uncomment this section if you want to use a custom dataset
+    #   train: data/go_IG_16_11_2022/netmhcpan_16_11_2022/generated/public.clean.go.csv
+    #   test: data/go_IG_16_11_2022/netmhcpan_16_11_2022/generated/optima.clean.go.csv
+    processing:
+      trainable_features: /mnt/dataset/IG16112022Biondeep/features_IG_16_11_2022_ensemble_expression_presentation_bnt_pmhc.yml
+    FS:
+      force_features:
+        - expression
+
+params:
+  metrics:
+    - topk
+    - topk_20_patientid
