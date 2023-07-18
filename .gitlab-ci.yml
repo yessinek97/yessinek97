@@ -37,8 +37,13 @@ test:
   image: $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
   stage: test
   script:
-    - pytest --cov=$PROJECT_NAME --cov-report=term-missing --junit-xml=test-results.xml
-      --doctest-modules -vv
+    - apt-get install zip unzip
+    - export stage=test
+    - unzip  tests/fixtures/model-fixtures.zip -d tests/models
+    - cp -r tests/models/model-fixtures/* tests/models/
+    - rm -r tests/models/model-fixtures/
+    - rm tests/fixtures/model-fixtures.zip
+    - pytest --cov=ig --cov-report=term-missing --junit-xml=test-results.xml --doctest-modules -vv
     - coverage html --directory=coverage_html_report
     - coverage report
   coverage: '/TOTAL.+ (\d+\.?\d+)%/'
@@ -46,10 +51,10 @@ test:
     name: "Test Results"
     when: always
     paths:
-      - ./test-results.xml
-      - ./coverage_html_report
+      - .test-results.xml
+      - .coverage_html_report
     reports:
-      junit: ./test-results.xml
+      junit: .test-results.xml
     expire_in: 1 day
 
 pages:

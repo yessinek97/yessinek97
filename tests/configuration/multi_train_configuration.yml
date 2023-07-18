@@ -1,0 +1,37 @@
+experiments:
+  experiment1:
+    processing:
+      trainable_features: "features_quickstart.yml"
+    FS:
+      force_features:
+        - expression
+
+  experiment2:
+    processing:
+      trainable_features: "features_quickstart.yml"
+    FS:
+      force_features:
+        - expression
+        - tested_score_biondeep_mhci
+        - tested_presentation_biondeep_mhci
+
+  # BNT_Biondeep_pmhc:
+  #   processing:
+  #     trainable_features: gs://biondeep-data/IG/data/IG_16_11_2022Biondeep/features_IG_16_11_2022_ensemble_expression_presentation_bnt_biondeep_pmhc.yml
+  #   FS:
+  #     force_features:
+  #       - expression
+  #       - tested_score_biondeep_mhci
+  #       - tested_pres_score_biondeep_mhci
+
+  # BNT_pmhc:
+  #   processing:
+  #     trainable_features: gs://biondeep-data/IG/data/IG_16_11_2022Biondeep/features_IG_16_11_2022_ensemble_expression_presentation_bnt_pmhc.yml
+  #   FS:
+  #     force_features:
+  #       - expression
+
+params:
+  metrics:
+    - topk
+    - topk_20_patientid

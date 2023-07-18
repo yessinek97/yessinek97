@@ -21,7 +21,7 @@ feature_paths:
   - train_features
 processing:
   process_data: False
-  remove_proc_data: false
+  remove_unnecessary_folders: False
   trainable_features: features_float.biondeep_02_06_2022_transformer_public_v2
   # exclude_features:
   validation_strategy: true

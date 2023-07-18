@@ -1,0 +1,32 @@
+kind: AIchorManifest
+apiVersion: 0.2.1
+
+builder:
+  image: ig-ichor
+  dockerfile: Dockerfile.ichor
+  context: ig/
+
+spec:
+  operator: tf
+  image: ig-ichor
+  # Update the command when necessary
+  command: bash runAIchor_multi_train.sh
+  tensorboard:
+    enabled: False
+  storage:
+    attachExistingPVCs:
+      - name: "ig-framework-data"
+        mountPoint: "/mnt/dataset"
+
+  # at least one type is required.
+  # if you are not using Evaluator for example, you can set its count to 0
+  # or not write it at all.
+  # Available types are: Worker, Master, PS, Chief, Evaluator
+  types:
+    Worker:
+      count: 4
+      resources:
+        # Update the necessary resources
+        # note that the number of cpus * ramRatio = number of gigabytes
+        cpus: 50
+        ramRatio: 1

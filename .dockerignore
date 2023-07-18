@@ -3,9 +3,11 @@
 
 # Python requirements installed in the docker
 !requirements.txt
-!requirements-docs.txt
 # Allow to use the repository as a package
 !setup.py
-!biondeep_ig
+!ig
 !tests
+!runAIchor.sh
+!runAIchor_multi_train.sh
+!configuration
 # To run the linters in the CI job

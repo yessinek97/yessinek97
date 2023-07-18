@@ -1,0 +1,81 @@
+data_version: IG_16_11_2022
+data_type: Netmhcpan
+push_gcp: False
+processing:
+  legend:
+    # path : #legend.csv
+    filter_column: "to_take"
+    value: 1
+    feat_col_name: features
+  # filter_rows :
+  #   filter_column :
+  #   value :
+  label: cd8_any
+  id: id
+  ids:
+    - id
+    - patientid
+    - wt_27mer
+    - mut_27mer
+    - tested_peptide
+    - wildtype_peptide
+    - author/source
+    - genename
+  proxy_model_columns:
+    proxy_m_peptide: tested_peptide_netmhcpan4.1
+    proxy_wt_peptide: wildtype_peptide_netmhcpan4.1
+    proxy_allele: allele_netmhcpan4.1
+    scores:
+      tested_score_netmhcpan4.1: proxy_score_presentation
+      tested_best_rank_netmhcpan4.1: proxy_score_rank_presentation
+      tested_ba_score_netmhcpan4.1: proxy_score_score_binding
+      tested_ba_rank_netmhcpan4.1: proxy_score_rank_binding
+  expression:
+    filter:
+      - exp
+      - tcg
+      - tpm
+      - gtex
+    raw_name: expression_for_model
+    name: expression
+  exclude_features:
+    - cd4
+    - cd8
+    - any
+    - wt
+    - wildtype
+    - nontest
+    - prime_rank
+    - prime_score
+    - length_tested_peptide
+  include_features:
+    - proxy_score
+    - rnalocalization
+    - go_term_rna
+    - go_term_.*_embed
+    - pathway
+    - deeptap
+    - specificity_gtex
+
+  keep_include_features: False
+  nan_ratio: 0.6
+
+features:
+  file_name: features.yml
+  float: True
+  include_features_float: True
+  int: True
+  include_features_int:
+  categorical: False
+  include_features_categorical: True
+  bool: False
+  include_features_bool: True
+split:
+  kfold: True
+  kfold_column_name: fold
+  nfold: 5
+  train_val: True
+  train_val_name: validation
+  val_size: 0.1
+  source_split: True
+  source_column: author/source

@@ -1,5 +1,5 @@
 """Setup to define the repository as a package."""
-from codecs import open
+from codecs import open  # pylint: disable=redefined-builtin
 from typing import List
 
 import setuptools
@@ -14,7 +14,7 @@ def read_requirements(file: str) -> List[str]:
 
 
 setup(
-    name="biondeep_ig",
+    name="ig",
     version=__version__,
     author="InstaDeep",
     url="https://gitlab.com/instadeep/biondeep-ig",
@@ -25,29 +25,38 @@ setup(
     entry_points={
         "console_scripts": [
             # ablation study
-            "ablation_study=biondeep_ig.ablation_study:main",
-            "ablation_post=biondeep_ig.ablation_study:postprocess",
+            "ablation_study=ig.ablation_study:main",
+            "ablation_post=ig.ablation_study:postprocess",
             # data generation
-            "agg_scores=biondeep_ig.data_gen.ig.data_gen.parse_score_files:main",
-            "tcr_gen=biondeep_ig.data_gen.ig.data_gen.tcr.generate_tcrs:main",
-            "pmhc_gen=biondeep_ig.data_gen.ig.data_gen.pmhc.generate_pmhc:main",
-            "tcr_pmhc_extract=biondeep_ig.data_gen.ig.data_gen.tcr_pmhc.tcr_pmhc_extract:main",
-            "tcr_pmhc_align=biondeep_ig.data_gen.ig.data_gen.tcr_pmhc.tcr_pmhc_align:main",
-            "merge_tcr_pmhc=biondeep_ig.data_gen.ig.data_gen.merge_tcrpmhc_to_dataset:command",
+            "gene-ontology-pipeline=ig.gene_ontology_pipeline:gene_ontology_pipeline",
             # training
-            "train=biondeep_ig.trainer:train",
-            "train-seed-fold=biondeep_ig.trainer:train_seed_fold",
-            "tune=biondeep_ig.trainer:tune",
-            "featureselection=biondeep_ig.feature_selection:featureselection",
+            "train=ig.trainer:train",
+            "train-seed-fold=ig.trainer:train_seed_fold",
+            "tune=ig.trainer:tune",
+            "featureselection=ig.feature_selection:featureselection",
+            "multi-train=ig.multi_trainer:multi_train",
             # inference
-            "inference=biondeep_ig.inference:inference",
-            "compute-metrics=biondeep_ig.compute_metrics:compute_metrics",
-            "ensemblexprs=biondeep_ig.ensemble:ensemblexprs",
-            "ensoneexp=biondeep_ig.ensemble:ensoneexp",
+            "inference=ig.inference:inference",
+            "exp-inference=ig.inference:exp_inference",
+            "multi-inference=ig.multi_trainer:multi_inference",
+            "multi-exp-inference=ig.multi_trainer:multi_exp_inference",
+            "compute-metrics=ig.compute_metrics:compute_metrics",
+            "ensemblexprs=ig.ensemble:ensemblexprs",
+            "ensoneexp=ig.ensemble:ensoneexp",
             # push pull GCP command
-            "push=biondeep_ig.buckets:push",
-            "pull=biondeep_ig.buckets:pull",
-            "compute_comparison_score=biondeep_ig.trainer:compute_comparison_score",
+            "push=ig.buckets:push",
+            "pull=ig.buckets:pull",
+            "compute_comparison_score=ig.trainer:compute_comparison_score",
+            # Generate peptide allele pairs
+            "generate-pairs=ig.generate_pairs_peptide_allele:generate_pairs",
+            # cimt model
+            "cimt-kfold-split=ig.cimt:cimt_kfold_split",
+            "cimt-features-selection=ig.cimt:cimt_features_selection",
+            "cimt-train=ig.cimt:cimt_train",
+            "cimt=ig.cimt:cimt",
+            "cimt-inference=ig.cimt:cimt_inference",
+            # processing
+            "processing=ig.processing:processing",
         ]
     },
 )

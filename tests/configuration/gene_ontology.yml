@@ -1,0 +1,15 @@
+dataset:
+  dummy:
+    version: V1
+    paths:
+      public: tests/fixtures/test_data.csv
+    processing:
+      trainable_features: features_quickstart.yml
+go_features:
+  version: V1
+  embedding_paths:
+    public: tests/fixtures/public_go_embeddings_V1.csv
+  dimensionality_reduction:
+    technique: pca
+    n_components: 3
+  save_embeddings: true

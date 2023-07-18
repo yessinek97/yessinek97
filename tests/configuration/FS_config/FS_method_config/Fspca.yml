@@ -1,0 +1,3 @@
+FS_type: Fspca
+FS_config:
+  SamplesPerPCA: 1

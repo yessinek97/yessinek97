@@ -5,8 +5,8 @@ site_url: https://instadeep.gitlab.io/biondeep-ig
 site_dir: public
 repo_name: instadeep/biondeep-ig
 repo_url: https://gitlab.com/instadeep/biondeep-ig
+docs_dir: docs/pages
 strict: false
-
 theme:
   name: material
   language: en
@@ -19,10 +19,13 @@ theme:
     text: Avenir Next
   features:
     - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
 
 markdown_extensions:
   - pymdownx.snippets:
-      base_path: bio-IG
+      base_path: biondeep-structure
   - toc:
       permalink: "#"
   - pymdownx.highlight:
@@ -31,6 +34,9 @@ markdown_extensions:
       generic: true
   - pymdownx.superfences
   - def_list
+  - attr_list
+  - footnotes
+  - pymdownx.emoji
 
 extra_javascript:
   - javascript/mathjax.js
@@ -52,26 +58,37 @@ plugins:
               - "!^test"
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - Quickstart: Quickstart.md
-  - Data:
-      - Overview: data.md
-      - Data IG generation: data_gen.md
-  - Feature selection: FS.md
-  - Model training:
-      - Configuration: config.md
-      - Models: models.md
-      - Experiments: experiments.md
-      - Execution:
-          - Comparison score: comparison_score.md
-          - Training: train.md
-          - Training with list of seeds and folds: train_seed_fold.md
-          - Hyper-parameters tuning: tune.md
-          - Modular training: modular_train.md
-      - Output: layout.md
-  - Inference: eval.md
-  - ensemble: ensembling.md
-  - Ablation study: ablation.md
-  - push pull GCP: push_pull.md
-  - Contributing: contributing.md
-  - Changelog: changelog.md
+  - IG:
+      - Installation: ig/installation.md
+      - Quickstart: ig/Quickstart.md
+      - Data:
+          - Overview: ig/data.md
+          # - Data IG generation: ig/data_gen.md
+          # - pMHC Data: ig/data_ig.md
+          # - Generate peptide allele pairs: ig/generapte_peptide_allele.md
+      - Commands:
+          - Data processing:
+              - configuration: ig/data_configuration.md
+              - push pull GCP: ig/push_pull.md
+              - processing command: ig/processing.md
+              - Gene ontology: ig/go_features_generation.md
+          - Modeling:
+              - configuration: ig/modeling_configuration.md
+              - Feature selection: ig/FS.md
+              - Train:
+                  - Experiments: ig/experiments.md
+                  - Models: ig/models.md
+                  - Train: ig/train.md
+                  - Inference: ig/eval.md
+                  - Output: ig/layout.md
+              - Multiple Train:
+                  - Train: ig/multi_train.md
+                  - Inference: ig/multi_inference.md
+
+              - CIMT 2023: ig/cimt.md
+              - Training with list of seeds and folds: ig/train_seed_fold.md
+              - Hyper-parameters tuning: ig/tune.md
+              - Ensemble: ig/ensembling.md
+              - Comparison score: ig/comparison_score.md
+      - Contributing: ig/contributing.md
+      - Changelog: ig/changelog.md

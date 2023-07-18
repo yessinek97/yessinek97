@@ -1,0 +1,59 @@
+model_type: XgboostModel
+model_config:
+  general_params:
+    num_boost_round: 10000000
+    verbose_eval: false
+    early_stopping_rounds: 50
+
+  model_params:
+    eta:
+      type: float
+      low: 0.001
+      high: 0.03
+      q: 0.001
+      default: 0.01
+    alpha:
+      type: float
+      low: 0.05
+      high: 0.4
+      q: 0.003
+      default: 0.02
+    gamma:
+      type: float
+      low: 0.01
+      high: 0.5
+      q: 0.05
+      default: 0
+    lambda:
+      type: float
+      low: 0.01
+      high: 1
+      q: 0.01
+      default: 0.4
+    max_depth:
+      type: int
+      low: 3
+      high: 9
+      q: 1
+      default: 6
+    min_child_weight:
+      type: int
+      low: 1
+      high: 10
+      q: 1
+      default: 1
+
+    max_delta_step:
+      type: int
+      low: 0
+      high: 10
+      q: 1
+      default: 1
+    subsample: 1
+    colsample_bytree: 1
+    nthread: 16
+    seed: 2020
+    tree_method: auto # exact ,approx ,hist
+    eval_metric: logloss
+    objective: binary:logistic
+    booster: gbtree
