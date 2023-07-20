@@ -67,7 +67,8 @@ class KfoldMultiSeedExperiment(BaseExperiment):
             if self.split_column not in self.train_data().columns:
                 raise KeyError(f"{self.split_column} column is missing")
             self.prediction_columns_name = [
-                f"prediction_{split}" for split in self.train_data()[self.split_column].unique()
+                f"prediction_{split}"
+                for split in np.sort(self.train_data()[self.split_column].unique())[: self.n_fold]
             ]
         self.kfold_prediction_name = [
             f"prediction_{operation}" for operation in self.kfold_operations

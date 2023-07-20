@@ -88,6 +88,7 @@ def train(
     if multi_train:
         experiment_path = Path(folder_name)
         general_configuration = load_yml(configuration_file)
+
         experiment_path.mkdir(parents=True, exist_ok=True)
     else:
         experiment_path = MODELS_DIRECTORY / folder_name
@@ -118,6 +119,7 @@ def train(
         experiment_path=experiment_path,
         force=force,
     )
+
     log.info("*********************** Load and process Train , Test *********************** ")
     existing_features_lists: List[str] = general_configuration.get("feature_paths", [])
     if "FS" in general_configuration:
@@ -732,6 +734,7 @@ def eval_comparison_score(
 ) -> Optional[pd.DataFrame]:  # noqa
     """Eval comparison score."""
     comparison_score = configuration["evaluation"].get("comparison_score", None)
+    folds = configuration["processing"].get("fold", 5)
     if comparison_score:
         log.info("Eval %s", comparison_score)
         results: Dict[str, MetricsEvalType] = {}
@@ -776,7 +779,7 @@ def eval_comparison_score(
                     curve_plot_directory=curve_plot_directory,
                     plot_comparison_score_only=plot_comparison_score_only,
                 )
-                for split in np.sort(train_data[split_column].unique()):
+                for split in np.sort(train_data[split_column].unique())[:folds]:
                     log.info(split)
                     evaluator.compute_metrics(
                         data=train_data[train_data[split_column] != split],
