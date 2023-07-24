@@ -168,6 +168,16 @@ class Dataset:
         """Return experiments configuration."""
         return self.configuration["experiments"]
 
+    def check_dataset_splits(self) -> None:
+        """Check the number of splits in the dataset."""
+        if not self.use_validation_strategy and self.fold:
+            for split_column in self.splits_columns:
+                n_dataset_splits = np.unique(self.data[split_column]).shape[0]
+                if n_dataset_splits != self.fold:
+                    message = """The number of dataset splits is different from the number specified in the configuration file !
+                    Please set validation_strategy to True to resplit the dataset."""
+                    raise ValueError(message)
+
     def force_validation_strategy(self) -> None:
         """Force use validation strategy to True."""
         self.use_validation_strategy = True
@@ -488,6 +498,7 @@ class Dataset:
 
     def __call__(self, kind: str = "all") -> pd.DataFrame:
         """Return processed data with the needed features using the argument kind."""
+        self.check_dataset_splits()
         if kind == "all":
             return self.data
         if kind == "features":

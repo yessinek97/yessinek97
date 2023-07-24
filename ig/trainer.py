@@ -734,7 +734,6 @@ def eval_comparison_score(
 ) -> Optional[pd.DataFrame]:  # noqa
     """Eval comparison score."""
     comparison_score = configuration["evaluation"].get("comparison_score", None)
-    folds = configuration["processing"].get("fold", 5)
     if comparison_score:
         log.info("Eval %s", comparison_score)
         results: Dict[str, MetricsEvalType] = {}
@@ -770,6 +769,7 @@ def eval_comparison_score(
         if kfold_exps:
             split_column = configuration["experiments"][kfold_exps[0]]["split_column"]
             if split_column in train_data.columns:
+
                 log.info(KFOLD_MODEL_NAME)
                 curve_plot_directory = experiment_path / "comparison_score" / KFOLD_MODEL_NAME
                 curve_plot_directory.mkdir(exist_ok=True, parents=True)
@@ -779,7 +779,7 @@ def eval_comparison_score(
                     curve_plot_directory=curve_plot_directory,
                     plot_comparison_score_only=plot_comparison_score_only,
                 )
-                for split in np.sort(train_data[split_column].unique())[:folds]:
+                for split in np.sort(train_data[split_column].unique()):
                     log.info(split)
                     evaluator.compute_metrics(
                         data=train_data[train_data[split_column] != split],
