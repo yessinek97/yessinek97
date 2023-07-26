@@ -242,10 +242,11 @@ class Dataset:
     def load_data(self) -> Dataset:
         """Return processed data whatever is it the saved or the processed from the beginning."""
         self.process()
-        self.save_processed_data()
 
         if self.is_train:
             self.validation_splits()
+        self.save_processed_data()
+
         return self
 
     def find_features(self, all_features: list[str], index: str) -> list[str]:
@@ -453,12 +454,16 @@ class Dataset:
             self.splits_columns.append(single_model_split_name)
             if self.use_validation_strategy:
                 self.train_val_split(single_model_split_name)
+            else:
+                self.check_dataset_splits()
         kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
         if kfold_exps:
             kfold_split_name = self.experiments[kfold_exps[0]]["split_column"]
             self.splits_columns.append(kfold_split_name)
             if self.use_validation_strategy:
                 self.kfold_split(kfold_split_name, self.seed)
+            else:
+                self.check_dataset_splits()
         try:
             self.data[self.ids_columns + self.splits_columns].to_csv(
                 self.validation_splits_path, index=False
@@ -498,7 +503,6 @@ class Dataset:
 
     def __call__(self, kind: str = "all") -> pd.DataFrame:
         """Return processed data with the needed features using the argument kind."""
-        self.check_dataset_splits()
         if kind == "all":
             return self.data
         if kind == "features":
