@@ -2,3 +2,11 @@ tests/models
 test-results.xml
 tests/fixtures/go_pipeline_test
 tests/data
+*.pyc
+models
+data
+ig.egg-info/
+.cache
+.bash_history
+.coverage
+tests/fixtures/splits.csv

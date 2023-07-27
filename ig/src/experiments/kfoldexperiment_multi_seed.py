@@ -361,7 +361,7 @@ class KfoldMultiSeedExperiment(BaseExperiment):
         predictions_metrics = predictions_metrics[
             predictions_metrics.prediction.isin(kfold_columns)
         ]
-        predictions_metrics.to_csv("./predictions_metrics.csv", index=False)
+        predictions_metrics.to_csv(self.eval_directory / "predictions_metrics.csv", index=False)
         predictions_metrics = predictions_metrics[
             np.logical_not(
                 (predictions_metrics.prediction == self.evaluator.prediction_name_selector)
