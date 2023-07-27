@@ -133,7 +133,7 @@ class Dataset:
     @property
     def fold(self) -> int:
         """Return nbr of fold."""
-        return self.processing_configuration.get("fold", 5)
+        return self.processing_configuration["fold"]
 
     @property
     def validation_splits_path(self) -> Path:
@@ -167,16 +167,6 @@ class Dataset:
     def experiments(self) -> dict[str, Any]:
         """Return experiments configuration."""
         return self.configuration["experiments"]
-
-    def check_dataset_splits(self) -> None:
-        """Check the number of splits in the dataset."""
-        if not self.use_validation_strategy and self.fold:
-            for split_column in self.splits_columns:
-                n_dataset_splits = np.unique(self.data[split_column]).shape[0]
-                if n_dataset_splits != self.fold:
-                    message = """The number of dataset splits is different from the number specified in the configuration file !
-                    Please set validation_strategy to True to resplit the dataset."""
-                    raise ValueError(message)
 
     def force_validation_strategy(self) -> None:
         """Force use validation strategy to True."""
@@ -455,7 +445,14 @@ class Dataset:
             if self.use_validation_strategy:
                 self.train_val_split(single_model_split_name)
             else:
-                self.check_dataset_splits()
+                if single_model_split_name not in self.data.columns:
+                    message = (
+                        f"Split column : {single_model_split_name} is not "
+                        + " defined in the train data. Please set validation_strategy to True"
+                        + f" or rename the split column to {single_model_split_name}"
+                    )
+                    raise ValueError(message)
+
         kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
         if kfold_exps:
             kfold_split_name = self.experiments[kfold_exps[0]]["split_column"]
@@ -463,7 +460,22 @@ class Dataset:
             if self.use_validation_strategy:
                 self.kfold_split(kfold_split_name, self.seed)
             else:
-                self.check_dataset_splits()
+                if kfold_split_name not in self.data.columns:
+                    message = (
+                        f"Split column : {kfold_split_name} is not"
+                        + " defined in the train data. Please set validation_strategy to True"
+                        + f" or rename the split column to {kfold_split_name}"
+                    )
+                    raise ValueError(message)
+                data_fold = self.data[kfold_split_name].nunique()
+                if data_fold != self.fold:
+                    message = (
+                        "The number of dataset splits is different from the number specified"
+                        + " in the configuration file !Please set validation_strategy to "
+                        + "the dataset. or put the right number of splits\n dataset:"
+                        + f"{data_fold}\n configuration: {self.fold}"
+                    )
+                    raise ValueError(message)
         try:
             self.data[self.ids_columns + self.splits_columns].to_csv(
                 self.validation_splits_path, index=False
