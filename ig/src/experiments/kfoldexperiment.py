@@ -49,7 +49,6 @@ class KfoldExperiment(BaseExperiment):
             is_compute_metrics=is_compute_metrics,
             features_configuration_path=features_configuration_path,
         )
-
         self.split_column = str(kwargs["split_column"])
         self.plot_shap_values = bool(kwargs.get("plot_shap_values", False))
         self.plot_kfold_shap_values = bool(kwargs.get("plot_kfold_shap_values", False))
@@ -195,7 +194,7 @@ class KfoldExperiment(BaseExperiment):
         predictions_metrics = predictions_metrics[
             predictions_metrics.prediction.isin(kfold_columns)
         ]
-        predictions_metrics.to_csv("./predictions_metrics.csv", index=False)
+        predictions_metrics.to_csv(self.eval_directory / "predictions_metrics.csv", index=False)
         predictions_metrics = predictions_metrics[
             np.logical_not(
                 (predictions_metrics.prediction == self.evaluator.prediction_name_selector)
