@@ -133,7 +133,7 @@ class Dataset:
     @property
     def fold(self) -> int:
         """Return nbr of fold."""
-        return self.processing_configuration["fold"]
+        return self.processing_configuration.get("fold", 5)
 
     @property
     def validation_splits_path(self) -> Path:
@@ -471,8 +471,8 @@ class Dataset:
                 if data_fold != self.fold:
                     message = (
                         "The number of dataset splits is different from the number specified"
-                        + " in the configuration file !Please set validation_strategy to "
-                        + "the dataset. or put the right number of splits\n dataset:"
+                        + " in the configuration file ! Please set validation_strategy to True "
+                        + "or use the right number of splits\n\n dataset:"
                         + f"{data_fold}\n configuration: {self.fold}"
                     )
                     raise ValueError(message)
