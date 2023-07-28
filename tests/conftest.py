@@ -5,6 +5,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List
+from unittest.mock import MagicMock
 
 import click
 import pandas as pd
@@ -23,6 +24,28 @@ def current_path() -> Path:
 
 
 @pytest.fixture(scope="session")
+def helper_dummy_data_path() -> Path:
+    """helper_dummy_data_path."""
+    path = "tests/fixtures/helper_dummy_data.csv"
+    return path
+
+
+@pytest.fixture(scope="session")
+def helper_dummy_df():
+    """Helper dummy dataframe."""
+    data = pd.DataFrame(
+        {
+            "col1": [1, 2, 3],
+            "col2": ["A", "B", "C"],
+            "col3": [1.0, 2.0, 3.0],
+            "col4": [True, False, True],
+            "col5": ["NA", "NaN", "NAN"],
+        }
+    )
+    return data
+
+
+@pytest.fixture(scope="session")
 def file_paths() -> List[str]:
     """Dummy test file paths."""
     return [
@@ -36,37 +59,6 @@ def file_paths() -> List[str]:
 def test_df() -> pd.DataFrame:
     """Dummy test data."""
     return pd.read_csv("tests/fixtures/test_data.csv")
-
-
-@pytest.fixture(scope="session")
-def raw_data_paths() -> str:
-    """Dummy raw train data."""
-    path = "tests/fixtures/raw_data.csv"
-    return path
-
-
-@pytest.fixture(scope="session")
-def processing_config_path() -> str:
-    """Dummy processing config path."""
-    path = "processing_configuration.yml"
-    return path
-
-
-@pytest.fixture(scope="session")
-def processed_dummy_data_path(processing_config_path) -> Path:
-    """Processed_dummy_data_path."""
-    configuration = load_yml(CONFIGURATION_DIRECTORY / processing_config_path)
-    data_version = configuration["data_version"]
-    data_type = configuration["data_type"]
-    processed_data_path = DATA_DIRECTORY / f"proc_data_{data_version}_{data_type}"
-    return processed_data_path
-
-
-@pytest.fixture(scope="session")
-def main_raw_data_paths() -> str:
-    """Dummy raw main data."""
-    path = ("tests/fixtures/dummy_raw_data.csv",)
-    return path
 
 
 @pytest.fixture(scope="session")
@@ -517,3 +509,115 @@ def best_experiment_id() -> List[str]:
 def generate_peptide_allele_output() -> str:
     """Dummy generate pepetide allele pair path."""
     return "tests/fixtures/generated_pepetide_allele.csv"
+
+
+@pytest.fixture(scope="session")
+def expression_dummy_data():
+    """Expression dummy data."""
+    data = pd.DataFrame(
+        {
+            "id": [1, 2, 3],
+            "gene_expression_1": [0.5, 0.8, 0.2],
+            "second_id": [0, 1, 2],
+            "target": [1, 0, 1],
+            "rnalocalization": [1, 0, 1],
+        }
+    )
+    return data
+
+
+@pytest.fixture(scope="session")
+def preprocess_train_df() -> pd.DataFrame:
+    """Sample dataframe used to test process_train function."""
+    return pd.DataFrame({"A": [0, 1, 0, 1, 0, 5], "diff_class_prot": [1, 2, 3, 4, 5, 0]})
+
+
+@pytest.fixture(scope="session")
+def mock_data_dict(preprocess_train_df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    """Sample dictionary containing train and test dataframes."""
+    return {
+        "train": preprocess_train_df.assign(
+            **{
+                "col1": [1, 2, 3, 7, 8, 9],
+                "col2": [1.2, 3.4, 5.6, 1.2, 3.5, 2.6],
+                "col3": ["d", "e", "f", "a", "b", "c"],
+                "col4": [False, True, False, False, True, False],
+            }
+        ),
+        "test": pd.DataFrame(
+            {
+                "col1": [4, 5, 6, 7, 8, 9],
+                "col2": [1.2, 3.4, 5.6, 1.2, 3.5, 2.6],
+                "col3": ["d", "e", "f", "a", "b", "c"],
+                "col4": [False, True, False, False, True, False],
+            }
+        ),
+    }
+
+
+@pytest.fixture(scope="session")
+def mock_features() -> List[str]:
+    """Sample mock features."""
+    return ["col1", "col2", "col3", "col4"]
+
+
+@pytest.fixture(scope="session")
+def mock_data():
+    """Sample data for integration tests."""
+    data = pd.DataFrame(
+        {
+            "id": [1, 2, 3],
+            "score1": [0.5, 0.8, 0.3],
+            "score2": [0.2, 0.4, 0.6],
+            "raw_expression": ["A", "B", "C"],
+            "feature1": [10, 20, 30],
+            "feature2": [True, False, True],
+            "feature3": ["X", "Y", "Z"],
+            "target": [0, "NA", 1],
+        }
+    )
+    return data
+
+
+@pytest.fixture(scope="session")
+def mock_configuration():
+    """Sample mock configuration."""
+    configuration = MagicMock()
+    configuration.label = "target"
+    configuration.proxy_scores = {"score1": "renamed_score1", "score2": "renamed_score2"}
+    configuration.expression = {"raw_name": "expression_raw", "name": "expression_column"}
+    configuration.expression_filter = "exp"
+    configuration.expression_name = "expression_column"
+    configuration.include_features = ["feature1", "feature2"]
+    return configuration
+
+
+@pytest.fixture(scope="session")
+def raw_data_paths() -> str:
+    """Dummy raw train data."""
+    path = "tests/fixtures/raw_data.csv"
+    return path
+
+
+@pytest.fixture(scope="session")
+def processing_config_path() -> str:
+    """Dummy processing config path."""
+    path = "processing_configuration.yml"
+    return path
+
+
+@pytest.fixture(scope="session")
+def processed_dummy_data_path(processing_config_path) -> Path:
+    """Processed_dummy_data_path."""
+    configuration = load_yml(CONFIGURATION_DIRECTORY / processing_config_path)
+    data_version = configuration["data_version"]
+    data_type = configuration["data_type"]
+    processed_data_path = DATA_DIRECTORY / f"proc_data_{data_version}_{data_type}"
+    return processed_data_path
+
+
+@pytest.fixture(scope="session")
+def main_raw_data_paths() -> str:
+    """Dummy raw main data."""
+    path = ("tests/fixtures/dummy_raw_data.csv",)
+    return path
