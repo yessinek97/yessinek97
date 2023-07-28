@@ -53,6 +53,7 @@ test:
   needs: ["build_image"]
   stage: test
   script:
+    - docker container prune
     - apt-get install zip unzip
     - export stage=test
     - unzip  tests/fixtures/model-fixtures.zip -d tests/models
