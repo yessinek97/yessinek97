@@ -181,6 +181,212 @@ class LoadProcessingConfiguration:
         return base_columns
 
 
+def remove_rows(data: pd.DataFrame, configuration: LoadProcessingConfiguration) -> pd.DataFrame:
+    """Remove rows from data based on the filter."""
+    if (configuration.filter_rows_column is not None) and (
+        configuration.filter_rows_value is not None
+    ):
+        if configuration.filter_rows_column in data.columns:
+            log.info(
+                "-- Remove rows using  %s column  with the value %s",
+                configuration.filter_rows_column,
+                configuration.filter_rows_value,
+            )
+            log.info("--- data shape before  removing rows %s", data.shape)
+            data = data[data[configuration.filter_rows_column] != configuration.filter_rows_value]
+            log.info("--- data shape after   removing rows %s", data.shape)
+        else:
+            log.info("[%s] column is not defined in the data", configuration.filter_rows_column)
+    return data
+
+
+def replace_nan_strings(data: pd.DataFrame) -> pd.DataFrame:
+    """Replace nan strings with numpy nan.
+
+    Args:
+        data: dataframe to replace its nan strings.
+
+    Returns:
+        data: The new dataframe.
+    """
+    log.info("--- initial %s null values", data.isna().sum().sum())
+    data = data.replace("\n", "", regex=True)
+    data = data.replace("\t", "", regex=True)
+    nan_strings = ["NA", "NaN", "NAN", "NE", "n.d.", "nan", "na", "?", ""]
+    for col in data.columns:
+        for nanstr in nan_strings:
+            data[col] = data[col].replace(nanstr, np.nan)
+    log.info("--- final %s null values", data.isna().sum().sum())
+    return data
+
+
+def clean_target(data: pd.DataFrame, target: str) -> pd.DataFrame:
+    """Clean the dataframe's target.
+
+    Args:
+    data: dataframe to clean its target.
+    target: the target's column name.
+
+    Returns:
+    data: dataframe with cleaned target.
+    """
+    log.info("--- data shape before process label %s", data.shape)
+    data = data[data[target].isin(["0", "1", 0, 1])]
+    data[target] = data[target].astype(int)
+    log.info("--- data shape after  process label %s", data.shape)
+    return data
+
+
+def rename_scores(data: pd.DataFrame, scores: Dict[str, str]) -> pd.DataFrame:
+    """Rename scores columns."""
+    renamed_columns = [col for col in data.columns if col in scores]
+    data = data.rename(columns=scores)
+    if len(renamed_columns):
+        log.info("--- %s columns are renamed", len(renamed_columns))
+    return data
+
+
+def get_columns_by_keywords(columns_list: List[str], keywords: Union[List[str], str]) -> List[str]:
+    """Filter columns by keywords."""
+    cols = []
+
+    columns_list = [col.lower() for col in columns_list]
+    if len(keywords):
+
+        if isinstance(keywords, list):
+            words = re.compile("|".join(keywords))
+        else:
+            words = re.compile(keywords)
+
+        for col in columns_list:
+            match = words.search(col)
+            if match:
+                cols.append(col)
+
+    return cols
+
+
+def remove_columns(
+    data: pd.DataFrame,
+    columns: List[str],
+    name: str = "",
+    keep_features: bool = False,
+    include_features: Optional[List[str]] = None,
+    process_name: Optional[str] = "",
+) -> pd.DataFrame:
+    """Remove columns from data."""
+    log.info("--- %sdata shape before removing columns %s", name, data.shape)
+    removed_include_features = []
+    if include_features:
+        removed_include_features = [col for col in include_features if col in columns]
+        if keep_features:
+            columns = [col for col in columns if col not in include_features]
+            log.info(
+                "--- %s features are kept from the include features during %s",
+                len(removed_include_features),
+                process_name,
+            )
+            for i in range(0, len(removed_include_features), 3):
+                log.info("---- %s", " | ".join(removed_include_features[i : i + 3]))
+        else:
+            log.info(
+                "--- %s is removed from the include features during  %s",
+                len(removed_include_features),
+                process_name,
+            )
+    log.info("--- %s features removed from data", len(columns))
+    data = data.drop([col for col in columns if col in data.columns], axis=1)
+    log.info("--- %s data shape after  removing columns %s", name, data.shape)
+    return data
+
+
+def remove_duplicated_columns_by_name(data: pd.DataFrame) -> pd.DataFrame:
+    """Remove columns with the same name."""
+    unique_columns = data.columns.value_counts() > 1
+    duplicate_to_drop = list(unique_columns[unique_columns].index)
+    log.info("--- %s duplicated columns", len(duplicate_to_drop))
+    for i in range(0, len(duplicate_to_drop), 3):
+        log.info("---- %s", " | ".join(duplicate_to_drop[i : i + 3]))
+    data = remove_columns(data, duplicate_to_drop)
+    return data
+
+
+def remove_columns_with_unique_value(data: pd.DataFrame) -> pd.DataFrame:
+    """Get columns with one unique value."""
+    df = data_description(data, data.columns)
+    columns_with_unique_value = set(df[df["Nunique"] == 1].Name)
+    log.info(
+        "--- data has %s columns. %s of which have one unique value.",
+        len(data.columns),
+        len(columns_with_unique_value),
+    )
+    data = remove_columns(data, list(columns_with_unique_value))
+    return data
+
+
+def remove_nan_columns(
+    data: pd.DataFrame, nan_ratio: float, keep_features: bool, include_features: List[str]
+) -> pd.DataFrame:
+    """Get columns with full nans."""
+    data_des = data_description(data, data.columns)
+    data_full_nan_columns = data_des[data_des["Nan Ratio"] >= nan_ratio].Name.tolist()
+    log.info(
+        "--- full nan columns: %s | %s",
+        len(data_full_nan_columns),
+        len(data_full_nan_columns) / data.shape[1],
+    )
+    data = remove_columns(
+        data,
+        data_full_nan_columns,
+        keep_features=keep_features,
+        include_features=include_features,
+        process_name="remove_nan_columns",
+    )
+    return data
+
+
+def remove_list_columns(data: pd.DataFrame) -> pd.DataFrame:
+    """Get and remove columns that have list format."""
+    features_list_format = []
+    for col in data.columns:
+        ratio = data[col].apply(is_list).mean()
+        if ratio:
+            features_list_format.append(col)
+    log.info("--- features list format to drop: %s", len(features_list_format))
+    data = remove_columns(data, features_list_format)
+    return data
+
+
+def process_expression(
+    data: pd.DataFrame,
+    configuration: LoadProcessingConfiguration,
+    include_features: List[str],
+) -> pd.DataFrame:
+    """Pop expression columns from data and merge the real expression column to the given data."""
+    expression_columns = get_columns_by_keywords(
+        data.columns.to_list(), configuration.expression_filter
+    )
+    log.info("--- expression columns : %s", len(expression_columns))
+
+    expression_data = data[[PROC_SEC_ID] + expression_columns].copy()
+    data = remove_columns(
+        data,
+        expression_columns,
+        keep_features=True,
+        include_features=include_features,
+        process_name="process expression",
+    )
+    expression_data.rename(
+        columns={configuration.expression_raw_name: configuration.expression_name}, inplace=True
+    )
+
+    data = data.merge(
+        expression_data[[PROC_SEC_ID, configuration.expression_name]], how="left", on=[PROC_SEC_ID]
+    )
+
+    return data
+
+
 def data_processor_single_data(
     data: pd.DataFrame, configuration: LoadProcessingConfiguration
 ) -> Dict[str, pd.DataFrame]:
@@ -228,197 +434,12 @@ def data_processor_single_data(
     return {"proc": data, "base": base_data}
 
 
-def replace_nan_strings(data: pd.DataFrame) -> pd.DataFrame:
-    """Replace nan strings with numpy nan.
-
-    Args:
-        data: dataframe to replace its nan strings.
-
-    Returns:
-        data: The new dataframe.
-    """
-    log.info("--- initial %s null values", data.isna().sum().sum())
-    data = data.replace("\n", "", regex=True)
-    data = data.replace("\t", "", regex=True)
-    nan_strings = ["NA", "NaN", "NAN", "NE", "n.d.", "nan", "na", "?", ""]
-    for col in data.columns:
-        for nanstr in nan_strings:
-            data[col] = data[col].replace(nanstr, np.nan)
-    log.info("--- final %s null values", data.isna().sum().sum())
-    return data
-
-
-def remove_rows(data: pd.DataFrame, configuration: LoadProcessingConfiguration) -> pd.DataFrame:
-    """Remove rows from data based on the filter."""
-    if (configuration.filter_rows_column is not None) and (
-        configuration.filter_rows_value is not None
-    ):
-        if configuration.filter_rows_column in data.columns:
-            log.info(
-                "-- Remove rows using  %s column  with the value %s",
-                configuration.filter_rows_column,
-                configuration.filter_rows_value,
-            )
-            log.info("--- data shape before  removing rows %s", data.shape)
-            data = data[data[configuration.filter_rows_column] != configuration.filter_rows_value]
-            log.info("--- data shape after   removing rows %s", data.shape)
-        else:
-            log.info("[%s] column is not defined in the data", configuration.filter_rows_column)
-    return data
-
-
-def clean_target(data: pd.DataFrame, target: str) -> pd.DataFrame:
-    """Clean the dataframe's target.
-
-    Args:
-    data: dataframe to clean its target.
-    target: the target's column name.
-
-    Returns:
-    data: dataframe with cleaned target.
-    """
-    log.info("--- data shape before process label %s", data.shape)
-    data = data[data[target].isin(["0", "1", 0, 1])]
-    data[target] = data[target].astype(int)
-    log.info("--- data shape after  process label %s", data.shape)
-    return data
-
-
-def remove_nan_columns(
-    data: pd.DataFrame, nan_ratio: float, keep_features: bool, include_features: List[str]
-) -> pd.DataFrame:
-    """Get columns with full nans."""
-    data_des = data_description(data, data.columns)
-    data_full_nan_columns = data_des[data_des["Nan Ratio"] >= nan_ratio].Name.tolist()
-    log.info(
-        "--- full nan columns: %s | %s",
-        len(data_full_nan_columns),
-        len(data_full_nan_columns) / data.shape[1],
-    )
-    data = remove_columns(
-        data,
-        data_full_nan_columns,
-        keep_features=keep_features,
-        include_features=include_features,
-        process_name="remove_nan_columns",
-    )
-    return data
-
-
-def remove_duplicated_columns_by_name(data: pd.DataFrame) -> pd.DataFrame:
-    """Remove columns with the same name."""
-    unique_columns = data.columns.value_counts() > 1
-    duplicate_to_drop = list(unique_columns[unique_columns].index)
-    log.info("--- %s duplicated columns", len(duplicate_to_drop))
-    for i in range(0, len(duplicate_to_drop), 3):
-        log.info("---- %s", " | ".join(duplicate_to_drop[i : i + 3]))
-    data = remove_columns(data, duplicate_to_drop)
-    return data
-
-
-def remove_columns(
-    data: pd.DataFrame,
-    columns: List[str],
-    name: str = "",
-    keep_features: bool = False,
-    include_features: Optional[List[str]] = None,
-    process_name: Optional[str] = "",
-) -> pd.DataFrame:
-    """Remove columns from data."""
-    log.info("--- %sdata shape before removing columns %s", name, data.shape)
-    removed_include_features = []
-    if include_features:
-        removed_include_features = [col for col in include_features if col in columns]
-        if keep_features:
-            columns = [col for col in columns if col not in include_features]
-            log.info(
-                "--- %s features are kept from the include features during %s",
-                len(removed_include_features),
-                process_name,
-            )
-            for i in range(0, len(removed_include_features), 3):
-                log.info("---- %s", " | ".join(removed_include_features[i : i + 3]))
-        else:
-            log.info(
-                "--- %s is removed from the include features during  %s",
-                len(removed_include_features),
-                process_name,
-            )
-    log.info("--- %s features removed from data", len(columns))
-    data = data.drop([col for col in columns if col in data.columns], axis=1)
-    log.info("--- %s data shape after  removing columns %s", name, data.shape)
-    return data
-
-
-def remove_columns_with_unique_value(data: pd.DataFrame) -> pd.DataFrame:
-    """Get columns with one unique value."""
-    df = data_description(data, data.columns)
-    columns_with_unique_value = set(df[df["Nunique"] == 1].Name)
-    log.info(
-        "--- data has %s columns. %s of which have one unique value.",
-        len(data.columns),
-        len(columns_with_unique_value),
-    )
-    data = remove_columns(data, list(columns_with_unique_value))
-    return data
-
-
-def remove_list_columns(data: pd.DataFrame) -> pd.DataFrame:
-    """Get and remove columns that have list format."""
-    features_list_format = []
-    for col in data.columns:
-        ratio = data[col].apply(is_list).mean()
-        if ratio:
-            features_list_format.append(col)
-    log.info("--- features list format to drop: %s", len(features_list_format))
-    data = remove_columns(data, features_list_format)
-    return data
-
-
-def rename_scores(data: pd.DataFrame, scores: Dict[str, str]) -> pd.DataFrame:
-    """Rename scores columns."""
-    renamed_columns = [col for col in data.columns if col in scores]
-    data = data.rename(columns=scores)
-    if len(renamed_columns):
-        log.info("--- %s columns are renamed", len(renamed_columns))
-    return data
-
-
-def process_expression(
-    data: pd.DataFrame,
-    configuration: LoadProcessingConfiguration,
-    include_features: List[str],
-) -> pd.DataFrame:
-    """Pop expression columns from data and merge the real expression column to the given data."""
-    expression_columns = get_columns_by_keywords(
-        data.columns.to_list(), configuration.expression_filter
-    )
-    log.info("--- expression columns : %s", len(expression_columns))
-
-    expression_data = data[[PROC_SEC_ID] + expression_columns].copy()
-    data = remove_columns(
-        data,
-        expression_columns,
-        keep_features=True,
-        include_features=include_features,
-        process_name="process expression",
-    )
-    expression_data.rename(
-        columns={configuration.expression_raw_name: configuration.expression_name}, inplace=True
-    )
-    data = data.merge(
-        expression_data[[PROC_SEC_ID, configuration.expression_name]], how="left", on=[PROC_SEC_ID]
-    )
-
-    return data
-
-
-def get_list_type(data: pd.DataFrame, features_list_format: Set[str]) -> None:
+def get_list_type(data: pd.DataFrame, features_set_format: Set[str]) -> None:
     """Get columns that have list format."""
     for col in data.columns:
         ratio = data[col].apply(is_list).mean()
         if ratio:
-            features_list_format.add(col)
+            features_set_format.add(col)
 
 
 def data_description(data: pd.DataFrame, names: List[str]) -> pd.DataFrame:
@@ -448,35 +469,13 @@ def is_list(x: str) -> int:
 
 def is_integer(x: Any) -> bool:
     """Check whether or not x is an integer."""
-    try:
-        return x.is_integer()
-    except (SyntaxError, AttributeError):
-        return False
+    # pylint: disable=unidiomatic-typecheck
+    return type(x) is int
 
 
 def is_bool(x: Any) -> bool:
     """Check whether or not x is a boolean."""
     return isinstance(x, bool)
-
-
-def get_columns_by_keywords(columns_list: List[str], keywords: Union[List[str], str]) -> List[str]:
-    """Filter columns by keywords."""
-    cols = []
-
-    columns_list = [col.lower() for col in columns_list]
-    if len(keywords):
-
-        if isinstance(keywords, list):
-            words = re.compile("|".join(keywords))
-        else:
-            words = re.compile(keywords)
-
-        for col in columns_list:
-            match = words.search(col)
-            if match:
-                cols.append(col)
-
-    return cols
 
 
 def get_features_type(
@@ -505,6 +504,7 @@ def get_data_type(data: pd.DataFrame, col_name: str) -> Type:
     col = data[col_name].dropna()
     if col.apply(is_integer).all():
         return int
+
     if col.apply(is_bool).all():
         return bool
     return col.dtype
