@@ -444,41 +444,14 @@ class Dataset:
             single_model_split_name = self.experiments[SINGLE_MODEL_NAME]["validation_column"]
             self.splits_columns.append(single_model_split_name)
             self._single_model_split(single_model_split_name)
-            # if self.use_validation_strategy:
-            #     self.train_val_split(single_model_split_name)
-            # else:
-            #     if single_model_split_name not in self.data.columns:
-            #         message = (
-            #             f"Split column : {single_model_split_name} is not "
-            #             + " defined in the train data. Please set validation_strategy to True"
-            #             + f" or rename the split column to {single_model_split_name}"
-            #         )
-            #         raise ValueError(message)
+
         # Kfold Experiment
         kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
         if kfold_exps and self.fold:
             kfold_split_name = self.experiments[kfold_exps[0]]["split_column"]
             self.splits_columns.append(kfold_split_name)
             self._kfold_split(kfold_split_name, self.seed)
-            # if self.use_validation_strategy and self.fold:
-            #     self.kfold_split(kfold_split_name, self.seed)
-            # else:
-            #     if kfold_split_name not in self.data.columns:
-            #         message = (
-            #             f"Split column : {kfold_split_name} is not"
-            #             + " defined in the train data. Please set validation_strategy to True"
-            #             + f" or rename the split column to {kfold_split_name}"
-            #         )
-            #         raise ValueError(message)
-            #     data_fold = self.data[kfold_split_name].nunique()
-            #     if data_fold != self.fold:
-            #         message = (
-            #             "The number of dataset splits is different from the number specified"
-            #             + " in the configuration file ! Please set validation_strategy to True "
-            #             + "or use the right number of splits\n\n dataset:"
-            #             + f"{data_fold}\n configuration: {self.fold}"
-            #         )
-            #         raise ValueError(message)
+
         try:
             self.data[self.ids_columns + self.splits_columns].to_csv(
                 self.validation_splits_path, index=False
@@ -489,34 +462,6 @@ class Dataset:
                 + " in the provided train data : Check the name of these columns or"
                 + " set validation strategy to True."
             ) from err
-
-    # def validation_splits(self) -> None:
-    #     """Apply cross validations strategy  for each specific experiment."""
-    #     # Single model
-    #     single_model_split_name = self.experiments[SINGLE_MODEL_NAME]["validation_column"]
-    #     self._single_model_split(single_model_split_name)
-
-    #     # KFold experiments
-
-    #     kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
-    #     if kfold_exps and self.fold:
-    #         kfold_split_name = self.experiments[kfold_exps[0]]["split_column"]
-    #         self._kfold_split(kfold_split_name, self.seed)
-
-    #     # Save splits
-
-    #     try:
-    #         self.data[self.ids_columns + self.splits_columns].to_csv(
-    #             self.validation_splits_path, index=False
-    #         )
-    #     except KeyError as err:
-    #         raise KeyError(
-    #             f" [{', '.join(self.splits_columns)}]  columns are not defined"
-    #             + " in the provided train data : Check the name of these columns or"
-    #             + " set validation strategy to True."
-    #         ) from err
-
-    # Helper functions
 
     def _single_model_split(self, split_name: str) -> None:
         """Perform the splitting for Single Model and check the split column."""
