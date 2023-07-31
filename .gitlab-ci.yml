@@ -54,6 +54,7 @@ test:
   stage: test
   script:
     - apt-get install zip unzip
+    - export stage=test
     - unzip  tests/fixtures/model-fixtures.zip -d tests/models
     - cp -r tests/models/model-fixtures/* tests/models/
     - rm -r tests/models/model-fixtures/
