@@ -53,9 +53,7 @@ test:
   needs: ["build_image"]
   stage: test
   script:
-    - apt-get clean
-    - apt-get autoremove
-    - export stage=test
+    - apt-get install zip unzip
     - unzip  tests/fixtures/model-fixtures.zip -d tests/models
     - cp -r tests/models/model-fixtures/* tests/models/
     - rm -r tests/models/model-fixtures/
