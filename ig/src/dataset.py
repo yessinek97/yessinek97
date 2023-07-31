@@ -447,7 +447,7 @@ class Dataset:
 
         # Kfold Experiment
         kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
-        if kfold_exps and self.fold:
+        if kfold_exps:
             kfold_split_name = self.experiments[kfold_exps[0]]["split_column"]
             self.splits_columns.append(kfold_split_name)
             self._kfold_split(kfold_split_name, self.seed)
@@ -478,8 +478,17 @@ class Dataset:
 
     def _kfold_split(self, split_column: str, seed: int) -> None:
         """Perform the kfold splitting and check the split column."""
-        if self.use_validation_strategy and self.fold:
-            self.kfold_split(split_column, seed)
+        if self.use_validation_strategy:
+            if self.fold:
+
+                self.kfold_split(split_column, seed)
+            else:
+                message = (
+                    "Please provide a fold value to split the dataset !"
+                    + "You can add an attribute in the configuration file under processing section"
+                    + " as following : fold: number of folds"
+                )
+                raise ValueError(message)
         else:
             if split_column not in self.data.columns:
                 message = (
@@ -497,18 +506,6 @@ class Dataset:
                     + f"{data_fold}\n configuration: {self.fold}"
                 )
                 raise ValueError(message)
-        # if self.use_validation_strategy and self.fold:
-        #     self.kfold_split(split_column, seed)
-        # else:
-        #     if split_column not in self.data.columns:
-        #         raise ValueError(f"Split column {split_column} is not defined")
-        #     if self.data[split_column].nunique() != self.fold:
-        #         raise ValueError(
-        #             "The number of dataset splits is different from the number specified"
-        #             + " in the configuration file ! Please set validation_strategy to True "
-        #             + "or use the right number of splits\n\n dataset:"
-        #             + f"{self.data[split_column].nunique()} configuration: {self.fold}"
-        #         )
 
     def train_val_split(self, split_column: str) -> None:
         """Split data into train and val set."""
