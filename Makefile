@@ -1,97 +1,61 @@
-# This Makefile provides shortcut commands to facilitate local development.
+IMAGE_NAME = ig-dev
+CONTAINER_NAME = ig_dev
+DOCKER_REGISTRY = registry.gitlab.com/instadeep/biondeep-ig
+TAG = latest
+TOKEN = not set
+USERNAME = not set
 
-# LAST_COMMIT returns the curent HEAD commit
-LAST_COMMIT = $(shell git rev-parse --short HEAD)
+DOCKER_IMAGE_LATEST = $(IMAGE_NAME):latest
+HOME_DIRECTORY = /home/app/ig
+DOCKER_RUN_FLAGS = -d --volume $(PWD):$(HOME_DIRECTORY) -e MACHINE_ID=`hostname` --name $(CONTAINER_NAME)
 
-# VERSION represents a clear statement of which tag based version of the repository you're actually running.
-# If you run a tag based version, it returns the according HEAD tag, otherwise it returns:
-# * `LAST_COMMIT-staging` if no tags exist
-# * `BASED_TAG-SHORT_SHA_COMMIT-staging` if a previous tag exist
-VERSION := $(shell git describe --exact-match --abbrev=0 --tags $(LAST_COMMIT) 2> /dev/null)
-ifndef VERSION
-	BASED_VERSION := $(shell git describe --abbrev=3 --tags $(git rev-list --tags --max-count=1))
-	ifndef BASED_VERSION
-	VERSION = $(LAST_COMMIT)-staging
-	else
-	VERSION = $(BASED_VERSION)-staging
-	endif
+
+# Print help by default.
+.DEFAULT_GOAL := help
+
+.PHONY: help login build  bash
+
+ifneq ($(TAG), latest)
+	IMAGE_TAG = $(TAG)
+else
+	IMAGE_TAG = latest
 endif
 
-# Docker variables
-DOCKER_HOME_DIRECTORY = /home/app
+ifeq ($(PULL), true)
+	PULL = $(PULL)
+else
+	PULL = false
+endif
 
-DOCKER_IMAGE_NAME = registry.gitlab.com/instadeep/biondeep-ig
-DOCKER_IMAGE_TAG = $(VERSION)
-DOCKER_IMAGE = $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
-DOCKER_IMAGE_CI = $(DOCKER_IMAGE_NAME):$(CI_COMMIT_SHORT_SHA)
-DOCKER_IMAGE_DOCS = ig_docs
-DOCKER_RUN_FLAGS = --rm --volume $(PWD):$(DOCKER_HOME_DIRECTORY)
+login:
+ifneq ($(TOKEN), not set)
+	ifneq (${USERNAME}, not set)
+		docker login $(DOCKER_REGISTRY) -u ${USERNAME} -p ${TOKEN}
+	endif
+else
+	docker login $(DOCKER_REGISTRY)
+endif
 
-DOCKERFILE = Dockerfile
-HOST_MKDOCS_PORT=6030
-DOCKER_MKDOCS_PORT=8000
-# Build commands
+build: ## Builds the docker image.
+ifeq ($(PULL),true)
+	docker pull $(DOCKER_REGISTRY):$(IMAGE_TAG)
+	docker image tag $(DOCKER_REGISTRY):$(IMAGE_TAG) $(DOCKER_IMAGE_LATEST)
+else
+	docker build -t $(IMAGE_NAME)  --build-arg host_gid=$$(id -g) --build-arg host_uid=$$(id -u) -f Dockerfile.local .
+endif
 
-.PHONY: build build-arm build-ci
+run: ## Create the container.
+	docker run -it $(DOCKER_RUN_FLAGS)  $(DOCKER_IMAGE_LATEST)
 
-define docker_buildx_template
-	docker buildx build --platform=$(1) --progress=plain . \
-		-f $(DOCKERFILE) -t $(2) --build-arg HOST_GID=$(shell id -g) \
-		--build-arg HOST_UID=$(shell id -u) --build-arg HOME_DIRECTORY=$(DOCKER_HOME_DIRECTORY)
-endef
+bash: ## gets a bash in the container
+	docker start  $(CONTAINER_NAME)
+	docker exec -it $(CONTAINER_NAME) sh -c "pip install --user -e . && /bin/bash"
 
-define docker_build_ci_template
-	docker build --target=ci --progress=plain . -f $(1) -t $(2)
-endef
 
-build:
-	$(call docker_buildx_template,linux/amd64,$(DOCKER_IMAGE))
-
-build-arm:
-	$(call docker_buildx_template,linux/arm64,$(DOCKER_IMAGE))
-
-build-ci:
-	$(call docker_build_ci_template,$(DOCKERFILE),$(DOCKER_IMAGE_CI))
-	docker tag $(DOCKER_IMAGE_CI) $(DOCKER_IMAGE)
-# Push commands
-
-.PHONY: push-ci
-
-push-ci:
-	docker push $(DOCKER_IMAGE)
-	docker push $(DOCKER_IMAGE_CI)
-
-# Dev commands
-
-.PHONY: test bash docs
-
-test: build
-	docker run $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE) pytest --doctest-modules --verbose
-
-bash: build
-	docker run -it $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE) sh -c "pip install --user -e . && /bin/bash"
-
-docs: build
-	docker run $(DOCKER_RUN_FLAGS) -p 8080:8080 $(DOCKER_IMAGE) mkdocs serve
-
-## Docs Docker
-build-docs-dev:
-	docker build -t $(DOCKER_IMAGE_DOCS) --build-arg HOME_DIRECTORY=$(DOCKER_HOME_DIRECTORY) -f Dockerfile.docs .
-
-docs-serve-dev: build-docs-dev
-	docker run -it $(DOCKER_RUN_FLAGS) -p $(HOST_MKDOCS_PORT):$(DOCKER_MKDOCS_PORT) $(DOCKER_IMAGE_DOCS) mkdocs serve -a 0.0.0.0:$(DOCKER_MKDOCS_PORT)
-
-#IG Docker
-IG_IMAGE_NAME=ig_train
-IG_CONTAINER_NAME=ig_container
-ig_build:
-	docker build -t $(IG_IMAGE_NAME) --build-arg gid=$$(id -g)  --build-arg uid=$$(id -u) --build-arg HOME_DIRECTORY=$(DOCKER_HOME_DIRECTORY) -f Dockerfile.ig .
-
-ig_run:
-	docker run -it -d -e MACHINE_ID=`hostname`   --name $(IG_CONTAINER_NAME)  -v ${PWD}:$(DOCKER_HOME_DIRECTORY)  $(IG_IMAGE_NAME):latest
-ig_bash:
-	docker start  $(IG_CONTAINER_NAME)
-	docker exec -it $(IG_CONTAINER_NAME) sh -c "pip install --user -e . && /bin/bash"
-ig_rm:
-	docker stop  $(IG_CONTAINER_NAME)
-	docker rm  $(IG_CONTAINER_NAME)
+setup: ## Builds the image and gets a bash in the container.
+	make build run
+rm:
+	docker stop  $(CONTAINER_NAME)
+	docker rm  $(CONTAINER_NAME)
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

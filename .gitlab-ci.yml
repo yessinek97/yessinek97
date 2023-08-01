@@ -3,38 +3,54 @@ stages:
   - lint
   - test
   - publish
-  - workflow
+  - deploy
 
 variables:
   PRE_COMMIT_VERSION: "2.17.0"
   PROJECT_NAME: biondeep_ig
   DOCKER_IMAGE_NAME: registry.gitlab.com/instadeep/biondeep-ig
+  DOCKER_IMAGE: $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+  DOCKER_IMAGE_NAME_LINT: $CI_REGISTRY_IMAGE/lint
+  DOCKER_IMAGE_LINT: $DOCKER_IMAGE_NAME_LINT:$CI_COMMIT_SHORT_SHA
+  DOCKER_IMAGE_NAME_DOCS: $CI_REGISTRY_IMAGE/docs
+  DOCKER_IMAGE_DOCS: $DOCKER_IMAGE_NAME_DOCS:$CI_COMMIT_SHORT_SHA
 
-.docker_login: &docker_login |
-  docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+.docker-login:
+  image: eu.gcr.io/int-infra-harborbackup-gcp/docker-hub/docker:19.03
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin
+      "$CI_REGISTRY"
 
 build_image:
-  image: eu.gcr.io/int-infra-harborbackup-gcp/docker-hub/docker:19.03
-  services:
-    - eu.gcr.io/int-infra-harborbackup-gcp/docker-hub/docker:19.03-dind
+  extends: .docker-login
   stage: build
   script:
-    - *docker_login
-    - apk add --no-cache git
-    - apk add --no-cache make
-    - make build-ci
-    - make push-ci
+    - docker pull $DOCKER_IMAGE_NAME:latest || true
+    - docker build --build-arg CI_REGISTRY=$CI_REGISTRY_IMAGE --cache-from $DOCKER_IMAGE_NAME:latest
+      -t $DOCKER_IMAGE -f Dockerfile .
+    - docker push $DOCKER_IMAGE
 
-linters:
-  image: $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-  stage: lint
+build-lint:
+  extends: .docker-login
+  stage: build
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
   script:
-    - pip install pre-commit==$PRE_COMMIT_VERSION
-    - pre-commit install -t pre-commit
+    - docker build -t $DOCKER_IMAGE_LINT . -f Dockerfile.lint
+
+    - docker push $DOCKER_IMAGE_LINT
+
+lint:
+  image: $DOCKER_IMAGE_LINT
+  stage: lint
+  needs: [build-lint]
+  script:
     - pre-commit run --all-files
 
 test:
-  image: $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+  image: $DOCKER_IMAGE
+  needs: ["build_image"]
   stage: test
   script:
     - apt-get install zip unzip
@@ -57,12 +73,31 @@ test:
       junit: .test-results.xml
     expire_in: 1 day
 
-pages:
-  image: $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-  stage: publish
-  needs: ["build_image"]
+build-docs:
+  extends: .docker-login
+  stage: build
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
   script:
-    - pip install -r $CI_PROJECT_DIR/requirements.txt
+    - docker build -t $DOCKER_IMAGE_DOCS . -f Dockerfile.docs
+    - docker push $DOCKER_IMAGE_DOCS
+
+test_docs:
+  image: $DOCKER_IMAGE_DOCS
+  stage: test
+  needs: ["build-docs"]
+  script:
+    - mkdocs build --verbose --site-dir docs_public
+  artifacts:
+    paths:
+      - docs_public
+
+pages:
+  image: $DOCKER_IMAGE_DOCS
+  stage: publish
+  needs: ["build-docs"]
+  script:
     - mkdocs build --verbose
   artifacts:
     paths:
@@ -70,44 +105,12 @@ pages:
   only:
     - main
 
-run-pmhc-argoWorkflow:
-  stage: workflow
-  image: registry.gitlab.com/instadeep/multi_bin_packing/ci:latest
-  when: manual
-  needs:
-    - job: build_image
-  only:
-    variables:
-      - $CI_COMMIT_MESSAGE =~ /ARGO .*/
-  tags:
-    - k8s-biondeep-ig
+push-latest-ig:
+  extends: .docker-login
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
   script:
-    - yq e ".metadata.name = \"pmhc-$CI_COMMIT_SHORT_SHA\"" -i
-      ./biondeep_ig/bio_ig_gen/pipeline/argo/pmhc-gen-workflow.yaml
-    - yq e ".spec.arguments.parameters[0].value = \"$DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA\"" -i
-      ./biondeep_ig/bio_ig_gen/pipeline/argo/pmhc-gen-workflow.yaml
-    - kubectl apply -f ./biondeep_ig/bio_ig_gen/pipeline/argo/pmhc-gen-workflow.yaml --namespace
-      biondeep-ig-infra
-    - echo "To see the logs, Please visit Argo Server
-      https://argo.instadeep.ichorai.io/workflows/biondeep-ig-infra"
-
-run-tcr-pmhc-argoWorkflow:
-  stage: workflow
-  image: registry.gitlab.com/instadeep/multi_bin_packing/ci:latest
-  when: manual
-  needs:
-    - job: build_image
-  only:
-    variables:
-      - $CI_COMMIT_MESSAGE =~ /ARGO .*/
-  tags:
-    - k8s-biondeep-ig
-  script:
-    - yq e ".metadata.name = \"tcr-pmhc-$CI_COMMIT_SHORT_SHA\"" -i
-      ./biondeep_ig/bio_ig_gen/pipeline/argo/tcr-pmhc-gen-workflow.yaml
-    - yq e ".spec.arguments.parameters[0].value = \"$DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA\"" -i
-      ./biondeep_ig/bio_ig_gen/pipeline/argo/tcr-pmhc-gen-workflow.yaml
-    - kubectl apply -f ./biondeep_ig/bio_ig_gen/pipeline/argo/tcr-pmhc-gen-workflow.yaml --namespace
-      biondeep-ig-infra
-    - echo "To see the logs, Please visit Argo Server
-      https://argo.instadeep.ichorai.io/workflows/biondeep-ig-infra"
+    - docker pull $DOCKER_IMAGE
+    - docker tag $DOCKER_IMAGE $DOCKER_IMAGE_NAME_IG:latest
+    - docker push $DOCKER_IMAGE:latest
