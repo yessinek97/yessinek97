@@ -133,7 +133,7 @@ class Dataset:
     @property
     def fold(self) -> int:
         """Return nbr of fold."""
-        return self.processing_configuration.get("fold", None)
+        return self.processing_configuration.get("fold", 5)
 
     @property
     def validation_splits_path(self) -> Path:
@@ -441,16 +441,17 @@ class Dataset:
         """Apply cross validations strategy  for each specif experiment."""
         # Single Model
         kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
-        if SINGLE_MODEL_NAME in self.experiments.keys():
-            kfold_exps = []
-            single_model_split_name = self.experiments[SINGLE_MODEL_NAME]["validation_column"]
-            self.splits_columns.append(single_model_split_name)
-            self._single_model_split(single_model_split_name)
         # Kfold Experiment
         if kfold_exps:
             kfold_split_name = self.experiments[kfold_exps[0]]["split_column"]
             self.splits_columns.append(kfold_split_name)
             self._kfold_split(kfold_split_name, self.seed)
+
+        if SINGLE_MODEL_NAME in self.experiments.keys():
+
+            single_model_split_name = self.experiments[SINGLE_MODEL_NAME]["validation_column"]
+            self.splits_columns.append(single_model_split_name)
+            self._single_model_split(single_model_split_name)
 
         try:
             self.data[self.ids_columns + self.splits_columns].to_csv(
