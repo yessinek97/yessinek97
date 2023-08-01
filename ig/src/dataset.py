@@ -440,13 +440,13 @@ class Dataset:
     def validation_splits(self) -> None:
         """Apply cross validations strategy  for each specif experiment."""
         # Single Model
+        kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
         if SINGLE_MODEL_NAME in self.experiments.keys():
+            kfold_exps = []
             single_model_split_name = self.experiments[SINGLE_MODEL_NAME]["validation_column"]
             self.splits_columns.append(single_model_split_name)
             self._single_model_split(single_model_split_name)
-
         # Kfold Experiment
-        kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
         if kfold_exps:
             kfold_split_name = self.experiments[kfold_exps[0]]["split_column"]
             self.splits_columns.append(kfold_split_name)
@@ -488,7 +488,7 @@ class Dataset:
                     + "You can add an attribute in the configuration file under processing section"
                     + " as following : fold: number of folds"
                 )
-                raise ValueError(message)
+                raise Warning(message)
         else:
             if split_column not in self.data.columns:
                 message = (
