@@ -69,6 +69,7 @@ class KfoldMultiSeedExperiment(BaseExperiment):
             self.prediction_columns_name = [
                 f"prediction_{split}" for split in self.train_data()[self.split_column].unique()
             ]
+
         self.kfold_prediction_name = [
             f"prediction_{operation}" for operation in self.kfold_operations
         ]

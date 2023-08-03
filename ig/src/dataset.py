@@ -232,10 +232,11 @@ class Dataset:
     def load_data(self) -> Dataset:
         """Return processed data whatever is it the saved or the processed from the beginning."""
         self.process()
-        self.save_processed_data()
 
         if self.is_train:
             self.validation_splits()
+        self.save_processed_data()
+
         return self
 
     def find_features(self, all_features: list[str], index: str) -> list[str]:
@@ -438,17 +439,20 @@ class Dataset:
 
     def validation_splits(self) -> None:
         """Apply cross validations strategy  for each specif experiment."""
-        if SINGLE_MODEL_NAME in self.experiments.keys():
-            single_model_split_name = self.experiments[SINGLE_MODEL_NAME]["validation_column"]
-            self.splits_columns.append(single_model_split_name)
-            if self.use_validation_strategy:
-                self.train_val_split(single_model_split_name)
+        # Single Model
         kfold_exps = list(set(self.experiments.keys()) & set(KFOLD_EXP_NAMES))
+        # Kfold Experiment
         if kfold_exps:
             kfold_split_name = self.experiments[kfold_exps[0]]["split_column"]
             self.splits_columns.append(kfold_split_name)
-            if self.use_validation_strategy:
-                self.kfold_split(kfold_split_name, self.seed)
+            self._kfold_split(kfold_split_name, self.seed)
+
+        if SINGLE_MODEL_NAME in self.experiments.keys():
+
+            single_model_split_name = self.experiments[SINGLE_MODEL_NAME]["validation_column"]
+            self.splits_columns.append(single_model_split_name)
+            self._single_model_split(single_model_split_name)
+
         try:
             self.data[self.ids_columns + self.splits_columns].to_csv(
                 self.validation_splits_path, index=False
@@ -459,6 +463,50 @@ class Dataset:
                 + " in the provided train data : Check the name of these columns or"
                 + " set validation strategy to True."
             ) from err
+
+    def _single_model_split(self, split_name: str) -> None:
+        """Perform the splitting for Single Model and check the split column."""
+        if self.use_validation_strategy:
+            self.train_val_split(split_name)
+        else:
+            if split_name not in self.data.columns:
+                message = (
+                    f"Split column : {split_name} is not "
+                    + " defined in the train data. Please set validation_strategy to True"
+                    + f" or rename the split column to {split_name}"
+                )
+                raise ValueError(message)
+
+    def _kfold_split(self, split_column: str, seed: int) -> None:
+        """Perform the kfold splitting and check the split column."""
+        if self.use_validation_strategy:
+            if self.fold:
+
+                self.kfold_split(split_column, seed)
+            else:
+                message = (
+                    "Please provide a fold value to split the dataset !"
+                    + "You can add an attribute in the configuration file under processing section"
+                    + " as following : fold: number of folds"
+                )
+                raise Warning(message)
+        else:
+            if split_column not in self.data.columns:
+                message = (
+                    f"Split column : {split_column} is not"
+                    + " defined in the train data. Please set validation_strategy to True"
+                    + f" or rename the split column to {split_column}"
+                )
+                raise ValueError(message)
+            data_fold = self.data[split_column].nunique()
+            if data_fold != self.fold:
+                message = (
+                    "The number of dataset splits is different from the number specified"
+                    + " in the configuration file ! Please set validation_strategy to True "
+                    + "or use the right number of splits\n\n dataset:"
+                    + f"{data_fold}\n configuration: {self.fold}"
+                )
+                raise ValueError(message)
 
     def train_val_split(self, split_column: str) -> None:
         """Split data into train and val set."""
