@@ -165,6 +165,7 @@ class Tuning:
             experiment_name=self.experiment_name,
             save_model=self.save_model,
             prediction_name=prediction_name,
+            dataset_name=self.test_data.dataset_name,
         )
         model.fit(train, validation)
 

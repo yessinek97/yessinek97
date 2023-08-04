@@ -70,6 +70,7 @@ def compute_metrics(  # noqa: CCR001
         experiment_path / DATAPROC_DIRECTORY / "features_configuration.yml"
     )
     for test_data_path in test_data_paths:
+
         test_data = Dataset(
             click_ctx=ctx,
             data_path=test_data_path,
@@ -111,6 +112,7 @@ def compute_metrics(  # noqa: CCR001
                         features_configuration_path=features_configuration_path,
                         **experiment_param,
                     )
+
                     scores = experiment.eval_test()
                     results.append(scores)
         _, eval_message = get_best_experiment(

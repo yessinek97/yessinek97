@@ -51,7 +51,7 @@ class Dataset:
         self.splits_columns: list[str] = []
         self.data_path = self.maybe_pull_data_from_gcp(data_path, click_ctx, force_gcp)
         self.features_configuration = self.load_features_configuration(click_ctx, force_gcp)
-
+        self.dataset_name = f"{Path(data_path).parent.name}_data"
         self.all_features = self.float_features + self.int_features + self.categorical_features
         self.use_validation_strategy = self.processing_configuration.get(
             "validation_strategy", True

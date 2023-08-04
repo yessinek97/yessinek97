@@ -41,6 +41,7 @@ class BaseModel(ABC):
         experiment_name: str,
         model_type: str,
         save_model: bool,
+        dataset_name: str,
     ) -> None:
         """Init method."""
         self.features = features
@@ -53,6 +54,7 @@ class BaseModel(ABC):
         self.experiment_name = experiment_name
         self.model_type = model_type
         self.shap_values = None
+        self.dataset_name = dataset_name
         self.model_logger: ModelLogWriter
         self.model: Any
         self.save_model = save_model
@@ -78,12 +80,15 @@ class BaseModel(ABC):
     def fit(self, train_data: pd.DataFrame, val_data: pd.DataFrame) -> None:
         """Fit method."""
 
-    def eval_model(self, data: pd.DataFrame, data_name: str, evaluator: Evaluation) -> None:
+    def eval_model(self, data: pd.DataFrame, split_name: str, evaluator: Evaluation) -> None:
         """Eval method."""
         data = data.copy()
         data[self.prediction_name] = self.predict(data, with_label=False)
         evaluator.compute_metrics(
-            data=data, prediction_name=self.prediction_name, data_name=data_name
+            data=data,
+            prediction_name=self.prediction_name,
+            split_name=split_name,
+            dataset_name=self.dataset_name,
         )
 
     def generate_shap_values(self, data: pd.DataFrame) -> Any:

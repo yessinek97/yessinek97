@@ -158,6 +158,7 @@ def test_eval_comparison_score(
     train_data_path: str,
     test_data_path: str,
     test_experiment_path: Path,
+    dataset_name: str = "dummy",
 ) -> None:
     """This function tests the behavior of eval_comparison_score function."""
     comparison_score = config["evaluation"]["comparison_score"] = comparison_score
@@ -166,7 +167,11 @@ def test_eval_comparison_score(
     test_data = pd.read_csv(test_data_path)
 
     result: pd.DataFrame = eval_comparison_score(
-        config, train_data, test_data, test_experiment_path
+        configuration=config,
+        train_data=train_data,
+        test_data=test_data,
+        experiment_path=test_experiment_path,
+        dataset_name=dataset_name,
     )
 
     if comparison_score is not None:

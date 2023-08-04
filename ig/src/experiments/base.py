@@ -71,10 +71,9 @@ class BaseExperiment(ABC):
         self.train_data = train_data
         self.test_data = test_data
         self.unlabeled_path = unlabeled_path
-
         self.test_data_path = test_data.data_path if isinstance(test_data, Dataset) else None
         self.train_data_path = train_data.data_path if isinstance(train_data, Dataset) else None
-
+        self.dataset_name = self.test_data.dataset_name
         self.configuration = configuration
         self.experiment_name = experiment_name
         self.folder_name = folder_name
@@ -249,6 +248,7 @@ class BaseExperiment(ABC):
             experiment_name=self.experiment_name,
             save_model=self.save_model,
             prediction_name=prediction_name,
+            dataset_name=self.dataset_name,
         )
         model.fit(train, validation)
         # model_path could be None only when the  checkpoints arg  is None and the checkpoints is None only when single_fit method is called from the Tuning class  therefore plotting_shape_values could be called only when model_path is not None
@@ -260,9 +260,9 @@ class BaseExperiment(ABC):
                 model_path.parent / "shap.png",
             )
 
-        model.eval_model(data=train, data_name="train", evaluator=self.evaluator)
-        model.eval_model(data=validation, data_name="validation", evaluator=self.evaluator)
-        model.eval_model(data=self.test_data(), data_name="test", evaluator=self.evaluator)
+        model.eval_model(data=train, split_name="train", evaluator=self.evaluator)
+        model.eval_model(data=validation, split_name="validation", evaluator=self.evaluator)
+        model.eval_model(data=self.test_data(), split_name="test", evaluator=self.evaluator)
 
         return model
 
@@ -344,7 +344,10 @@ class BaseExperiment(ABC):
         for prediction_name in prediction_columns_name:
             log.info("            %s : ", prediction_name)
             self.evaluator.compute_metrics(
-                data=test_data, prediction_name=prediction_name, data_name="test"
+                data=test_data,
+                prediction_name=prediction_name,
+                split_name="test",
+                dataset_name=self.dataset_name,
             )
         results = self._parse_metrics_to_data_frame(
             eval_metrics=self.evaluator.get_evals(), file_name=self.test_data_path.stem
@@ -514,6 +517,7 @@ def create_model(
     experiment_name: str,
     prediction_name: str,
     save_model: bool,
+    dataset_name: str,
 ) -> BaseModelType:
     """Creating a model.
 
@@ -528,7 +532,9 @@ def create_model(
         experiment_name: the experiment name (KfoldExperiment,SingleModel,..)
         prediction_name: str  name of the predicted column
         save_model: boolean to control saving the model
-    Return
+        dataset_name: The name of the dataset.
+
+    Return:
         model : an instance of the Models classes
     """
     return model_cls(
@@ -542,4 +548,5 @@ def create_model(
         experiment_name=experiment_name,
         model_type=model_cls.__name__,
         save_model=save_model,
+        dataset_name=dataset_name,
     )

@@ -149,11 +149,11 @@ def train(
         tags=["simple train"], training_path=train_data_path, test_path=test_data_path
     )
     neptune_log.upload_configuration_files(CONFIGURATION_DIRECTORY / configuration_file)
-
     comparison_score_metrics = eval_comparison_score(
         configuration=general_configuration,
         train_data=train_data().copy(),
         test_data=test_data().copy(),
+        dataset_name=test_data.dataset_name,
         experiment_path=experiment_path,
         plot_comparison_score_only=True,
     )
@@ -729,6 +729,7 @@ def eval_comparison_score(
     configuration: Dict[str, Any],
     train_data: pd.DataFrame,
     test_data: pd.DataFrame,
+    dataset_name: str,
     experiment_path: Path,
     plot_comparison_score_only: bool = True,
 ) -> Optional[pd.DataFrame]:  # noqa
@@ -757,12 +758,14 @@ def eval_comparison_score(
                 evaluator.compute_metrics(
                     data=train_data[train_data[validation_column] == 0],
                     prediction_name=comparison_score,
-                    data_name="train",
+                    split_name="train",
+                    dataset_name=dataset_name,
                 )
                 evaluator.compute_metrics(
                     data=train_data[train_data[validation_column] == 1],
                     prediction_name=comparison_score,
-                    data_name="validation",
+                    split_name="validation",
+                    dataset_name=dataset_name,
                 )
                 results[SINGLE_MODEL_NAME] = evaluator.get_evals()
         kfold_exps = list(set(experiment_names) & set(KFOLD_EXP_NAMES))
@@ -784,12 +787,14 @@ def eval_comparison_score(
                     evaluator.compute_metrics(
                         data=train_data[train_data[split_column] != split],
                         prediction_name=comparison_score,
-                        data_name=f"train_{split}",
+                        split_name=f"train_{split}",
+                        dataset_name=dataset_name,
                     )
                     evaluator.compute_metrics(
                         data=train_data[train_data[split_column] == split],
                         prediction_name=comparison_score,
-                        data_name=f"validation_{split}",
+                        split_name=f"validation_{split}",
+                        dataset_name=dataset_name,
                     )
                 results[KFOLD_MODEL_NAME] = evaluator.get_evals()
         log.info("Test")
@@ -803,7 +808,8 @@ def eval_comparison_score(
         evaluator.compute_metrics(
             data=test_data,
             prediction_name=comparison_score,
-            data_name="test",
+            split_name="test",
+            dataset_name=dataset_name,
         )
         results["test"] = evaluator.get_evals()
         save_yml(
