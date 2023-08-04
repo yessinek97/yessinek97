@@ -82,7 +82,7 @@ def inference(
     ).load_data()
     experiment = experiment_class(
         train_data=None,
-        test_data=None,
+        test_data=test_data,
         configuration=exp_configuration,
         experiment_name=experiment_name,
         folder_name=folder_name,
@@ -172,7 +172,7 @@ def exp_inference(
                 log.info("--- %s", features_list_name)
                 experiment = experiment_class(
                     train_data=None,
-                    test_data=None,
+                    test_data=test_data,
                     configuration=configuration,
                     experiment_name=experiment_name,
                     folder_name=run_folder,

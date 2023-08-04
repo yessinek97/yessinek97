@@ -126,17 +126,19 @@ class Evaluation:
         self,
         data: pd.DataFrame,
         prediction_name: str,
-        data_name: str,
+        split_name: str,
+        dataset_name: str,
     ) -> None:
         """Compute metrics for a given data and prediction column.
 
         Args:
             data: Dataframe object
             prediction_name: str  prediction column name
-            data_name: str split name (train,validation,test)
+            split_name: str split name (train,validation,test)
             the comparison score only or all the plots.
             is_plot_fig : #Weather plot Auc Roc curve plot (Validation/test)
             during training or not(True/False)
+            dataset_name: The name of the dataset.
         """
         if self.comparison_score:
             # Impute the missing values for comparison score column before plotting metrics
@@ -160,7 +162,7 @@ class Evaluation:
                 prediction_eval_message += (
                     f"{metric_name}: {prediction_metrics_evaluation[metric_name]:0.3f} "
                 )
-            if self.eval_id_name and data_name == "test":
+            if self.eval_id_name and split_name == "test":
                 evals_per_id_name = src_metrics.per_split_evaluation(
                     data=data,
                     target_name=self.label_name,
@@ -179,16 +181,16 @@ class Evaluation:
                 prediction_eval_message += f"{metric_name}: {global_per_id_name[metric_name]:0.3f} "
 
                 prediction_metrics_evaluation.update(global_per_id_name)
-                self.evals[data_name][prediction_name][self.eval_id_name] = evals_per_id_name
-            self.evals[data_name][prediction_name]["global"] = prediction_metrics_evaluation
+                self.evals[split_name][prediction_name][self.eval_id_name] = evals_per_id_name
+            self.evals[split_name][prediction_name]["global"] = prediction_metrics_evaluation
             if self.print_evals:
-                log.info("             *%s: %s", data_name, prediction_eval_message)
+                log.info("             *%s: %s", split_name, prediction_eval_message)
             if (self.curve_plot_directory is not None) and (self.is_plot_fig):
                 self.plot_curve(
                     data=data,
                     prediction_name=prediction_name,
                     plot_path=self.curve_plot_directory
-                    / f"{prediction_name}_{data_name}_precision_recall_curve.png",
+                    / f"{prediction_name}_{dataset_name}_{split_name}_precision_recall_curve.png",
                     prediction_metrics_evaluation=prediction_metrics_evaluation,
                 )
 

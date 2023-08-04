@@ -128,10 +128,14 @@ class KfoldExperiment(BaseExperiment):
             self.evaluator.compute_metrics(
                 data=validation_data.rename(columns={"prediction": f"prediction_{operation}"}),
                 prediction_name=f"prediction_{operation}",
-                data_name="validation",
+                split_name="validation",
+                dataset_name=self.dataset_name,
             )
             self.evaluator.compute_metrics(
-                data=test_data, prediction_name=f"prediction_{operation}", data_name="test"
+                data=test_data,
+                prediction_name=f"prediction_{operation}",
+                split_name="test",
+                dataset_name=self.dataset_name,
             )
         results = self._parse_metrics_to_data_frame(eval_metrics=self.evaluator.get_evals())
 
@@ -209,15 +213,16 @@ class KfoldExperiment(BaseExperiment):
     ) -> pd.DataFrame:
         """Convert eval metrics from dict format to pandas dataframe."""
         total_evals = []
-        for data_name in eval_metrics:
-            evals_per_data_name = eval_metrics[data_name]
+        for split_name in eval_metrics:
+            evals_per_split_name = eval_metrics[split_name]
             save_yml(
-                evals_per_data_name, self.eval_directory / f"{data_name}_{file_name}_metrics.yaml"
+                evals_per_split_name,
+                self.eval_directory / f"{split_name}_{file_name}_metrics.yaml",
             )
-            for prediction_name in evals_per_data_name:
-                evals = evals_per_data_name[prediction_name]["global"]
+            for prediction_name in evals_per_split_name:
+                evals = evals_per_split_name[prediction_name]["global"]
                 evals["prediction"] = prediction_name
-                evals["split"] = data_name
+                evals["split"] = split_name
                 total_evals.append(evals)
         results = pd.DataFrame(total_evals).sort_values(["prediction", "split"])
         results.to_csv((self.eval_directory / f"{file_name}.csv"), index=False)
