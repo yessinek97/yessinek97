@@ -22,6 +22,9 @@ experiments:
       - mean
     statics:
       - mean
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: True
 label: cd8_any
 # feature_paths:
 #   - transformer
@@ -60,8 +63,8 @@ models:
 evaluation:
   print_evals: True
   comparison_score: tested_pres_score_biondeep_mhci
-  eval_id_name: patientid
-  observations_number: 20
+  # eval_id_name: patientid
+  # observations_number: 20
   threshold: 0.3
   metrics:
     - topk
@@ -77,8 +80,8 @@ evaluation:
   monitoring_metrics:
     - roc
     - topk
-    - topk_20_patientid
-    - topk_patientid
+    # - topk_20_patientid
+    # - topk_patientid
 FS:
   n_feat: 20
   keep_features_number: False

@@ -188,7 +188,6 @@ def get_best_experiment(
             statistic_list.append(result["statistic"])
         except KeyError:
             pass
-    statistic = pd.concat(statistic_list)
     data_selector = pd.concat(
         [result[eval_configuration["data_name_selector"]] for result in results]
     )
@@ -218,7 +217,8 @@ def get_best_experiment(
         [f"{metric} : {best_test[metric].iloc[0]:.3f}" for metric in monitoring_metrics]
     )
     display += f"Test score :  {test_metrics_display}\n"
-    if len(statistic):
+    if len(statistic_list) > 0:
+        statistic = pd.concat(statistic_list)
         beststatistic_list = statistic[statistic.ID == best_experiment_id]
         if len(beststatistic_list):
             for e in beststatistic_list.drop(["ID"], axis=1).columns:
