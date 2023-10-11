@@ -89,5 +89,6 @@ nav:
               - Hyper-parameters tuning: ig/tune.md
               - Ensemble: ig/ensembling.md
               - Comparison score: ig/comparison_score.md
+              - Dai score ESM embeddings generation: ig/generate_esm_embedding.md
       - Contributing: ig/contributing.md
       - Changelog: ig/changelog.md

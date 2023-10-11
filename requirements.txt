@@ -4,6 +4,7 @@ Boruta
 catboost==1.0.4
 click==7.1.2
 cloudpathlib==0.6.2
+fair-esm
 fsspec==2022.11.0
 gcsfs==2022.11.0
 google-cloud-storage==2.3.0
@@ -31,6 +32,7 @@ scipy==1.5.4
 seaborn
 shap
 sklearn-relief==1.0.0b2
+torch
 tqdm==4.60.0
 typing-extensions==4.4.0
 xgboost==1.4.2

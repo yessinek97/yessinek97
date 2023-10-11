@@ -57,6 +57,7 @@ setup(
             "cimt-inference=ig.cimt:cimt_inference",
             # processing
             "processing=ig.processing:processing",
+            "compute-embeddings=ig.run_esm_embeddings:compute_embeddings",
         ]
     },
 )
