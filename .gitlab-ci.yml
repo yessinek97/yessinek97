@@ -21,6 +21,8 @@ variables:
 build_image:
   extends: .docker-login
   stage: build
+  tags:
+    - kao-k8s-runner
   script:
     - docker pull $DOCKER_IMAGE_IG:latest || true
     - docker build --build-arg CI_REGISTRY=$CI_REGISTRY_IMAGE --cache-from $DOCKER_IMAGE_IG:latest
@@ -30,6 +32,8 @@ build_image:
 build-lint:
   extends: .docker-login
   stage: build
+  tags:
+    - kao-k8s-runner
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -40,6 +44,8 @@ build-lint:
 lint:
   image: $DOCKER_IMAGE_LINT
   stage: lint
+  tags:
+    - kao-k8s-runner
   needs: [build-lint]
   script:
     - pre-commit run --all-files
@@ -48,6 +54,8 @@ test:
   image: $DOCKER_IMAGE_IG:$CI_COMMIT_SHORT_SHA
   needs: ["build_image"]
   stage: test
+  tags:
+    - kao-k8s-runner
   script:
     - apt-get install zip unzip
     - export stage=test
@@ -72,6 +80,8 @@ test:
 build-docs:
   extends: .docker-login
   stage: build
+  tags:
+    - kao-k8s-runner
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -82,6 +92,8 @@ build-docs:
 test_docs:
   image: $DOCKER_IMAGE_DOCS
   stage: test
+  tags:
+    - kao-k8s-runner
   needs: ["build-docs"]
   script:
     - mkdocs build --verbose --site-dir docs_public
