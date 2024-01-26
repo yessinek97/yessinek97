@@ -23,6 +23,8 @@ processing:
   validation_strategy: True
   isunlabelled: false
   #normalizer:
+  #normalizer_per_id:
+  #normalizer_id: patientid
   fill_nan_method: keep
   seed: 1994
   validation_ratio: 0.1

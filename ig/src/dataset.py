@@ -304,6 +304,7 @@ class Dataset:
         self.data = self.featureizer.fillna(self.data)
         self.data = self.featureizer.label_encoder(self.data)
         self.data = self.featureizer.normalize(self.data)
+        self.data = self.featureizer.normalize_per_id(self.data)
 
         if not self.featureizer_path.exists():
             self.save_featureizer()
@@ -565,13 +566,21 @@ class Featureizer:
         self.categorical_features = categorical_features
         self.label_encoder_fitted = False
         self.normalizer_fitted = False
-        self.normalize_name = processing_configuration.get("normalizer", None)
-        self.label_encoder_map: dict[str, dict[str, str]] = {}
+
+        self.normalizer_name = processing_configuration.get("normalizer", None)
+        self.normalizer_per_id_name = processing_configuration.get("normalizer_per_id", None)
+        self.normalizer_id = processing_configuration.get("normalizer_id", None)
+
         self.normalizer = None
+        self.normalizer_per_id = self._get_normalizer(self.normalizer_per_id_name)
+
+        self.label_encoder_map: dict[str, dict[str, str]] = {}
         self.transform_to_numeric_fitted = True  # is set it to true because for the current version no need for transform_to_numeric
         self.fillna_method = processing_configuration.get("fill_nan_method", "keep")
         self.bool_features: list[str] = []
         self.features: list[str] = []
+        if (self.normalizer_name is not None) and (self.normalizer_per_id_name is not None):
+            raise ValueError("normalizer and normalizer_per_id cannot be used at the same time")
 
     def transform_to_numeric(self, data: pd.DataFrame) -> pd.DataFrame:  # noqa
         """Transform features to numeric."""
@@ -635,30 +644,63 @@ class Featureizer:
 
         return data
 
+    def _get_normalizer(self, normalizer_name: str) -> Any:
+        """Returns a normalizer based on the specified normalizer name."""
+        normalizers = {
+            "StandardScaler": preprocessing.StandardScaler(),  # Standardizes features by removing the mean and scaling to unit variance.
+            "MinMaxScaler": preprocessing.MinMaxScaler(
+                feature_range=(0, 1)
+            ),  # Transforms features by scaling each feature to a given range.
+            "QuantileTransformer": preprocessing.QuantileTransformer(
+                output_distribution="normal"
+            ),  # Transforms features to follow a normal distribution.
+            "PowerTransformer": preprocessing.PowerTransformer(),  # Applies power transformations to make the data more Gaussian-like.
+            "FunctionTransformer": preprocessing.FunctionTransformer(  # Applies a specified function to the input data.
+                np.arcsinh, inverse_func=np.sinh, validate=False, check_inverse=True
+            ),
+        }
+
+        if normalizer_name:
+            # get normalizer from normalizers dict if normalizer name is not in the dict return None
+            normalizer = normalizers.get(normalizer_name, None)
+            if normalizer is None:
+                raise ValueError(
+                    f"Normalizer: {normalizer_name} not aviable, "
+                    f"Available methods: {', '.join(normalizers.keys())}"
+                )
+            return normalizer
+        return None
+
     def normalize(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Normalize float features."""
+        """Normalize the float features in the data using the normalizer."""
         if not self.transform_to_numeric_fitted:
             raise Exception("Transform_to_numeric has to be called before label_encoder.")
 
-        if not self.normalizer_fitted:
-            if self.normalize_name:
-                if self.normalize_name == "UnitVariance":
-                    log.debug("%s is used as Normalizer", self.normalize_name)
-                    self.normalizer = preprocessing.StandardScaler().fit(data[self.float_features])
-                elif self.normalize_name == "Scale01":
-                    self.normalizer = preprocessing.MinMaxScaler(feature_range=(0, 1)).fit(
-                        data[self.float_features]
-                    )
-                    log.debug("%s is used as Normalizer", self.normalize_name)
-                else:
-                    raise ValueError(
-                        f"Normalizer : {self.normalize_name} not known "
-                        "; available methods: UnitVariance, Scale01 "
-                    )
-            self.normalizer_fitted = True
+        if self.normalizer_name and not self.normalizer_fitted:
+            self.normalizer = self._get_normalizer(self.normalizer_name)
+
         if self.normalizer:
-            log.debug("Normalization")
+            if not self.normalizer_fitted:
+                self.normalizer = self.normalizer.fit(data[self.float_features])
+                self.normalizer_fitted = True
+
             data[self.float_features] = self.normalizer.transform(data[self.float_features])
+
+        return data
+
+    def _apply_normalization(self, x: pd.DataFrame) -> pd.DataFrame:
+        """Apply normalization to the input data."""
+        normalized_data = self.normalizer_per_id.fit_transform(x[self.float_features].values)
+        x[self.float_features] = normalized_data
+        return x
+
+    def normalize_per_id(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Normalize the given data per patient ID."""
+        if self.normalizer_per_id:
+            if self.normalizer_id:
+                data = data.groupby(self.normalizer_id).apply(self._apply_normalization)
+            else:
+                raise ValueError("normalize_id is None")
         return data
 
     def fillna(self, data: pd.DataFrame) -> pd.DataFrame:

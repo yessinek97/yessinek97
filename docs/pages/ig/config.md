@@ -44,7 +44,9 @@ processing:
   seed: # Global random seed value
   validation_ratio: # Relative size of the validation set for SingleModel experiment.
   fold: # Number of folds used for the KFold experiment.
-  normalizer: #TODO: NOT USED ?
+  normalizer: # Data normalization techniques used in the datasets.
+  normalizer_per_id:  # Data normalization techniques applied by patient id in the datasets.
+  normalizer_id: # patientid column.
   nan_ratio: #The maximum ratio of Nan value which the framework  could be accepted
   expression_name: # The name of the expression columns which the framework will use
   expression_column_name: #The final name of the expression column, the framework will rename `expression name` to `expression column_name` and use it, it's recommended to set expression_column_name to a name that exists in the trainable_features configuration  otherwise the expression will be taken into consi deration
