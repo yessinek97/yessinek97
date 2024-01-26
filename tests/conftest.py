@@ -227,7 +227,7 @@ def default_config(default_config_path: Path) -> Dict[str, Any]:
 @pytest.fixture(scope="session")
 def multi_train_experiment_path() -> Path:
     """Test dummy multi_train config."""
-    path = Path("tests/models/multi_train")
+    path = Path("tests/models/train_folder")
 
     return path
 

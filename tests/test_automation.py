@@ -16,26 +16,6 @@ from ig.trainer import train, train_seed_fold, tune
 
 
 @mock.patch("click.confirm")
-def test_compute_metrics_commands(
-    caplog: pytest.LogCaptureFixture,
-    test_data_path: str,
-    folder_name: str = "training_fixtures",
-) -> None:
-    """This function runs compute metrics to test errors."""
-    caplog.set_level(logging.INFO)
-
-    runner: click.testing.CliRunner = CliRunner()
-    params: Union[str, Iterable[str], None] = [
-        "--test_data_paths",
-        test_data_path,
-        "--folder_name",
-        folder_name,
-    ]
-    compute_metrics_command = runner.invoke(compute_metrics, params)
-    assert compute_metrics_command.exit_code == 0, "Check the compute metrics command!"
-
-
-@mock.patch("click.confirm")
 def test_featureselection(
     mock_click: mock.MagicMock,
     train_data_path: str,
@@ -152,6 +132,26 @@ def test_inference(
     ]
     inference_command = runner.invoke(inference, params)
     assert inference_command.exit_code == 0, "Check the Inference command!"
+
+
+@mock.patch("click.confirm")
+def test_compute_metrics_commands(
+    caplog: pytest.LogCaptureFixture,
+    test_data_path: str,
+    folder_name: str = "training_fixtures",
+) -> None:
+    """This function runs compute metrics to test errors."""
+    caplog.set_level(logging.INFO)
+
+    runner: click.testing.CliRunner = CliRunner()
+    params: Union[str, Iterable[str], None] = [
+        "--test_data_paths",
+        test_data_path,
+        "--folder_name",
+        folder_name,
+    ]
+    compute_metrics_command = runner.invoke(compute_metrics, params)
+    assert compute_metrics_command.exit_code == 0, "Check the compute metrics command!"
 
 
 @mock.patch("click.confirm")

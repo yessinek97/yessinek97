@@ -59,7 +59,11 @@ processing: # This section specifies the processing settings
 
   fold: # This argument specifies the number of folds used for the KFold experiment.
 
-  normalizer: #TODO: This argument specifies the used normalizer for the input dataset.
+  normalizer: # This argument specifies the used normalizer for the input dataset.
+
+  normalizer_per_id: # This argument specifies the used normalizer for the input dataset.
+
+  normalizer_id: # This argument refers to patientid column.
 
   nan_ratio: #This argument specifies the maximum ratio of missing values that the framework can tolerate.
 
@@ -150,6 +154,8 @@ processing:
   validation_strategy: false
   isunlabelled: false
   #normalizer:
+  #normalizer_per_id:
+  #normalizer_id: patientid
   fill_nan_method: keep
   seed: 1994
   validation_ratio: 0.1
@@ -229,6 +235,8 @@ processing:
   validation_strategy: true
   isunlabelled: false
   #normalizer:
+  #normalizer_per_id:
+  #normalizer_id: patientid
   fill_nan_method: keep
   seeds: [1994, 2002] # Here we used multiple seeds
   validation_ratio: 0.1 # Here we used multiple folds
