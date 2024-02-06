@@ -9,6 +9,13 @@ DOCKER_IMAGE_LATEST = $(IMAGE_NAME):latest
 HOME_DIRECTORY = /home/app/ig
 DOCKER_RUN_FLAGS = -d --volume $(PWD):$(HOME_DIRECTORY) -e MACHINE_ID=`hostname` --name $(CONTAINER_NAME)
 
+#Variables for creating the documentation Docker container
+DOCKER_IMAGE_NAME_DOCS = $(IMAGE_NAME)-docs
+DOCKER_IMAGE_DOCS = $(DOCKER_IMAGE_NAME_DOCS):latest
+CONTAINER_NAME_DOCS = $(CONTAINER_NAME)_docs
+DOCKER_RUN_FLAGS_DOCS = -d --volume $(PWD):$(HOME_DIRECTORY) -p $(MKDOCS_PORT):$(MKDOCS_PORT) --name $(CONTAINER_NAME_DOCS)
+MKDOCS_PORT = 8000
+RUN_MKDOCS = mkdocs serve -a 0.0.0.0:$(MKDOCS_PORT)
 
 # Print help by default.
 .DEFAULT_GOAL := help
@@ -59,3 +66,11 @@ rm:
 	docker rm  $(CONTAINER_NAME)
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+
+#Creating a Docker container for visualizing the documentation using mkdocs on local machine
+build-docs: #Building the documentation docker container
+	docker build -t $(DOCKER_IMAGE_DOCS) --build-arg HOME_DIRECTORY=$(HOME_DIRECTORY) -f Dockerfile.docs .
+
+docs: build-docs #Running the documentation docker container inorder to visualize the documentation using mkdocs on a local machine (http://127.0.0.1:8000/)
+	docker run $(DOCKER_RUN_FLAGS_DOCS) $(DOCKER_IMAGE_DOCS) $(RUN_MKDOCS)
