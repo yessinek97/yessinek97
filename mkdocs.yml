@@ -71,7 +71,6 @@ nav:
               - configuration: ig/data_configuration.md
               - push pull GCP: ig/push_pull.md
               - processing command: ig/processing.md
-              - Gene ontology: ig/go_features_generation.md
           - Modeling:
               - configuration: ig/modeling_configuration.md
               - Feature selection: ig/FS.md

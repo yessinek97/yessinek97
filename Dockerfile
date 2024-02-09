@@ -17,8 +17,6 @@ COPY ./requirements.txt /tmp/requirements.txt
 
 
 # Install python requirements
-RUN pip install -U "anc2vec @ git+https://github.com/aedera/anc2vec.git"
-
 RUN pip install --upgrade --quiet pip setuptools && \
         pip install --no-cache-dir -r /tmp/requirements.txt && \
         rm -rf /tmp/*
