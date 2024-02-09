@@ -1,54 +1,15 @@
 # Data configuration files
 
-This page includes the description of multiple configuration files used in the **IG Framework** for **feature generation**, **preprocessing** and **feature selection** purposes.
-
-## Feature generation
-## Gene ontology configuration file
-
-This configuration file is used by the **Gene Ontology** pipeline to specify the settings for feature generation. It can be found at `configuration/gene_ontology.yml`. Here are some details about this configuration file:
-
-```yaml
-# Base datasets
-dataset: # This section lists the used datasets to generate the needed features.
-  dataset1: # This section describes dataset1.
-    version: # This argument is used to specify the dataset version.
-    # Example:
-    version: "16_11_2022"
-    paths: # This section lists the multiple data files included in dataset1.
-      file1: # File1 path (It can be either local or GS path).
-      file2: # File2 path (It can be either local or GS path).
-    processing:
-      trainable_features: # dataset1 features config file name
-  dataset2: # This section describes dataset2.
-    version: # This argument is used to specify the dataset version.
-    # Example:
-    version: "24_10_2022"
-    paths: # This section lists the multiple data files included in dataset1.
-      file1: # File1 path (It can be either local or GS path).
-      file2: # File2 path (It can be either local or GS path).
-    processing:
-      trainable_features: # dataset2 features config file name
-go_features: # This section describes the Ready-to-use gene ontology embeddings (cc,bp,mf)
-
-  version: "16_11_2022" # This argument is used to specify the embeddings version.
-  embedding_paths: # This section specifies the embedding paths (local, GS path)
-    file1: # File1 embedding path (It can be either local or GS path).
-    file2: # File2 embedding path (It can be either local or GS path).
-    file3: # File3 embedding path (It can be either local or GS path).
-    file4: # File4 embedding path (It can be either local or GS path).
-
-
-  dimensionality_reduction: # This section describes the Dimensionality reduction settings to reduce embedding vectors.
-    technique: # This argument defines the dimensionality reduction technique (pca,lda,lsa,tsne).
-    n_components: # This argument specifies the number of components used to reduce the embeddings vectors shape.
-  save_embeddings: # This boolean defines whether to save the embeddings independently or not.
-```
+This page includes the description of multiple configuration files used in the **IG Framework** for **preprocessing** and **feature selection** purposes.
 
 ## Preprocessing
+
 ### Processing configuration file
 
 This configuration file defines the settings for the main **processing** pipeline as part of data preprocessing. It can be found at `configuration/processing_configuration.yml`.
+
 #### **PS**: Please note that all the columns' names should be lowercase.
+
 Here is a detailed description of this configuration file:
 
 ```yml

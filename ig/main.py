@@ -6,7 +6,6 @@ from ig.cimt import cimt, cimt_features_selection, cimt_inference, cimt_kfold_sp
 from ig.compute_metrics import compute_metrics
 from ig.ensemble import ensemblexprs, ensoneexp
 from ig.feature_selection import featureselection
-from ig.gene_ontology_pipeline import gene_ontology_pipeline
 from ig.generate_pairs_peptide_allele import generate_pairs
 from ig.inference import exp_inference, inference
 from ig.multi_trainer import multi_exp_inference, multi_inference, multi_train
@@ -21,7 +20,6 @@ def main() -> None:
     """Entry point for biondeep."""
 
 
-main.add_command(gene_ontology_pipeline)
 main.add_command(featureselection)
 main.add_command(train)
 main.add_command(train_seed_fold)

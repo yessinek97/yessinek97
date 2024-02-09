@@ -2,7 +2,7 @@
 
 To generate the go features using the Anc2vec package. First, you need to install the dependencies.
 
-## Installation:
+## Installation
 
 ### Conda environment
 
@@ -14,9 +14,10 @@ conda activate anc2vec
 cd ig/
 pip3 install -U "anc2vec @ git+https://github.com/aedera/anc2vec.git"
 pip3 install -r requirements.txt
-
 ```
+
 ### Docker
+
 - If you want to run this pipeline inside the docker container, use these commands to prepare the environment:
 
 ```bash
@@ -44,7 +45,7 @@ The Gene Ontology pipeline helps generating gene ontology features following the
 
 Use this command to run the gene ontology pipeline:
 
-```
+```bash
 gene-ontology-pipeline -c gene ontology configuration file name -go 'string separated go term names' -o output save directory
 
 where:
@@ -52,8 +53,49 @@ where:
     -go: String separated go terms.
     -o: The output path to save the embeddings/generated dataset.
 ```
+### Gene ontology configuration file
 
-### Configuration file
+This configuration file is used by the **Gene Ontology** pipeline to specify the settings for feature generation. It can be found at `configuration/gene_ontology.yml`. Here is the description of this configuration file:
+
+```yaml
+# Base datasets
+dataset: # This section lists the used datasets to generate the needed features.
+  dataset1: # This section describes dataset1.
+    version: # This argument is used to specify the dataset version.
+    # Example:
+    version: "16_11_2022"
+    paths: # This section lists the multiple data files included in dataset1.
+      file1: # File1 path (It can be either local or GS path).
+      file2: # File2 path (It can be either local or GS path).
+    processing:
+      trainable_features: # dataset1 features config file name
+  dataset2: # This section describes dataset2.
+    version: # This argument is used to specify the dataset version.
+    # Example:
+    version: "24_10_2022"
+    paths: # This section lists the multiple data files included in dataset1.
+      file1: # File1 path (It can be either local or GS path).
+      file2: # File2 path (It can be either local or GS path).
+    processing:
+      trainable_features: # dataset2 features config file name
+go_features: # This section describes the Ready-to-use gene ontology embeddings (cc,bp,mf)
+
+  version: "16_11_2022" # This argument is used to specify the embeddings version.
+  embedding_paths: # This section specifies the embedding paths (local, GS path)
+    file1: # File1 embedding path (It can be either local or GS path).
+    file2: # File2 embedding path (It can be either local or GS path).
+    file3: # File3 embedding path (It can be either local or GS path).
+    file4: # File4 embedding path (It can be either local or GS path).
+
+
+  dimensionality_reduction: # This section describes the Dimensionality reduction settings to reduce embedding vectors.
+    technique: # This argument defines the dimensionality reduction technique (pca,lda,lsa,tsne).
+    n_components: # This argument specifies the number of components used to reduce the embeddings vectors shape.
+  save_embeddings: # This boolean defines whether to save the embeddings independently or not.
+```
+
+
+### Gene ontology configuration file example
 
 - You can use this configuration file to set the **dataset** specifications with multiple binders (Netmhcpan, Biondeep), their versioned data file paths and also the settings for **go_features** generation.
 

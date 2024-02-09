@@ -169,14 +169,6 @@ def config_path() -> str:
 
 
 @pytest.fixture(scope="session")
-def gene_ontology_config_path() -> str:
-    """Test dummy gene ontology config path."""
-    path = "gene_ontology.yml"
-
-    return path
-
-
-@pytest.fixture(scope="session")
 def train_seed_fold_config_path() -> str:
     """Test dummy train_seed_fold config path."""
     path = "train_seed_fold.yml"

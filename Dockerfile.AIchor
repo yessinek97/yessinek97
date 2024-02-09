@@ -3,7 +3,6 @@ FROM python:3.8-slim-buster
 RUN apt-get update
 RUN apt-get  install sudo libgomp1 git -y
 # Install python requirements
-RUN pip install -U "anc2vec @ git+https://github.com/aedera/anc2vec.git"
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade --quiet pip setuptools && pip install --no-cache-dir -r /tmp/requirements.txt && rm -rf /tmp/*
 

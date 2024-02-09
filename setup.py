@@ -27,8 +27,6 @@ setup(
             # ablation study
             "ablation_study=ig.ablation_study:main",
             "ablation_post=ig.ablation_study:postprocess",
-            # data generation
-            "gene-ontology-pipeline=ig.gene_ontology_pipeline:gene_ontology_pipeline",
             # training
             "train=ig.trainer:train",
             "train-seed-fold=ig.trainer:train_seed_fold",
