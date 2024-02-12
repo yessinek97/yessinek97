@@ -6,7 +6,7 @@ stages:
   - deploy
 
 variables:
-  PRE_COMMIT_VERSION: "2.17.0"
+  PRE_COMMIT_VERSION: "3.5.0"
   PROJECT_NAME: biondeep_ig
   DOCKER_IMAGE_IG: $CI_REGISTRY_IMAGE/biondeep-ig
   DOCKER_IMAGE_LINT: $CI_REGISTRY_IMAGE/lint:$CI_COMMIT_SHORT_SHA
