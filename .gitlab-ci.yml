@@ -22,7 +22,7 @@ build_image:
   extends: .docker-login
   stage: build
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-docker-kao-instadeep-io
   script:
     - docker pull $DOCKER_IMAGE_IG:latest || true
     - docker build --build-arg CI_REGISTRY=$CI_REGISTRY_IMAGE --cache-from $DOCKER_IMAGE_IG:latest
@@ -33,7 +33,7 @@ build-lint:
   extends: .docker-login
   stage: build
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-docker-kao-instadeep-io
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -45,7 +45,7 @@ lint:
   image: $DOCKER_IMAGE_LINT
   stage: lint
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-docker-kao-instadeep-io
   needs: [build-lint]
   script:
     - pre-commit run --all-files
@@ -55,7 +55,7 @@ test:
   needs: ["build_image"]
   stage: test
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-docker-kao-instadeep-io
   script:
     - apt-get install zip unzip
     - export stage=test
@@ -81,7 +81,7 @@ build-docs:
   extends: .docker-login
   stage: build
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-docker-kao-instadeep-io
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -93,7 +93,7 @@ test_docs:
   image: $DOCKER_IMAGE_DOCS
   stage: test
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-docker-kao-instadeep-io
   needs: ["build-docs"]
   script:
     - mkdocs build --verbose --site-dir docs_public
@@ -104,6 +104,8 @@ test_docs:
 pages:
   image: $DOCKER_IMAGE_DOCS
   stage: publish
+  tags:
+    - node080-autoscaled-docker-kao-instadeep-io
   needs: ["build-docs"]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
@@ -116,6 +118,8 @@ pages:
 push-latest-ig:
   extends: .docker-login
   stage: deploy
+  tags:
+    - node080-autoscaled-docker-kao-instadeep-io
   needs:
     - job: build_image
 
