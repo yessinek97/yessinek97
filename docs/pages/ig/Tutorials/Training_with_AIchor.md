@@ -82,16 +82,53 @@ we therefore change the number of workers to 4.
 
 * Make sure to change the train and test paths in the .sh file for multi training.
 
+
+🚚 **Upload data folder**
+
+Using the AIchor interface: navigate to the Datasets tab → Inputs → Create Folder → Choose folder name, e.g. my_data → Upload File.
+
 ```bash
-git commit -m 'EXP: multi train IG framework with AIchor'
+# Data directory
+gsutil cp -r my_data gs://biondeep-ig-28558948a00b44a8-inputs/
+
+# File(s) in Data directory
+gsutil cp my_data/train.csv gs://biondeep-ig-28558948a00b44a8-inputs/
+
+```
+
+🚀  **Triggering the pipeline**
+
+In order to trigger the pipeline, you have to push a commit to the **biondeep-ig** gitlab repo.
+
+```bash
+git add -u # add current changes to stage
+git commit -m "EXP: multi train IG framework with AIchor" # commit, starting with 'exp: ' so that AIchor triggers the run
+git push --set-upstream origin <branch name>
 ```
 
 if you did not change anything you can run the following:
 
 ```bash
 git commit -m 'EXP: multi train IG framework with AIchor' --allow-empty
+git push
+```
+📤  **Output**
+
+When the job is complete, you will be find the outputs on the output bucket, note that the folder will have a name which matches the hash for the experiment, for example in the image above we can read off the experiment hash as 5bfc0987-45dc-4b21-80b7-8a47c2e471f8.
+
+To download the output files, use the gsutil cli, for example:
+
+```bash
+gsutil cp -r gs://biondeep-ig-28558948a00b44a8-outputs/output/5bfc0987-45dc-4b21-80b7-8a47c2e471f8/ models/
 ```
 
+📃 **Logs**
+
+The complete logs, i.e. including debug data, can be downloaded from the AIchor's bucket:
+
+```bash
+gsutil cp -r s3://biondeep-ig-28558948a00b44a8-outputs/logs/5bfc0987-45dc-4b21-80b7-8a47c2e471f8/ .
+```
 
 ## Important note:
 
