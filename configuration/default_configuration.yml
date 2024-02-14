@@ -93,15 +93,15 @@ FS:
   n_thread: 10
   FS_methods:
     - Fspca.yml
-    - Fsxgboost.yml
-    - Fsxgboostshap.yml
-    - Fsrfgini.yml
-    - Fscossim.yml
-    - Fscorr.yml
-    - Fssfmlr.yml
-    - Fsrfelr.yml
-    - Fssfmxgboost.yml
-    - Fsrfexgboost.yml
-    - Fsrelief.yml
-    - Fsmi.yml
+    # - Fsxgboost.yml
+    # - Fsxgboostshap.yml
+    # - Fsrfgini.yml
+    # - Fscossim.yml
+    # - Fscorr.yml
+    # - Fssfmlr.yml
+    # - Fsrfelr.yml
+    # - Fssfmxgboost.yml
+    # - Fsrfexgboost.yml
+    # - Fsrelief.yml
+    # - Fsmi.yml
     #- Fsboruta.yml

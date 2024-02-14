@@ -11,5 +11,15 @@ RUN apt-get update && apt-get install -y parallel git unzip curl
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && ./aws/install
 
 
-COPY . home/
-WORKDIR home/
+# Use a non-root user at runtime
+ARG USER=app
+ENV GROUP=$USER
+ENV USER_FOLDER=/home/$USER/ APP_FOLDER=/home/$USER/biondeep-ig
+WORKDIR $APP_FOLDER
+RUN mkdir -p /home/$USER/biondeep-ig/models
+# Copy project files
+COPY .  $APP_FOLDER
+
+# Set execute permissions for runAIchor_multi_train.sh (if required)
+RUN chmod +x $APP_FOLDER/runAIchor_multi_train.sh
+RUN chmod +x $APP_FOLDER/runAIchor.sh

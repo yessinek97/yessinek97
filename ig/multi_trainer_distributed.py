@@ -148,7 +148,7 @@ def experiments_evaluation(
         if metric_name in experiments_metrics_dfs.keys()
     ]
     for metric_name in display_metrics:
-        log.info("%s evalution: ", metric_name)
+        log.info("%s evalution: ############################################", metric_name)
         for line in experiments_metrics_dfs[metric_name].to_string().split("\n"):
             log.info("%s", line)
 
