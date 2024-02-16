@@ -1,19 +1,25 @@
 IMAGE_NAME = ig-dev
 CONTAINER_NAME = ig_dev
-DOCKER_REGISTRY = registry.gitlab.com/instadeep/biondeep-ig
-TAG = latest
-TOKEN = not set
-USERNAME = not set
 
-DOCKER_IMAGE_LATEST = $(IMAGE_NAME):latest
+DOCKER_REGISTRY = registry.gitlab.com/instadeep
+PROJECT_NAME = biondeep-ig
+
+TAG = latest
+
 HOME_DIRECTORY = /home/app/ig
 DOCKER_RUN_FLAGS = -d --volume $(PWD):$(HOME_DIRECTORY) -e MACHINE_ID=`hostname` --name $(CONTAINER_NAME)
 
-#Variables for creating the documentation Docker container
-DOCKER_IMAGE_NAME_DOCS = $(IMAGE_NAME)-docs
-DOCKER_IMAGE_DOCS = $(DOCKER_IMAGE_NAME_DOCS):latest
-CONTAINER_NAME_DOCS = $(CONTAINER_NAME)_docs
-DOCKER_RUN_FLAGS_DOCS = -it --rm --volume $(PWD):$(HOME_DIRECTORY) -p $(MKDOCS_PORT):$(MKDOCS_PORT) --name $(CONTAINER_NAME_DOCS)
+#Variables for creating the biondeepIG Container and documentation Docker container
+DOCKER_IMAGE_TAG = $(shell git rev-parse --short HEAD)
+
+DOCKER_IMAGE_NAME = $(DOCKER_REGISTRY)/$(PROJECT_NAME)
+DOCKER_IMAGE = $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
+DOCKER_IMAGE_LATEST = $(DOCKER_IMAGE_NAME):latest
+
+DOCKER_IMAGE_NAME_DOCS = $(DOCKER_REGISTRY)/$(PROJECT_NAME)/docs
+DOCKER_IMAGE_DOCS_LATEST = $(DOCKER_IMAGE_NAME_DOCS):latest
+
+DOCKER_RUN_FLAGS_DOCS = -it --rm --volume $(PWD):$(HOME_DIRECTORY) -p $(MKDOCS_PORT):$(MKDOCS_PORT)
 MKDOCS_PORT = 8000
 RUN_MKDOCS = mkdocs serve -a 0.0.0.0:$(MKDOCS_PORT)
 
@@ -22,37 +28,18 @@ RUN_MKDOCS = mkdocs serve -a 0.0.0.0:$(MKDOCS_PORT)
 
 .PHONY: help login build  bash
 
-ifneq ($(TAG), latest)
-	IMAGE_TAG = $(TAG)
-else
-	IMAGE_TAG = latest
-endif
-
-ifeq ($(PULL), true)
-	PULL = $(PULL)
-else
-	PULL = false
-endif
-
-login:
-ifneq ($(TOKEN), not set)
-	ifneq (${USERNAME}, not set)
-		docker login $(DOCKER_REGISTRY) -u ${USERNAME} -p ${TOKEN}
-	endif
-else
+login:	##Login to the GitLab Docker registry
 	docker login $(DOCKER_REGISTRY)
-endif
 
-build: ## Builds the docker image.
-ifeq ($(PULL),true)
-	docker pull $(DOCKER_REGISTRY):$(IMAGE_TAG)
-	docker image tag $(DOCKER_REGISTRY):$(IMAGE_TAG) $(DOCKER_IMAGE_LATEST)
-else
-	docker build -t $(IMAGE_NAME)  --build-arg host_gid=$$(id -g) --build-arg host_uid=$$(id -u) -f Dockerfile.local .
-endif
+build: login ## Builds the docker image.
+	docker pull $(DOCKER_IMAGE_LATEST)
+	docker build -t $(DOCKER_IMAGE)  --build-arg TAG=$(TAG) \
+									--build-arg host_gid=$$(id -g) \
+									--build-arg host_uid=$$(id -u) \
+									-f Dockerfile.local .
 
-run: ## Create the container.
-	docker run -it $(DOCKER_RUN_FLAGS)  $(DOCKER_IMAGE_LATEST)
+run: build ## Create the container.
+	docker run -it $(DOCKER_RUN_FLAGS)  $(DOCKER_IMAGE)
 
 bash: ## gets a bash in the container
 	docker start  $(CONTAINER_NAME)
@@ -69,8 +56,9 @@ help:
 
 
 #Creating a Docker container for visualizing the documentation using mkdocs on local machine
-build-docs: #Building the documentation docker container
-	docker build -t $(DOCKER_IMAGE_DOCS) --build-arg HOME_DIRECTORY=$(HOME_DIRECTORY) -f Dockerfile.docs .
+build-docs:  ## Building the documentation docker container
+	docker build -t $(DOCKER_IMAGE_DOCS_LATEST) --build-arg HOME_DIRECTORY=$(HOME_DIRECTORY) \
+										-f Dockerfile.docs .
 
-docs: build-docs #Running the documentation docker container inorder to visualize the documentation using mkdocs on a local machine (http://127.0.0.1:8000/)
-	docker run $(DOCKER_RUN_FLAGS_DOCS) $(DOCKER_IMAGE_DOCS) $(RUN_MKDOCS)
+docs : build-docs #Running the documentation docker container inorder to visualize the documentation using mkdocs on a local machine (http://127.0.0.1:8000/)
+	docker run $(DOCKER_RUN_FLAGS_DOCS) $(DOCKER_IMAGE_DOCS_LATEST) $(RUN_MKDOCS)

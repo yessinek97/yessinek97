@@ -2,32 +2,41 @@ stages:
   - build
   - lint
   - test
-  - publish
   - deploy
+  - publish
 
 variables:
   PRE_COMMIT_VERSION: "3.5.0"
-  PROJECT_NAME: biondeep_ig
-  DOCKER_IMAGE_IG: $CI_REGISTRY_IMAGE/biondeep-ig
-  DOCKER_IMAGE_LINT: $CI_REGISTRY_IMAGE/lint:$CI_COMMIT_SHORT_SHA
-  DOCKER_IMAGE_DOCS: $CI_REGISTRY_IMAGE/docs:$CI_COMMIT_SHORT_SHA
+
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  DOCKER_IMAGE_PREVIOUS: $CI_REGISTRY_IMAGE:$CI_COMMIT_BEFORE_SHA
+  DOCKER_IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+
+  DOCKER_IMAGE_NAME_LINT: $CI_REGISTRY_IMAGE/lint
+  DOCKER_IMAGE_LINT: $DOCKER_IMAGE_NAME_LINT:$CI_COMMIT_SHA
+  DOCKER_IMAGE_PREVIOUS_LINT: $DOCKER_IMAGE_NAME_LINT:$CI_COMMIT_BEFORE_SHA
+  DOCKER_IMAGE_LATEST_LINT: $DOCKER_IMAGE_NAME_LINT:latest
+
+  DOCKER_IMAGE_NAME_DOCS: $CI_REGISTRY_IMAGE/docs
+  DOCKER_IMAGE_DOCS: $DOCKER_IMAGE_NAME_DOCS:$CI_COMMIT_SHA
+  DOCKER_IMAGE_PREVIOUS_DOCS: $DOCKER_IMAGE_NAME_DOCS:$CI_COMMIT_BEFORE_SHA
+  DOCKER_IMAGE_LATEST_DOCS: $DOCKER_IMAGE_NAME_DOCS:latest
 
 .docker-login:
   image: eu.gcr.io/int-infra-harborbackup-gcp/docker-hub/docker:19.03
   before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin
-      "$CI_REGISTRY"
+    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD
 
-build_image:
+build-image:
   extends: .docker-login
   stage: build
   tags:
     - node080-autoscaled-docker-kao-instadeep-io
   script:
-    - docker pull $DOCKER_IMAGE_IG:latest || true
-    - docker build --build-arg CI_REGISTRY=$CI_REGISTRY_IMAGE --cache-from $DOCKER_IMAGE_IG:latest
-      -t $DOCKER_IMAGE_IG:$CI_COMMIT_SHORT_SHA -f Dockerfile .
-    - docker push $DOCKER_IMAGE_IG:$CI_COMMIT_SHORT_SHA
+    - docker pull $DOCKER_IMAGE_PREVIOUS || docker pull $DOCKER_IMAGE_LATEST || true
+    - docker build --cache-from $DOCKER_IMAGE_PREVIOUS --cache-from $DOCKER_IMAGE_LATEST -t
+      $DOCKER_IMAGE  .
+    - docker push $DOCKER_IMAGE
 
 build-lint:
   extends: .docker-login
@@ -38,9 +47,23 @@ build-lint:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
   script:
-    - docker build -t $DOCKER_IMAGE_LINT . -f Dockerfile.lint
+    - docker pull $DOCKER_IMAGE_PREVIOUS_LINT || docker pull $DOCKER_IMAGE_LATEST_LINT || true
+    - docker build --cache-from $DOCKER_IMAGE_PREVIOUS_LINT --cache-from $DOCKER_IMAGE_LATEST_LINT
+      -t $DOCKER_IMAGE_LINT . -f Dockerfile.lint
     - docker push $DOCKER_IMAGE_LINT
-
+build-docs:
+  extends: .docker-login
+  stage: build
+  tags:
+    - node080-autoscaled-docker-kao-instadeep-io
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker pull $DOCKER_IMAGE_PREVIOUS_DOCS || docker pull $DOCKER_IMAGE_LATEST_DOCS || true
+    - docker build --cache-from $DOCKER_IMAGE_PREVIOUS_DOCS --cache-from $DOCKER_IMAGE_LATEST_DOCS
+      -t $DOCKER_IMAGE_DOCS . -f Dockerfile.docs
+    - docker push $DOCKER_IMAGE_DOCS
 lint:
   image: $DOCKER_IMAGE_LINT
   stage: lint
@@ -50,9 +73,9 @@ lint:
   script:
     - pre-commit run --all-files
 
-test:
-  image: $DOCKER_IMAGE_IG:$CI_COMMIT_SHORT_SHA
-  needs: ["build_image"]
+pytest:
+  image: $DOCKER_IMAGE
+  needs: [build-image]
   stage: test
   tags:
     - node080-autoscaled-docker-kao-instadeep-io
@@ -77,24 +100,12 @@ test:
       junit: .test-results.xml
     expire_in: 1 day
 
-build-docs:
-  extends: .docker-login
-  stage: build
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
-  variables:
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: overlay2
-  script:
-    - docker build -t $DOCKER_IMAGE_DOCS . -f Dockerfile.docs
-    - docker push $DOCKER_IMAGE_DOCS
-
-test_docs:
+test-pages:
   image: $DOCKER_IMAGE_DOCS
   stage: test
   tags:
     - node080-autoscaled-docker-kao-instadeep-io
-  needs: ["build-docs"]
+  needs: [build-docs]
   script:
     - mkdocs build --verbose --site-dir docs_public
   artifacts:
@@ -106,9 +117,9 @@ pages:
   stage: publish
   tags:
     - node080-autoscaled-docker-kao-instadeep-io
-  needs: ["build-docs"]
+  needs: [build-docs, test-pages]
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - mkdocs build --verbose
   artifacts:
@@ -121,11 +132,41 @@ push-latest-ig:
   tags:
     - node080-autoscaled-docker-kao-instadeep-io
   needs:
-    - job: build_image
+    - job: build-image
 
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - docker pull $DOCKER_IMAGE_IG:$CI_COMMIT_SHORT_SHA
-    - docker tag $DOCKER_IMAGE_IG:$CI_COMMIT_SHORT_SHA  $DOCKER_IMAGE_IG:latest
-    - docker push $DOCKER_IMAGE_IG:latest
+    - docker pull $DOCKER_IMAGE
+    - docker tag $DOCKER_IMAGE $DOCKER_IMAGE_LATEST
+    - docker push $DOCKER_IMAGE_LATEST
+
+push-latest-doc:
+  extends: .docker-login
+  stage: deploy
+  tags:
+    - node080-autoscaled-docker-kao-instadeep-io
+  needs:
+    - job: build-docs
+
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - docker pull $DOCKER_IMAGE_DOCS
+    - docker tag $DOCKER_IMAGE_DOCS $DOCKER_IMAGE_LATEST_DOCS
+    - docker push $DOCKER_IMAGE_LATEST_DOCS
+
+push-latest-lint:
+  extends: .docker-login
+  stage: deploy
+  tags:
+    - node080-autoscaled-docker-kao-instadeep-io
+  needs:
+    - job: build-docs
+
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - docker pull $DOCKER_IMAGE_LINT
+    - docker tag $DOCKER_IMAGE_LINT $DOCKER_IMAGE_LATEST_LINT
+    - docker push $DOCKER_IMAGE_LATEST_LINT
