@@ -1,5 +1,4 @@
 # To replace with the following image once it is available on the registry
-ARG CI_REGISTRY
 FROM python:3.8-slim-buster
 #FROM python:3.8-slim-buster
 
