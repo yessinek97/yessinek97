@@ -1,76 +1,69 @@
-# Push pull command
+# GCP Push & Pull command
 
-## Google Cloud Bucket
+## Share data & models results thanks to Google Cloud Bucket
 
 We have two buckets:
 
-biondeep-data: store datasets and metrics
+* [biondeep-data-IG](https://console.cloud.google.com/storage/browser/biondeep-data/IG/data) : for datasets
 
-biondeep-models: store models
+* [biondeep-models-IG](https://console.cloud.google.com/storage/browser/biondeep-data/IG/experiments): for models and metrics results
 
-In order to have access to the buckets you have to ask a developer to give you the file with the
-credentials. This file must be named biontech-tcr-16ca4aceba4c.json and it must be put at the root
-of the project.
+>🚨 In order to be able to Read & Write [DATA](https://console.cloud.google.com/storage/browser/biondeep-data/IG/data) and [Models](https://console.cloud.google.com/storage/browser/biondeep-data/IG/experiments) from the BioNdeep-IG GCP storage Buckets you must first do the [Google Storage authentication step](installation.md#google-storage-authentication)
 
-## Share models / data thanks to Google Buckets
+There are 2 command lines to share and download data and models:
 
-There are 3 command lines to share data and models:
+* `push`: to save some data/model to the biondeep-data/biondeep-models Google Bucket
 
-push: push some data/model to the biondeep-data/biondeep-models Google Bucket
+* `pull`: to download some data/model from the biondeep-data/biondeep-models Google Bucket to your local machine
 
-pull: pull some data/model from the biondeep-data/biondeep-models Google Bucket to your local
-machine
+## In Docker container
 
-Note: Please make sure to export the shared json file each time you run the command:
+### Docker push command
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS=CREDENTIALS_FILE.json
-
-```
-
-### The push command:
-
-- In Docker container:
-```bash
-push --local_path ig/ig/models/model_trained/ --bucket_path gs://biondeep-models/IG/Folder/
-```
-- In Conda environment:
-```bash
-python -m ig.main compute-comparison-score -d <data_path>  -l <label_name>  -c  <column_name>
+push --local_path /home/app/ig/models/model_Folder/ --bucket_path gs://biondeep-models/IG/model_Folder/
 ```
 
 For example:
 
-- In Docker container:
 ```bash
-push --local_path ig/ig/models/netmhc_sahin_public_19_05_2022/ --bucket_path gs://biondeep-models/IG/netmhc_sahin_public_19_05_2022/
-```
-- In Conda environment:
-```bash
-python -m ig.main compute-comparison-score -d <data_path>  -l <label_name>  -c  <column_name>
+push --local_path /home/app/ig/models/netmhc_sahin_public_19_05_2022/ --bucket_path gs://biondeep-models/IG/netmhc_sahin_public_19_05_2022
 ```
 
-### The pull command
+### Docker pull command
 
-- In Docker container:
 ```bash
-pull --bucket_path gs://biondeep-models/IG/netmhc_sahin_public_19_05_2022/ --local_path /ig/model_pulled/
-```
-- In Conda environment:
-```bash
-python -m ig.main pull --bucket_path gs://biondeep-models/IG/netmhc_sahin_public_19_05_2022/ --local_path /ig/model_pulled/
+pull --bucket_path gs://biondeep-models/IG/model_folder/ --local_path /home/app/ig/models/pulled_model/
 ```
 
 For example:
 
-- In Docker container:
 ```bash
-pull --bucket_path gs://biondeep-models/IG/netmhc_sahin_public_19_05_2022/ --local_path /ig/local_netmhc_sahin_public_19_05_2022/
-```
-- In Conda environment:
-```bash
-python -m ig.main pull --bucket_path gs://biondeep-models/IG/netmhc_sahin_public_19_05_2022/ --local_path /ig/local_netmhc_sahin_public_19_05_2022/
+pull --bucket_path gs://biondeep-models/IG/IG_last_version/ --local_path /home/app/ig/models/pulled_IG_last_version/
 ```
 
-14:45 python -m ig.main pull --bucket_path gs://biondeep-models/IG/nethmcpan_sahin_public
---local_path /raid/amels/ig/model_pull_test/
+## In Conda environment
+
+### Conda push command
+
+```bash
+python -m ig.main push --local_path PATH_To/biondeep-ig/models/model_Folder/ --bucket_path gs://biondeep-models/IG/model_Folder/
+```
+
+For example:
+
+```bash
+python -m ig.main push --local_path PATH_To/biondeep-ig/models/netmhc_sahin_public_19_05_2022/ --bucket_path gs://biondeep-models/IG/netmhc_sahin_public_19_05_2022/
+```
+
+### Conda pull command
+
+```bash
+python -m ig.main pull --bucket_path gs://biondeep-models/IG/model_Folder/ --local_path PATH_To/biondeep-ig/models/pulled_model/
+```
+
+For example:
+
+```bash
+python -m ig.main pull --bucket_path gs://biondeep-models/IG/IG_last_version/ --local_path PATH_To/biondeep-ig/models/pulled_IG_last_version/
+```

@@ -1,5 +1,8 @@
-The following datasets have been provided by BioNTech are **confidiential**. These datasets must not
-be downloaded and used on local machines. Please use the Paris DGX station or a GCP VM instance.
+# Data overview
+
+The following datasets were provided by BioNTech are **confidential**. These datasets must not be downloaded or used on local machines. Please use the Paris DGX station or a GCP VM instance.
+
+To manipulate (read and write) data from the GCP buckets, use the implemented [Push & Pull commands](push_pull.md).
 
 ## BionDeep Binding score
 
@@ -32,7 +35,7 @@ gs://biondeep-data/IG/BntPipelineData/IG_16_11_2022/Processing/Biondeep/data/Bin
 The file must be downloaded under the same folder as the data
 
 ```bash
-biondeep-data/IG/BntPipelineData/IG_16_11_2022/Processing/Biondeep/data/Binding/features_IG_16_11_2022_ensemble_binding_bnt_biondeep_pmhc.yml
+gs://biondeep-data/IG/BntPipelineData/IG_16_11_2022/Processing/Biondeep/data/Binding/features_IG_16_11_2022_ensemble_binding_bnt_biondeep_pmhc.yml
 ```
 
 ## NetMHCpan score

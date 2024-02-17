@@ -3,9 +3,10 @@
 This page includes the description of multiple configuration files used in the **IG Framework** for **training and experimentation** purposes.
 
 ## Training and experimentation
+
 ### Default configuration file
 
-The **default configuration file** is used to define the skeleton of the **study** we want to conduct. All of the study settings can be defined in a global configuration filethat can be found at `configuration/default_configuration.yml`.
+The **default configuration file** is used to define the skeleton of the **study** we want to conduct. All of the study settings can be defined in a global configuration file that can be found at `configuration/default_configuration.yml`.
 
 This is a detailed description of a **default configuration file** main sections and arguments:
 
@@ -21,7 +22,7 @@ feature_paths: # This section includes path to separate text files listing the f
 
 processing: # This section specifies the processing settings
 
-  process_data: # This argument is a boolean that controls whether to process the input dataset or not (Default value is set to True).
+  process_data: # This argument is a boolean that controls whether to process the input dataset or not (Default value is set to False).
 
   remove_unnecessary_folders: # This argument is a boolean that controls whether to remove the unnecessary folders (data_proc, features and experiments folders) after training or not(Default value is set to False).
 
@@ -116,9 +117,7 @@ FS: This section defines the feature selection settings.
 
 ### Train configuration file
 
-This configuration file is the same one as the **Default configuration file**. It includes settings for (netptune_logs, experiments, label, processing, models, evaluation and FS) an it's located at `configuration/train_configuration.yml`. Here is an example of a **training configuration file**:
-
-#### **Example**
+This configuration file is the same one as the **Default configuration file**. It includes settings for (netptune_logs, experiments, label, processing, models, evaluation and FS) and it's located at `configuration/train_configuration.yml`. Here is an example of a **training configuration file**:
 
 ```yaml
 neptune_logs: False
@@ -242,7 +241,7 @@ processing:
   validation_ratio: 0.1 # Here we used multiple folds
   folds: [5, 4, 6]
   nan_ratio: 0.6
-  expression_name: geneexpression_final
+  expression_name: expression
   expression_column_name: expression
 
 models:
@@ -391,13 +390,13 @@ evaluation:
 ```
 
 ## Quickstart experiments
-### Quickstart configuration file
 
 The Quickstart configuration file uses the same schema, as the **Default configuration file** with a few changes. It can be found at `configuration/quickstart_{operation}.yml` with operations that can be either **train**, **seed_fold** or **tune**.
 
-#### **Quickstart Train configuration file**
+### **Quickstart Train configuration file**
 
-This file is used to run a dummy experiment to test the framework main functionalities. It can be found at  Here is an example of what could the configuration file be:
+This file is used to run a dummy experiment to test the framework main functionalities. Here is an example of what could the configuration file be:
+
 ```yaml
 neptune_logs: False
 experiments:
@@ -430,7 +429,7 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: True
+  process_data: False
   remove_unnecessary_folders: False
   trainable_features: "features_quickstart.yml" # Here we used the quickstart features instead of all the features.
 
@@ -477,9 +476,11 @@ FS:
   FS_methods:
     - Fspca.yml # We only used PCA for feature selection.
 ```
-#### **Quickstart seed_fold configuration file**
+
+### **Quickstart seed_fold configuration file**
 
 This file is used to run a dummy experiment to test the framework main functionalities but with multiple seeds and multiple folds as shown in the example below:
+
 ```yaml
 neptune_logs: False
 experiments:
@@ -503,7 +504,7 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: true
+  process_data: False
   remove_unnecessary_folders: False
   trainable_features: features_quickstart.yml
   validation_strategy: true
@@ -513,7 +514,7 @@ processing:
   validation_ratio: 0.1
   folds: [5, 4, 6] # Here we run those experiments with multiple folds.
   nan_ratio: 0.6
-  expression_name: geneexpression_final
+  expression_name: expression
   expression_column_name: expression
   # keep_best_exp_only: True
 
@@ -539,9 +540,11 @@ evaluation:
     - roc
     - topk
 ```
-#### **Quickstart tune configuration file**
+
+### **Quickstart tune configuration file**
 
 This file is used to tune an existing experiment with multiple tuning settings as shown in the example below:
+
 ```yaml
 neptune_logs: False
 
@@ -581,15 +584,13 @@ models:
   - tune_xgboost.yml
 evaluation:
   print_evals: False
-  ```
+```
 
 ## CIMT model experiment
 
-### CIMT model configuration file
-
 This configuration file belongs to the **CIMT model** conducted ablation. It includes difference configuration files respectively for **feature selection** and **training** and a **general** configuration file linking them together.
 
-####  **CIMT General configuration file**
+### **CIMT General configuration file**
 
 Here are some details about the provided settings:
 
@@ -636,8 +637,9 @@ experiments:
   experiment_name_3:
   # if no changed the experiment will use the default parameters defined in the default configuration fils
 ```
-Regarding the `configuration` sections for both `features_selection` and `train` are the normal configuration files used with the `train` command
-predefined configuration files are implemented under the configuration file
+
+For `features_selection` configuration file see the [Feature selection documentation.](FS.md)
+
 - `CIMT.yml`: main configuration file
 - `CIMTFeaturesSelection.yml`: train configuration file for the features selection process
 - `CIMTTraining.yml`: train configuration file for the training  process

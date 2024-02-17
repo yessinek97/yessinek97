@@ -20,7 +20,7 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: true
+  process_data: False
   remove_unnecessary_folders: False
   trainable_features: features_quickstart.yml
   validation_strategy: true
@@ -30,7 +30,7 @@ processing:
   validation_ratio: 0.1
   folds: [5, 4, 6]
   nan_ratio: 0.6
-  expression_name: geneexpression_final
+  expression_name: expression
   expression_column_name: expression
   # keep_best_exp_only: True
 
