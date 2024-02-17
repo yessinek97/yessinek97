@@ -47,7 +47,7 @@ processing:
   #   - deeptap
   #   - specificity_gtex
 
-  validation_strategy: false
+  validation_strategy: True
   isunlabelled: false
   #normalizer:    # StandardScaler, MinMaxScaler, QuantileTransformer, PowerTransformer, FunctionTransformer
   # normalizer_per_id:  # StandardScaler, MinMaxScaler, MinMaxScaler, QuantileTransformer, PowerTransformer, FunctionTransformer
@@ -57,7 +57,7 @@ processing:
   validation_ratio: 0.1
   fold: 5
   nan_ratio: 0.6
-  expression_name: expression_for_model
+  expression_name: expression
   expression_column_name: expression
 models:
   - xgboost_config.yml
@@ -89,7 +89,9 @@ FS:
   keep_features_number: False
   separate_forced_features: False
   force_features:
+    - proxy_score_binding
     - expression
+    - proxy_score_presnetation
   n_thread: 10
   FS_methods:
     - Fspca.yml

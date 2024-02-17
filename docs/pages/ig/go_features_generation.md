@@ -137,15 +137,17 @@ go_features:
     n_components: 3
   save_embeddings: True
 ```
+
 - To generate embeddings from scratch using Anc2vec package, you can comment the key-value parameters under **embedding_paths**.
 
 - To use your custom Go embeddings run this command after specifying the embedding paths under **embedding_paths** parameter under in **gene_ontology.yml**.
 
 - You can then run this command to start the gene ontology pipeline:
-```
-gene-ontology-pipeline -c gene_ontology.yml -go 'go_term_mf go_term_bp go_term_cc' -o data/go_data_pipeline
 
+```bash
+gene-ontology-pipeline -c gene_ontology.yml -go 'go_term_mf go_term_bp go_term_cc' -o data/go_data_pipeline
 ```
+
 ### PS: Using local paths instead of Google storage paths is much faster.
 
 - After the pipeline succeeds, a new folder called **go_data_pipeline** is going to be generated under which you can find two folders named **netmhcpan** and **biondeep** according to dataset binder names with 3 sub-folders (**configuration**, **embeddings** and **generated**) each.

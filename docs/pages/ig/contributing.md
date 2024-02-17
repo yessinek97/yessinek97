@@ -1,13 +1,12 @@
-# Contribute to bio-IG
+# Contribute to biondeep-IG
 
-To contribute to bio-IG repo please first install
-[the local development environment](installation.md#dev).
+To contribute to the [`biondeep-IG`](https://gitlab.com/instadeep/biondeep-ig) repository, please first install [the Conda based setup](installation.md#conda-based-setup-for-developers).
 
-**Please make sure you install the pre-commit before committing any changes.**
+>🚨 **Please make sure you [install the pre-commit](installation.md#conda-based-setup-for-developers) before committing any changes.**
 
 ## Issue
 
-Please create a new/separate issue if
+Please [create a new/separate](https://gitlab.com/instadeep/biondeep-ig/-/issues/new#) issue if
 
 - There is a bug or problem in the existing code.
 - Some code need to be refactored/moved for a better code structure.
@@ -22,23 +21,31 @@ For each issue, please
 - Describe what should be done and how we should handle the issue.
 - Estimate how much time we need.
 - Assign a milestone and a person if possible.
-- Use the corresponding issue template on gitlab if it exists (e.g. for experiments, select
-  [Experiment](/.gitlab/issue_templates/Experiment.md))
+- Use the corresponding issue template on gitlab if it exists (e.g. bugs, data, general-purpose)
 
 ## Merge Request
 
 To handle a raised issue, please
 
-1. Go to the issue, and click `Create merge request` to create a branch based on the latest `main`
-   branch. The created branch will automatically follow the repository's naming convention. **Please
-   avoid creating branches manually.**
-2. Make your contributions locally. Please,
-   1. **Install the pre-commit before committing any changes.**
-   2. **Commit frequently** with meaningful commit messages and **push frequently** so that you can
-      make sure no tests are failed.
-   3. **Fix tests ASAP** when they are failed during the development.
-   4. **Synchronise with `main` branch frequently**.
-3. When the MR is ready, please request code review and address all discussions.
+1. Go to the issue, and click `Create merge request` to automatically create a new branch based on the latest `main` branch. The created branch will automatically follow the repository's naming convention.
+
+    >🚨 **Please avoid creating branches manually.**
+
+2. Move to the **new branch** in your local development environment.
+    `git checkout new_branch`
+3. Work on your contributions **locally**.
+4. **Commit frequently** with meaningful commit messages and **push frequently** so that you can make sure no tests are failed.
+5. **Fix tests ASAP** when they are failed during the development.
+6. **Synchronise** with `main` branch frequently.
+
+    ```bash
+    git  fetch
+    git rebase origin/main
+    ```
+
+    >🚨 **Resolve any conflicts immediately**
+
+7. When the MR is ready, please request **code review** and address all discussions.
 
 ## Code Review
 
@@ -63,8 +70,7 @@ When doing code review, please check
 In addition, we have the following preferences
 
 - We should use the `Path` from `pathlib` instead of `os`.
-- We should not use `assert` as
-  [it can be disabled](https://docs.python.org/3/using/cmdline.html#cmdoption-O).
+- We should not use `assert` as [it can be disabled](https://docs.python.org/3/using/cmdline.html#cmdoption-O).
 
 At last, we use code reviews to
 

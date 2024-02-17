@@ -1,19 +1,23 @@
 # Data Processing
+
 In order to use the available training command in the IG framework, additional processing of the BNT data pipeline output (raw data) is necessary to ensure good data quality by :
-- Removing the missing label
-- Removing duplicated features
-- Removing features with more than a specific threshold of missing values
-- Remove features with only one unique value
-- Process the `expression` columns
- Finally, only the common features between the train and the main datasets are processed and retained.
+
+* Removing the missing label
+* Removing duplicated features
+* Removing features with more than a specific threshold of missing values
+* Remove features with only one unique value
+* Process the `expression` columns
+
+Finally, only the common features between the train and the main datasets are processed and retained.
 
 ## Processing command
 
- The processing command is used in three different ways :
+The processing command is used in three different ways :
 
- - Process train only: takes only the train data (public table) to do the processing and  return  the available features.
- - Process train and other main datasets: takes the train data(Public table) and other main datasets  (Optima,Sahin,..) to do the processing and return the common features between the train and the other datasets.
- - Apply previous processing  to another dataset: takes another datasets (Optimapd,Sahin,...) and apply processing based on previous  processing for train and other main data.
+* Process train only: takes only the train data (public table) to do the processing and  return  the available features.
+* Process train and other main datasets: takes the train data(Public table) and other main datasets  (Optima,Sahin,..) to do the processing and return the common features between the train and the other datasets.
+* Apply previous processing  to another dataset: takes another datasets (Optimapd,Sahin,...) and apply processing based on previous  processing for train and other main data.
+
 ```bash
 processing -t <train_path>
            -mdp <first_main_data_path> -mdn <first_main_data_name>
@@ -22,6 +26,7 @@ processing -t <train_path>
            - o <output_directory_name>
            -ignore
 ```
+
 ```bash
 Options:
     -t        TEXT              train data path
@@ -33,25 +38,33 @@ Options:
     -o        TEXT              output directory where the processed data and metadata are saved
     -ignore   Flag              ignore missing features while processing other data
 ```
+
 ## Execution
 
  As Mentioned above there are three ways of execution of the processing command
+
 ### Train data only
- ```bash
+
+```bash
 processing -t <train_path> -c <configuration_file_name>
 ```
+
 ```bash
 Options:
     -t        TEXT       train data path
     -c        TEXT       processing configuration file name
 
 ```
+
 ### Process train and other main datasets
+
 ```bash
 processing -t <train_path>
-           -mdp <first_main_data_path> -mdn <first_main_data_name>
+           -mdp <first_main_data_path>
+           -mdn <first_main_data_name>
            -c <configuration_file_name>
 ```
+
 ```bash
 Options:
     -t        TEXT              train data path
@@ -59,12 +72,16 @@ Options:
     -mdn      TEXT [Multiple]   main data name
     -c        TEXT              processing configuration file name
 ```
-### Apply  processing another data
+
+### Apply previous processing to another dataset
+
 ```bash
-processing -odp <first_other_data_path> -odn <first_other_data_name>
-           - o <output_directory_name>
+processing -odp <first_other_data_path>
+           -odn <first_other_data_name>
+           -o <output_directory_name>
            -ignore
 ```
+
 ```bash
 Options:
 
@@ -75,12 +92,15 @@ Options:
     -ignore   Flag              ignore missing features while
                                 processing other data
 ```
+
 NB: the output of the processing command are saved under the directory `data/data_proc_{version}_{type}` where `version`  and `type` are defined in the configuration file
+
 ## Configuration
 
 This example illustrates how the configuration file should be. You can refer to **Processing configuration file section** at the [Data configuration file documentation page](data_configuration.md#preprocessing) for more details.
 
 ### Example
+
 ```yml
 data_version: IG_16_11_2022
 data_type: Netmhcpan
@@ -165,38 +185,53 @@ split:
   source_column: author/source
 
 ```
+
 ## Examples
 
-In order to execute the processing command we need to define the processing configuration file(as shown in the configuration section) or there is a pre-defined configuration file under the configuration directory `processing_configuration.yml` ready to use,and Thanks to the implemented [Pull command]  it's possible to download data from GCP
+In order to execute the processing command we need to define the processing configuration file (as shown in the [configuration section](#configuration)) or there is a pre-defined configuration file under the configuration directory `processing_configuration.yml` ready to use, and Thanks to the implemented [Pull command](push_pull.md#docker-pull-command) it's possible to download the raw data from the GCP storage bucket and then you can [Push](push_pull.md#docker-push-command) back the cleaned data to be saved.
 
-### Train data only
-* [Pull](push_pull.md#push-pull-command) Public from gcp
+### Example of Train data only
+
+* [Pull](push_pull.md#docker-pull-command) the Public train data from GCP
+
 ```bash
 pull --bucket_path gs://biondeep-data/IG/BntPipelineData/IG_24_03_2023/Processing/raw_data/NetMHCpan/publicMUT_20230324_v4_NetMHCpan.tsv --local_path data/row_data
 ```
+
 * Execute the processing command
+
 ```bash
 processing -t ./data/row_data/publicMUT_20230324_v4_NetMHCpan.tsv  -c processing_configuration.yml
 ```
 
-### Process train and other main datasets
-* [Pull](push_pull.md#push-pull-command) Public and Optima from gcp
+### Example of processing train and other main datasets
+
+* [Pull](push_pull.md#docker-pull-command) the Public and Optima data from GCP
+
 ```bash
 pull --bucket_path gs://biondeep-data/IG/BntPipelineData/IG_24_03_2023/Processing/raw_data/NetMHCpan/publicMUT_20230324_v4_NetMHCpan.tsv --local_path data/row_data
 ```
+
 ```bash
 pull --bucket_path gs://biondeep-data/IG/BntPipelineData/IG_24_03_2023/Processing/raw_data/NetMHCpan/optima_20210831_NetMHCpan.tsv --local_path data/row_data
 ```
+
 * Execute the processing command
+
 ```bash
 processing -t ./data/row_data/publicMUT_20230324_v4_NetMHCpan.tsv  -mdp ./data/row_data/optima_20210831_NetMHCpan.tsv -mdn optima  -c processing_configuration.yml
 ```
-### Apply  processing another data
-* [Pull](push_pull.md#push-pull-command) Other data(OptimaPD) from gcp
+
+### Example of Applying previous processing to another dataset
+
+* [Pull](push_pull.md#docker-pull-command) Other data(OptimaPD) from GCP
+
 ```bash
 pull --bucket_path gs://biondeep-data/IG/BntPipelineData/IG_24_03_2023/Processing/raw_data/NetMHCpan/optimaPD_20210825_NetMHCpan.tsv --local_path data/row_data
 ```
+
 * Execute the processing command
+
 ```bash
 processing -odp ./data/row_data/optimaPD_20210825_NetMHCpan.tsv -odn optimaPD -o proc_data_IG_16_11_2022_Netmhcpan
 ```

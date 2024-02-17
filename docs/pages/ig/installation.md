@@ -22,29 +22,26 @@ Then you can choose to work using the [Docker based setup](#docker-based-setup) 
 You can use `Docker` for training the models or inference on a separate dataset. There are three
 stages for this pipeline to be functional.
 
-* First you need to open a new terminal inside the `biondeep-ig` folder
+* First, you need to open a new terminal inside the `biondeep-ig` folder
 
-      ```bash
-      cd path/to/biondeep-ig
-      ```
+    ```bash
+    cd path/to/biondeep-ig
+    ```
 
-* Next, you need to __build the Docker image__:
+* Next, you need to __build__ the Docker image then __create__ and __start__ the IG container.
 
-      ```bash
-      make build
-      ```
+    ```bash
+    make run
+    ```
 
-* Then you need to __create__ and __start__ a container based on the image previously build:
+    >* Building the docker image will ask you to login to [GitLab container registry](https://gitlab.com/instadeep/biondeep-ig/container_registry/) with the rights to `read_registry` and `write_registry`.
+    >* You can create a [new access token here](https://gitlab.com/instadeep/biondeep-ig/-/settings/access_tokens) and use it as a login password.
 
-      ```bash
-      make run
-      ```
+* Finally, you need to __open the container shell__ in interactive mode. This step will also make sure the repo is installed in the container environment.
 
-* Finally, you need to __open the container shell__ in interactive mode
-
-      ```bash
-      make bash
-      ```
+    ```bash
+    make bash
+    ```
 
 * (Optional) You can also [attach VS Code to the running container](https://code.visualstudio.com/docs/devcontainers/attach-container) and work inside the container.
 
@@ -62,7 +59,7 @@ stages for this pipeline to be functional.
 3. __Create__ and __activate__ the conda environment
 
       ```bash
-      conda env create -f environment-dev.yaml && conda activate biondeep_ig
+      conda env create -f .environment-dev.yaml && conda activate biondeep_ig
       ```
 
 4. If you are a contributor, please make sure to install `pre-commit` before committing any changes.
@@ -79,7 +76,7 @@ stages for this pipeline to be functional.
 
 ## Google Storage authentication
 
-In order to be able to Read & Write [DATA](https://console.cloud.google.com/storage/browser/biondeep-data/IG) and [Models](https://console.cloud.google.com/storage/browser/biondeep-models/IG) from the BioNdeep-IG GCP storage Buckets:
+In order to be able to Read & Write [DATA](https://console.cloud.google.com/storage/browser/biondeep-data/IG/data) and [Models](https://console.cloud.google.com/storage/browser/biondeep-data/IG/experiments) from the BioNdeep-IG GCP storage Buckets:
 
 1. You have to ask a developer to send you the `Authentication credentials file`. This file must be added at the root of the project's folder.
 

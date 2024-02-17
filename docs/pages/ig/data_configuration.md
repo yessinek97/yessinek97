@@ -8,7 +8,7 @@ This page includes the description of multiple configuration files used in the *
 
 This configuration file defines the settings for the main **processing** pipeline as part of data preprocessing. It can be found at `configuration/processing_configuration.yml`.
 
-#### **PS**: Please note that all the columns' names should be lowercase.
+#### **PS**: Please note that all column names must be lowercase
 
 Here is a detailed description of this configuration file:
 

@@ -21,6 +21,8 @@ experiments:
     split_seed: true
     nbr_seeds: 2
     print_seeds_evals: false
+    save_seed_predictions: False
+    seed_plot_fig: False
     operation:
       - mean
     statics:
@@ -29,7 +31,7 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: True
+  process_data: False
   remove_unnecessary_folders: False
   trainable_features: "features_quickstart.yml"
   # trainable_features: gs://biondeep-data/IG/data/quick_start/features_quickstart.yml

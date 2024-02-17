@@ -69,7 +69,7 @@ nav:
       - Commands:
           - Data processing:
               - configuration: ig/data_configuration.md
-              - push pull GCP: ig/push_pull.md
+              - GCP push & pull: ig/push_pull.md
               - processing command: ig/processing.md
           - Modeling:
               - configuration: ig/modeling_configuration.md
@@ -89,5 +89,7 @@ nav:
               - Ensemble: ig/ensembling.md
               - Comparison score: ig/comparison_score.md
               - Dai score ESM embeddings generation: ig/generate_esm_embedding.md
-      - Contributing: ig/contributing.md
+      - Contributing:
+          - Contributing: ig/contributing.md
+          - Visualizing the documentation: ig/Visualizing_documentation.md
       - Changelog: ig/changelog.md
