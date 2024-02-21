@@ -20,7 +20,7 @@ First please make sure to follow [the installation steps](installation.md).
 2. Before running any command, please make sure the configuration file you are using contains the following parameters or directly use the predefined quickstart configuration files `configuration/quickstart_{operation}.yml`, with operation can be either **train**, **seed_fold** or **tune**:
 
     ```yml
-    process_data: False
+    #process_data: False
     remove_unnecessary_folders: False
     trainable_features: features_quickstart.yml
     validation_strategy: True
@@ -159,8 +159,6 @@ Options:
   - d       TEXT    Path to dataset [required]
   - n       TEXT    Path to model folder name [required]
   - id      TEXT    Unique id column [required]
-  - p       FLAG    Process the data or not [optional]
-
 ```
 
 ## Compute metrcis
@@ -175,7 +173,6 @@ compute-metrics -n test_quick_start -d   data/quick_start/test.csv
 Options:
   - d       TEXT    Path to dataset [required]
   - n       TEXT    Path to model folder name [required]
-  - p       FLAG    Process the data or not [optional]
 
 ```
 

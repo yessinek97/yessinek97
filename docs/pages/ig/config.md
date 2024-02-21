@@ -16,7 +16,6 @@ feature_paths: # Paths to the text files listing the features to be evaluated.
   # All feature lists in this list will be evaluated per experiment and model.
 
 processing:
-  process_data: #True/False if True allows the framework to process the data if the provided data is not processed if False the framework will not do any processing to the data,Default value is set to True
   remove_unnecessary_folders: # If True the `data_proc`, `features` and `Kfold experiments` directories will be removed from the checkpoint when the train ends
   trainable_features: # Name of the features dictionary file which contains the list of the `float` , `int` ,
     # `categorical` features with the useful `ids` list and `id` column. The file must be saved
@@ -48,9 +47,6 @@ processing:
   normalizer_per_id:  # Data normalization techniques applied by patient id in the datasets.
   normalizer_id: # patientid column.
   nan_ratio: #The maximum ratio of Nan value which the framework  could be accepted
-  expression_name: # The name of the expression columns which the framework will use
-  expression_column_name: #The final name of the expression column, the framework will rename `expression name` to `expression column_name` and use it, it's recommended to set expression_column_name to a name that exists in the trainable_features configuration  otherwise the expression will be taken into consi deration
-
 
 models: # List of model configuration files located at
   # `configuration/model_config/<model>.yml`.

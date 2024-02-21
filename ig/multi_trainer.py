@@ -227,7 +227,6 @@ def generate_experiment_configuration(
     "--id_name", "-id", type=str, required=True, help="unique id for the data set", default="id"
 )
 @click.option("--label_name", "-l", type=str, help="label name", default=None)
-@click.option("--process", "-p", is_flag=True, help="process and clean the provided data set")
 @click.option("--eval_test", "-e", is_flag=True, help="whether eval and compute metrics or not")
 @click.pass_context
 def multi_inference(
@@ -235,7 +234,6 @@ def multi_inference(
     test_data_paths: List[str],
     multi_train_run_name: str,
     id_name: str,
-    process: bool,
     label_name: Optional[str],
     eval_test: bool,
     single_train_names: Optional[List[str]] = None,
@@ -267,7 +265,6 @@ def multi_inference(
                 test_data_path=test_data_path,
                 folder_name=single_train_directory,
                 id_name=id_name,
-                process=process,
             )
             if eval_test and (label_name is not None):
                 eval_test_data(
@@ -327,13 +324,11 @@ def eval_test_data(
     required=True,
     help="multi train run's name directory",
 )
-@click.option("--process", "-p", is_flag=True, help="process and clean the provided data set")
 @click.pass_context
 def multi_exp_inference(
     ctx: Union[click.core.Context, Any],
     test_data_paths: List[str],
     multi_train_run_name: str,
-    process: bool,
 ) -> None:
     """Inference command for Multi-training run."""
     multi_train_directory = MODELS_DIRECTORY / multi_train_run_name
@@ -358,6 +353,5 @@ def multi_exp_inference(
                 exp_inference,
                 test_data_path=test_data_path,
                 run_name=single_train_directory,
-                process=process,
             )
             init_logger(logging_directory=multi_train_directory, file_name="Exp-Inference")

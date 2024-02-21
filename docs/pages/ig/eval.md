@@ -28,9 +28,6 @@ Options:
   - d       TEXT    Loacal or GCP Path to dataset [required]
   - n       TEXT    Path to model folder name [required]
   - id      TEXT    Unique id column [required]
-  - p       FLAG    Process the data or not
-
-
 ```
 
 ## Evaluation of trained models on given datasets

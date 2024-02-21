@@ -12,7 +12,6 @@ label: cd8_any
 feature_paths:
   - BaseFeatures_features
 processing:
-  process_data: false
   remove_proc_data: false
   trainable_features: features.yml # need to be changed
   validation_strategy: false
@@ -22,8 +21,6 @@ processing:
   validation_ratio: 0.1
   fold: 5
   nan_ratio: 0.6
-  expression_name: expression_for_model
-  expression_column_name: expression
 models:
   - xgboost_config.yml
 evaluation:

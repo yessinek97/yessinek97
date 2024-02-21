@@ -18,7 +18,6 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: False
   remove_unnecessary_folders: False
   trainable_features: "features_quickstart.yml"
   # exclude_features:
@@ -32,8 +31,6 @@ processing:
   validation_ratio: 0.1
   folds: [5, 4]
   nan_ratio: 0.6
-  expression_name: geneexpression_final
-  expression_column_name: expression
 
 models:
   - xgboost_config.yml

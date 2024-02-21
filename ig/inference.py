@@ -27,14 +27,12 @@ log: Logger = get_logger("Inference")
     "--id_name", "-id", type=str, required=True, help="unique id for the data set", default="id"
 )
 @click.option("--folder_name", "-n", type=str, required=True, help="Experiment name.")
-@click.option("--process", "-p", is_flag=True, help="process and clean the provided data set")
 @click.pass_context
 def inference(
     ctx: Union[click.core.Context, Any],
     test_data_path: str,
     folder_name: Union[str, Path],
     id_name: str,
-    process: bool,
 ) -> None:
     """Inferring Method.
 
@@ -43,7 +41,6 @@ def inference(
         test_data_path: test path
         folder_name: checkpoint name
         id_name: the unique id for each row in the data set
-        process: if True process and clean the provided data set
     """
     if isinstance(folder_name, str):
         best_exp_path = MODELS_DIRECTORY / folder_name / "best_experiment"
@@ -75,7 +72,6 @@ def inference(
         configuration=exp_configuration,
         is_train=False,
         experiment_path=best_exp_path.parent,
-        forced_processing=process,
         force_gcp=True,
         is_inference=True,
         process_label=False,
@@ -112,13 +108,11 @@ def inference(
     help="Path to the dataset.",
 )
 @click.option("--run_name", "-n", type=str, required=True, help="run name.")
-@click.option("--process", "-p", is_flag=True, help="process and clean the provided data set")
 @click.pass_context
 def exp_inference(
     ctx: Union[click.core.Context, Any],
     test_data_path: str,
     run_name: Union[str, Path],
-    process: bool,
 ) -> None:
     """Inferring Method.
 
@@ -126,7 +120,6 @@ def exp_inference(
         ctx: Click context manager
         test_data_path: test path
         run_name: checkpoint name
-        process: if True process and clean the provided data set
     """
     if isinstance(run_name, str):
         run_folder = MODELS_DIRECTORY / run_name
@@ -148,7 +141,6 @@ def exp_inference(
         configuration=run_configuration,
         is_train=False,
         experiment_path=run_folder,
-        forced_processing=process,
         force_gcp=True,
         is_inference=True,
         process_label=False,
