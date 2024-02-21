@@ -435,14 +435,12 @@ def cimt(
     "--comparison_score", "-cs", type=str, required=False, help="Experiment name.", default=None
 )
 @click.option("--is_eval", "-e", is_flag=True, help="eval predictions")
-@click.option("--process", "-p", is_flag=True, help="process and clean the provided data set")
 @click.pass_context
 def cimt_inference(  # noqa
     ctx: Union[click.core.Context, Any],
     data_path: str,
     exp_name: str,
     is_eval: bool,
-    process: bool,
     comparison_score: Optional[str],
 ) -> None:
     """Inferring Method.
@@ -453,7 +451,6 @@ def cimt_inference(  # noqa
         exp_name: checkpoint name
         comparison_score : comparison_score  column name
         is_eval: IF True eval the provided data set
-        process: if True process and clean the provided data set
     """
     eval_dict: Dict[str, Any] = {}
     main_exp_path = MODELS_DIRECTORY / exp_name
@@ -467,7 +464,7 @@ def cimt_inference(  # noqa
         for split in range(train_n_splits):
             split_experiment_path = experiment_path / f"split_{split}"
             split_experiment, data_loader = load_split_experiment_dataloader(
-                ctx, split_experiment_path, data_path, process
+                ctx, split_experiment_path, data_path
             )
             split_prediction = split_experiment.inference(data_loader(), save_df=False)
             split_prediction["split"] = f"split_{split}"
@@ -524,7 +521,7 @@ def cimt_inference(  # noqa
 
 
 def load_split_experiment_dataloader(
-    ctx: Union[click.core.Context, Any], split_experiment_path: Path, data_path: str, process: bool
+    ctx: Union[click.core.Context, Any], split_experiment_path: Path, data_path: str
 ) -> Tuple[Any, Dataset]:
     """Load Experiment and dataloader for the given split_experiment_path and data_path."""
     best_exp_path = split_experiment_path / "best_experiment"
@@ -539,7 +536,6 @@ def load_split_experiment_dataloader(
         configuration=exp_configuration,
         is_train=False,
         experiment_path=best_exp_path.parent,
-        forced_processing=process,
         force_gcp=True,
         is_inference=True,
         process_label=False,

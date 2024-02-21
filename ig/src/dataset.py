@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import re
-from collections import defaultdict
 from logging import Logger
 from pathlib import Path
 from typing import Any
-from xml.dom import NotFoundErr
 
 import click
 import numpy as np
@@ -35,7 +33,6 @@ class Dataset:
         experiment_path: Path,
         click_ctx: click.core.Context | Any,
         is_unlabeled: bool = False,
-        forced_processing: bool = False,
         force_gcp: bool = False,
         is_inference: bool = False,
         process_label: bool = True,
@@ -44,7 +41,6 @@ class Dataset:
         self.is_train = is_train
         self.experiment_path = experiment_path
         self.is_unlabeled = is_unlabeled
-        self.forced_processing = forced_processing
         self.configuration = configuration
         self.experiment_proc_data_folder = self.experiment_path / DATAPROC_DIRECTORY
         self.experiment_proc_data_folder.mkdir(exist_ok=True, parents=True)
@@ -157,11 +153,6 @@ class Dataset:
     def nan_ratio(self) -> float:
         """Return nan ratio."""
         return self.processing_configuration.get("nan_ratio", 0.6)
-
-    @property
-    def process_data(self) -> bool:
-        """Return  process_data flag."""
-        return self.processing_configuration.get("process_data", True)
 
     @property
     def experiments(self) -> dict[str, Any]:
@@ -278,13 +269,11 @@ class Dataset:
             ]
         else:
             self.features = self.get_feature_list()
-        if self.process_data or self.forced_processing:
-            if self.process_label:
-                self.clean_target()
-            self.rename_expression_column()
-            self.check_features_matching()
-            self.replace_missing_values_by_nan()
-            self.check_data_quality()
+
+        if self.process_label:
+            self.clean_target()
+
+        self.check_features_matching()
 
         if self.is_train:
             log.debug("Train mode featureizer is created")
@@ -354,74 +343,6 @@ class Dataset:
             self.data[self.label] = self.data[self.label].astype(int)
         else:
             raise KeyError(f"the input data  {self.data_path} is without {self.label} column.")
-
-    def rename_expression_column(self) -> None:
-        """Rename real expression column name to expression."""
-        if self.expression_column_name in self.features:
-            if self.expression_name:
-                if self.expression_name in self.data.columns:
-                    self.data.rename(
-                        columns={self.expression_name: self.expression_column_name}, inplace=True
-                    )
-                else:
-                    raise KeyError(
-                        (
-                            f"{self.expression_name}: does not exist in the given data please",
-                            "check the expression name in the configuration file.",
-                        )
-                    )
-            else:
-                raise NotFoundErr(
-                    (
-                        "expression feature is available in the list of ",
-                        "features but it's not defined in the configuration file.",
-                    )
-                )
-
-    def replace_missing_values_by_nan(self) -> None:
-        """Replace unknown characters with NaN."""
-        self.data = self.data.replace("\n", "", regex=True)
-        self.data = self.data.replace("\t", "", regex=True)
-        nan_strings = ["NA", "NaN", "NAN", "NE", "n.d.", "nan", "na", "?", ""]
-        for col in self.data.columns:
-            for nanstr in nan_strings:
-                self.data[col] = self.data[col].replace(nanstr, np.nan)
-
-    def check_data_quality(self) -> None:
-        """Check data qulaity by checking the ratio of the missing values and the duplicated column."""
-        # check nan perctange.
-        log.info("Check Nan ratio")
-        nan_percentage = self.data[self.features].isna().mean()
-        if (nan_percentage > self.nan_ratio).sum():
-            log.warning(
-                (
-                    f" {','.join(nan_percentage[nan_percentage>self.nan_ratio].index)}",
-                    " have more than 60% of nan values.",
-                )
-            )
-        # Check duplicated columns
-        log.info("Check duplicated columns by name")
-        unique_columns = self.data[self.features].columns.value_counts()
-        duplicate_to_drop = unique_columns[unique_columns > 1].index.tolist()
-        if len(duplicate_to_drop):
-            log.warning(" %s are duplicated by name", ",".join(duplicate_to_drop))
-
-        # Check duplicated columns by value
-        log.info("Check duplicated columns by values")
-        all_duplicated_columns = []
-        duplicate_column_names = defaultdict(list)
-        for pos, column in enumerate(self.features):
-            if column not in all_duplicated_columns:
-                column_value = self.data[column]
-                for other_column in self.features[pos + 1 :]:
-                    other_column_value = self.data[other_column]
-                    if column_value.equals(other_column_value):
-                        duplicate_column_names[column].append(other_column)
-                        all_duplicated_columns.append(other_column)
-        if len(all_duplicated_columns) > 0:
-            log.warning("Duplicated columns found:")
-            for key, values in duplicate_column_names.items():
-                log.warning("%s : %s", key, ",".join(values))
 
     def save_processed_data(self) -> None:
         """Save processed data."""

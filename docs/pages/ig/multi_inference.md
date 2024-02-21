@@ -5,11 +5,11 @@ PS: **Id** column must be included in the given data dataset.
 
 - In Docker container:
 ```bash
-multi-inference -d <data_Test_paths> -mn <multi_train_run_name>  -sn <single_train_names> -id <id_name> -l label_name -p -e
+multi-inference -d <data_Test_paths> -mn <multi_train_run_name>  -sn <single_train_names> -id <id_name> -l label_name -e
 ```
 - In Conda environment:
 ```bash
-python  ig.main multi-inference -d <data_Test_paths> -mn <multi_train_run_name>  -sn <single_train_names> -id <id_name> -l label_name -p -e
+python  ig.main multi-inference -d <data_Test_paths> -mn <multi_train_run_name>  -sn <single_train_names> -id <id_name> -l label_name -e
 ```
 ```bash
 Options:
@@ -18,7 +18,6 @@ Options:
   - sn      TEXT[Multiple]    Name of the single run folder under the multi-train folder
                               which will be used for the inference
   - id      TEXT              Unique id column [required] default "id"
-  - p       FLAG              Process the data or not [Optional]
   - l       TEXT              Label name [Optional]
   - e       FLAG              Eval data or not if True the label name should be defined [Optional]
 

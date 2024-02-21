@@ -22,8 +22,6 @@ feature_paths: # This section includes path to separate text files listing the f
 
 processing: # This section specifies the processing settings
 
-  process_data: # This argument is a boolean that controls whether to process the input dataset or not (Default value is set to False).
-
   remove_unnecessary_folders: # This argument is a boolean that controls whether to remove the unnecessary folders (data_proc, features and experiments folders) after training or not(Default value is set to False).
 
   trainable_features: # This argument specifies the name features dictionary file which contains the list of the `float` , `int` ,
@@ -67,11 +65,6 @@ processing: # This section specifies the processing settings
   normalizer_id: # This argument refers to patientid column.
 
   nan_ratio: #This argument specifies the maximum ratio of missing values that the framework can tolerate.
-
-  expression_name: # This argument specifies the name of the expression columns which the framework will use.
-
-  expression_column_name: #This arguments defines the final name of the expression column, the framework will rename `expression name` to `expression column_name` and use it, it's recommended to set expression_column_name to a name that exists in the trainable_features configuration otherwise the expression will be taken into consideration.
-
 
 models: # This section defines a list of model configuration files located at
   # `configuration/model_config/<model>.yml`.
@@ -144,7 +137,6 @@ experiments:
       - mean
 label: cd8_any
 processing:
-  process_data: False
   remove_unnecessary_folders: false
   trainable_features: "features.yml"
   exclude_features: # You can use prefixes(neofox..),suffixes(mhci,pmhc) patterns(tested) or the full feature name
@@ -160,8 +152,6 @@ processing:
   validation_ratio: 0.1
   fold: 5
   nan_ratio: 0.6
-  expression_name: expression_for_model
-  expression_column_name: expression
 models:
   - xgboost_config.yml
 
@@ -227,7 +217,6 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: False
   remove_unnecessary_folders: False
   trainable_features: features_float.biondeep_02_06_2022_transformer_public_v2
   # exclude_features:
@@ -241,8 +230,6 @@ processing:
   validation_ratio: 0.1 # Here we used multiple folds
   folds: [5, 4, 6]
   nan_ratio: 0.6
-  expression_name: expression
-  expression_column_name: expression
 
 models:
   - xgboost_config.yml
@@ -375,7 +362,6 @@ tuning: # This section is used to define the settings for tuning the model's hyp
   maximize: True # This argument chooses whether to maximize the scores.
   nbr_trials: 1 # This argument defines the number of trials for tuning.
 processing:
-  process_data: False
   trainable_features: "features_float.biondeep_02_06_2022_transformer_public_v2"
   validation_strategy: true
   isunlabelled: false
@@ -429,7 +415,6 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: False
   remove_unnecessary_folders: False
   trainable_features: "features_quickstart.yml" # Here we used the quickstart features instead of all the features.
 
@@ -439,8 +424,6 @@ processing:
   seed: 1994
   validation_ratio: 0.1
   fold: 5
-  expression_name: expression
-  expression_column_name: expression
 models:
   - xgboost_config.yml # We only used the XGBoost model.
 
@@ -504,7 +487,6 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: False
   remove_unnecessary_folders: False
   trainable_features: features_quickstart.yml
   validation_strategy: true
@@ -514,8 +496,6 @@ processing:
   validation_ratio: 0.1
   folds: [5, 4, 6] # Here we run those experiments with multiple folds.
   nan_ratio: 0.6
-  expression_name: expression
-  expression_column_name: expression
   # keep_best_exp_only: True
 
 models:
@@ -572,7 +552,6 @@ tuning: # This section defines the tuning settings.
   maximize: True # This argument chooses whether to maximize the scores.
   nbr_trials: 1 # This argument defines the number of trials for tuning.
 processing:
-  process_data: false
   trainable_features: features_quickstart.yml
   validation_strategy: true
   isunlabelled: false

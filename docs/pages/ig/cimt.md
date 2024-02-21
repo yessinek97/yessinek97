@@ -231,11 +231,11 @@ python -m ig.main cimt -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -c CIMT
 
 - In Docker container:
 ```bash
-cimt-inference -d <train_data> -n <experiment_name> -e -p
+cimt-inference -d <train_data> -n <experiment_name> -e
 ```
 - In Conda environment:
 ```bash
-python -m ig.main cimt-inference -d <train_data> -n <experiment_name> -e -p
+python -m ig.main cimt-inference -d <train_data> -n <experiment_name> -e
 ```
 
 ```bash
@@ -245,8 +245,6 @@ Options:
   -n       TEXT    Name of the experiment [required]
 
   -e       Flag    Compute topk and print evaluation [Optional]
-
-  -p       Flag    Process the input data [Optional]
 
 
 ```

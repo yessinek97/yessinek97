@@ -31,7 +31,6 @@ label: cd8_any
 feature_paths:
   - train_features
 processing:
-  process_data: False
   remove_unnecessary_folders: False
   trainable_features: "features_quickstart.yml"
   # trainable_features: gs://biondeep-data/IG/data/quick_start/features_quickstart.yml
@@ -45,8 +44,6 @@ processing:
   seed: 1994
   validation_ratio: 0.1
   fold: 5
-  expression_name: expression
-  expression_column_name: expression
 models:
   - xgboost_config.yml
   #- lgbm_config.yml

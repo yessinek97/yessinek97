@@ -10,7 +10,6 @@ experiments:
       - mean
 label: cd8_any
 processing:
-  process_data: false
   remove_proc_data: true
   trainable_features: features.yml #need be changed
   validation_strategy: false
@@ -20,8 +19,6 @@ processing:
   validation_ratio: 0.1
   fold: 5
   nan_ratio: 0.6
-  expression_name: expression_for_model
-  expression_column_name: expression
 models:
   - xgboost_config.yml
 evaluation:

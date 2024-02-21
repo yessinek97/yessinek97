@@ -24,7 +24,7 @@ tuning:
   maximize: True
   nbr_trials: 1
 processing:
-  process_data: False
+  # process_data: False
   trainable_features: "features_quickstart.yml"
   validation_strategy: true
   isunlabelled: false

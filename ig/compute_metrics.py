@@ -40,14 +40,12 @@ log: Logger = get_logger("Eval")
     help="column name to eval per split.",
 )
 @click.option("--folder_name", "-n", type=str, required=True, help="Experiment name.")
-@click.option("--process", "-p", is_flag=True, help="process and clean the provided data set")
 @click.pass_context
 def compute_metrics(  # noqa: CCR001
     ctx: Union[click.core.Context, Any],
     test_data_paths: List[str],
     folder_name: str,
     eval_id_name: str,
-    process: bool,
 ) -> None:
     """Evaluation  on a separate datasets."""
     experiment_path = MODELS_DIRECTORY / folder_name
@@ -77,7 +75,6 @@ def compute_metrics(  # noqa: CCR001
             configuration=general_configuration,
             is_train=False,
             experiment_path=experiment_path,
-            forced_processing=process,
             force_gcp=True,
             process_label=True,
             is_inference=True,
