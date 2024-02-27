@@ -1,11 +1,23 @@
 General:
+  split_data: false
+  do_w_train: false
+  eval:
+    metrics:
+      - topk
+      - logloss
+      - roc
+    comparison_columns:
+      - proxy_score_presentation
+    label_column: cd8_any
   features_selection:
+    test_file_pattern: cimt_2024_test_split_{}.csv
+    train_file_pattern: cimt_2024_train_split_{}.csv
     n_splits: 5
     seed: 1994
     Ntop_features: 20
     default_configuration: CIMTFeaturesSelection.yml
-  train:
-    n_splits: 10
+  w_train:
+    n_splits: 5
     seed: 1994
     default_configuration: CIMTTraining.yml
 
@@ -16,10 +28,3 @@ experiments:
         processing:
           exclude_features:
             - rnalocalization_p
-    # train:
-  BaseFeaturesRNAGO:
-    features_selection:
-      configuration:
-        processing:
-          exclude_features:
-            - ccs_charge

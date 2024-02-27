@@ -2,7 +2,7 @@
 import click
 
 from ig.buckets import pull, push
-from ig.cimt import cimt, cimt_features_selection, cimt_inference, cimt_kfold_split, cimt_train
+from ig.cimt import cimt
 from ig.compute_metrics import compute_metrics
 from ig.ensemble import ensemblexprs, ensoneexp
 from ig.feature_selection import featureselection
@@ -33,11 +33,7 @@ main.add_command(ensoneexp)
 main.add_command(compute_comparison_score)
 main.add_command(multi_train)
 main.add_command(generate_pairs)
-main.add_command(cimt_kfold_split)
-main.add_command(cimt_features_selection)
-main.add_command(cimt_train)
 main.add_command(cimt)
-main.add_command(cimt_inference)
 main.add_command(processing)
 main.add_command(multi_inference)
 main.add_command(multi_train_distributed)

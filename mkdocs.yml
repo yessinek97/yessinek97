@@ -83,7 +83,7 @@ nav:
               - Multiple Train:
                   - Train: ig/multi_train.md
                   - Inference: ig/multi_inference.md
-              - CIMT 2023: ig/cimt.md
+              - CIMT: ig/cimt.md
               - Training with list of seeds and folds: ig/train_seed_fold.md
               - Hyper-parameters tuning: ig/tune.md
               - Ensemble: ig/ensembling.md

@@ -5,7 +5,14 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import f1_score, log_loss, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import (
+    f1_score,
+    log_loss,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+    roc_curve,
+)
 
 from ig.src.logger import get_logger
 
@@ -194,3 +201,18 @@ def topk(labels: Any, scores: Any, **kwargs: Dict[str, Any]) -> float:  # pylint
     since we call all metric functions in the same way.
     """
     return topk_global(labels, scores)[0]
+
+
+def roc_auc_curve(labels: Any, scores: Any) -> Tuple[Any, Any]:
+    """Compute the Receiver Operating Characteristic (ROC) curve.
+
+    Args:
+        labels: The true binary labels.
+        scores: The predicted scores.
+
+    Returns:
+        Tuple of arrays (fpr, tpr) where fpr is the false positive rates, tpr is the
+        true positive rates.
+    """
+    fpr, tpr, _ = roc_curve(labels, scores)
+    return fpr, tpr

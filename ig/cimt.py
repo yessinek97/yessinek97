@@ -1,19 +1,23 @@
 """Module used to define all the helper commands for cimt model."""
 from copy import deepcopy
+from logging import Logger
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Union
 
 import click
 import numpy as np
-import pandas as pd
 from sklearn.model_selection import KFold
 
-import ig.src.experiments as exper
-from ig import CONFIGURATION_DIRECTORY, FEATURES_DIRECTORY, MODELS_DIRECTORY
-from ig.src.dataset import Dataset
+import ig.utils.cimt as cimt_helper
+from ig import CONFIGURATION_DIRECTORY, DEFAULT_SEED, MODELS_DIRECTORY
+from ig.src.logger import get_logger, init_logger
 from ig.src.metrics import topk
-from ig.src.utils import import_experiment, load_pkl, load_yml, read_data, save_yml
+from ig.src.utils import load_yml, read_data, save_yml, seed_basic
 from ig.trainer import _check_model_folder, train
+from ig.utils.cimt import CsEvalType
+
+log: Logger = get_logger("CIMT")
+seed_basic(DEFAULT_SEED)
 
 
 @click.command()
@@ -42,16 +46,16 @@ def cimt_kfold_split(
 ) -> None:
     """Split the given data to different split using Kfold."""
     if is_train:
-        print("Start splitting data to perform the Training per splits")
+        log.info("Start splitting data to perform the Training per splits")
     else:
-        print("Start splitting data to perform the features selection approach")
+        log.info("Start splitting data to perform the features selection approach")
     data = read_data(data_path, low_memory=False)
     if configuration_path:
         configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_path)
     assert configuration is not None
     if is_train:
-        seed = configuration["train"]["seed"]
-        n_splits = configuration["train"]["n_splits"]
+        seed = configuration["w_train"]["seed"]
+        n_splits = configuration["w_train"]["n_splits"]
         data_name = "CIMTTraining"
     else:
         seed = configuration["features_selection"]["seed"]
@@ -63,7 +67,7 @@ def cimt_kfold_split(
     for i, (_, indx) in enumerate(kfold.split(data.index)):
         test_split = data[data.index.isin(indx)]
         train_split = data[~data.index.isin(indx)]
-        print(f"split : {i+1} : Train : {len(train_split)},Test : {len(test_split)}")
+        log.info(f"split : {i+1} : Train : {len(train_split)},Test : {len(test_split)}")
         test_split.to_csv(splits_folder / f"{data_name}Test_{i}_{seed}.csv", index=False)
         train_split.to_csv(splits_folder / f"./{data_name}Train_{i}_{seed}.csv", index=False)
 
@@ -94,29 +98,45 @@ def cimt_features_selection(
     sub_folder: Optional[str] = None,
 ) -> None:
     """Apply features selection approach per split and average importance features."""
-    print("Start Features selection process.")
     if configuration_path:
         configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_path)
     assert configuration is not None
     train_configuration_file = configuration["features_selection"]["default_configuration"]
     train_configuration = load_yml(CONFIGURATION_DIRECTORY / train_configuration_file)
-    train_configuration = update_configuration(
+    train_configuration = cimt_helper.update_configuration(
         train_configuration, configuration["features_selection"].get("configuration", {})
     )
     n_splits = configuration["features_selection"]["n_splits"]
     seed = configuration["features_selection"]["seed"]
     ntop_features = configuration["features_selection"]["Ntop_features"]
     train_fold = train_configuration["processing"]["fold"]
+    do_w_train = configuration.get("do_w_train", False)
+    comparison_columns = configuration["eval"].get("comparison_columns", [])
+    label_column = configuration["eval"]["label_column"]
+    exp_dir = exp_name + "/features_selection" if do_w_train else exp_name
+
     if sub_folder:
-        base_exp_path = MODELS_DIRECTORY / sub_folder / exp_name / "features_selection"
+        base_exp_path = MODELS_DIRECTORY / sub_folder / exp_dir
     else:
-        base_exp_path = MODELS_DIRECTORY / exp_name / "features_selection"
+        base_exp_path = MODELS_DIRECTORY / exp_dir
     base_exp_path.mkdir(exist_ok=True, parents=True)
     save_yml(train_configuration, base_exp_path / "configuration.yml")
 
+    cs_evaluations: Dict[str, CsEvalType] = {}
+    sub_experiments_path = []
     for i in range(n_splits):
-        train_data_path = Path(data_directory) / f"CIMTFeaturesSelectionTrain_{i}_{seed}.csv"
-        test_data_path = Path(data_directory) / f"CIMTFeaturesSelectionTest_{i}_{seed}.csv"
+        log.info(f"  Train Split {i+1}/{n_splits}")
+
+        if configuration.get("split_data", False):
+            train_data_path = Path(data_directory) / f"CIMTFeaturesSelectionTrain_{i}_{seed}.csv"
+            test_data_path = Path(data_directory) / f"CIMTFeaturesSelectionTest_{i}_{seed}.csv"
+        else:
+            train_data_path = Path(data_directory) / configuration["features_selection"][
+                "train_file_pattern"
+            ].format(i)
+            test_data_path = Path(data_directory) / configuration["features_selection"][
+                "test_file_pattern"
+            ].format(i)
         ctx.invoke(
             train,
             train_data_path=str(train_data_path),
@@ -127,7 +147,33 @@ def cimt_features_selection(
             force=False,
             multi_train=True,
         )
-    features_importance_extraction(base_exp_path, exp_name, n_splits, train_fold, ntop_features)
+        init_logger(
+            logging_directory=base_exp_path.parent,
+            file_name="cimt",
+        )
+
+        sub_experiments_path.append(base_exp_path / f"split_{i}")
+        cs_evaluations[f"split_{i}"] = cimt_helper.compute_comparison_scores_metrics_per_split(
+            comparison_columns=comparison_columns,
+            label=label_column,
+            train_path=train_data_path,
+            test_path=test_data_path,
+        )
+
+    cimt_helper.features_importance_extraction(
+        base_exp_path, exp_name, n_splits, train_fold, ntop_features, do_w_train
+    )
+
+    experiment_results_path = base_exp_path / "results"
+    experiment_results_path.mkdir(exist_ok=True, parents=True)
+    cimt_helper.experiments_evaluation(
+        sub_experiments_path=sub_experiments_path,
+        experiment_path=base_exp_path,
+        eval_params=configuration["eval"],
+        cs_evaluations=cs_evaluations,
+        comparison_columns=comparison_columns,
+        label=label_column,
+    )
 
 
 @click.command()
@@ -156,17 +202,16 @@ def cimt_train(
     sub_folder: Optional[str] = None,
 ) -> None:
     """Train per split and report the return split predictions."""
-    print("Star the Training process")
     if configuration_path:
         configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_path)
     assert configuration is not None
-    train_configuration_file = configuration["train"]["default_configuration"]
+    train_configuration_file = configuration["w_train"]["default_configuration"]
     train_configuration = load_yml(CONFIGURATION_DIRECTORY / train_configuration_file)
-    train_configuration = update_configuration(
-        train_configuration, configuration["train"].get("configuration", {})
+    train_configuration = cimt_helper.update_configuration(
+        train_configuration, configuration["w_train"].get("configuration", {})
     )
-    n_splits = configuration["train"]["n_splits"]
-    seed = configuration["train"]["seed"]
+    n_splits = configuration["w_train"]["n_splits"]
+    seed = configuration["w_train"]["seed"]
     label_name = train_configuration["label"]
     if sub_folder:
         base_exp_path = MODELS_DIRECTORY / sub_folder / exp_name / "train"
@@ -177,6 +222,7 @@ def cimt_train(
     save_yml(train_configuration, base_exp_path / "configuration.yml")
 
     for i in range(n_splits):
+        log.info(f"  Train Split {i+1}/{n_splits}")
         train_data_path = Path(data_directory) / f"CIMTTrainingTrain_{i}_{seed}.csv"
         test_data_path = Path(data_directory) / f"CIMTTrainingTest_{i}_{seed}.csv"
         ctx.invoke(
@@ -189,7 +235,11 @@ def cimt_train(
             force=False,
             multi_train=True,
         )
-    get_train_average_score(
+        init_logger(
+            logging_directory=base_exp_path,
+            file_name="cimt",
+        )
+    cimt_helper.get_experiment_average_score(
         base_exp_path,
         label_name,
         n_splits,
@@ -197,165 +247,22 @@ def cimt_train(
     )
 
 
-def features_importance_extraction(
-    base_exp_path: Path, exp_name: str, n_splits: int, train_fold: int, ntop_features: int
-) -> None:
-    """Extract features importance form different split and save the Ntop_fezatures."""
-    features_importance_per_split = []
-    for i in range(n_splits):
-        split_exp_path = base_exp_path / f"split_{i}"
-        features_importance_per_split.append(
-            get_split_features_importance(split_exp_path, train_fold)
-        )
-
-    features_importance = pd.concat(features_importance_per_split)
-    features_importance_mean = (
-        features_importance.groupby("features")
-        .value.mean()
-        .rename("value")
-        .reset_index()
-        .sort_values("value")
-    )
-    features_importance_count = (
-        features_importance.groupby("features").features.count().rename("count").reset_index()
-    )
-    features_importance = features_importance_mean.merge(
-        features_importance_count, on="features", how="left"
-    )
-    features_importance["count"] /= n_splits
-    features_importance["weight"] = features_importance.value * features_importance["count"]
-    features_importance.sort_values("weight", inplace=True)
-    list_of_important_features = features_importance[-ntop_features:].features.tolist()
-
-    features_path = FEATURES_DIRECTORY / "CD8" / f"{exp_name}_features.txt"
-    print(f"Save the Top {ntop_features} features to {features_path} ")
-    save_features(list_of_important_features, features_path)
-    features_importance.to_csv(base_exp_path.parent / "features_importance.csv", index=False)
-
-
-def get_split_features_importance(base_exp_path: Path, train_fold: int) -> pd.DataFrame:
-    """Get features importance per split."""
-    importance_features_list = []
-    for i in range(train_fold):
-        path = base_exp_path / "best_experiment" / "checkpoint" / f"split_{i}" / "model.pkl"
-        model = load_pkl(path)
-        features_importance = model.model.get_score(importance_type="gain")
-        importance_features_list.append(
-            pd.DataFrame.from_dict(
-                {"features": features_importance.keys(), "value": features_importance.values()}
-            )
-        )
-        # save per split ##################################
-    importance_features = pd.concat(importance_features_list)
-    importance_features = (
-        importance_features.groupby("features").value.mean().rename("value").reset_index()
-    )
-    return importance_features
-
-
-def save_features(features: List[str], file_path: Path) -> None:
-    """Save a list of features as a text format."""
-    with open(file_path, "w") as f:
-        for e in features:
-            f.write(str(e) + "\n")
-
-
-def get_train_average_score(
-    base_exp_path: Path, label_name: str, n_splits: int, comparison_score: str
-) -> None:
-    """Extract and merge the prediction and evaluation per split and report average results."""
-    splits_eval = []
-    splits_pred = []
-    comparison_score_eval = []
-    for split in range(n_splits):
-        series_model = pd.Series([], dtype=pd.StringDtype())
-        exp_path = base_exp_path / f"split_{split}"
-
-        split_eval_df = pd.read_csv(exp_path / "best_experiment" / "eval" / "results.csv")
-        split_prediction_df = pd.read_csv(exp_path / "best_experiment" / "prediction" / "test.csv")
-        split_eval_df_pred_mean = split_eval_df[split_eval_df.prediction == "prediction_mean"]
-        series_model["name"] = f"split_{split}"
-        series_model["Train"] = split_eval_df[split_eval_df.split == "train"].topk.mean()
-        series_model["Validation"] = split_eval_df_pred_mean[
-            split_eval_df_pred_mean.split == "validation"
-        ].topk.iloc[0]
-        series_model["Test"] = split_eval_df_pred_mean[
-            split_eval_df_pred_mean.split == "test"
-        ].topk.iloc[0]
-        splits_eval.append(series_model)
-        splits_pred.append(split_prediction_df)
-        if comparison_score:
-            comparison_score_file = exp_path / "comparison_score" / f"eval_{comparison_score}.yml"
-            if comparison_score_file.exists():
-                comparison_score_eval.append(
-                    load_comparison_score_evaluation(
-                        comparison_score_file, f"split_{split}", comparison_score
-                    )
-                )
-    eval_df = pd.DataFrame(splits_eval)
-    predictions = pd.concat(splits_pred)
-    test_global_topk = topk(predictions[label_name], predictions.prediction_mean)
-    average_train_topk = eval_df.Train.mean()
-    average_validation_topk = eval_df.Validation.mean()
-    average_test_topk = eval_df.Test.mean()
-
-    print("Average Splits topk")
-    print(f" -Train : {average_train_topk:.3}")
-    print(f" -Validation : {average_validation_topk:.3}")
-    print(f" -Test : {average_test_topk:.3}")
-    print("Global topk")
-    print(f" -Test : {test_global_topk:.3}")
-    eval_df.to_csv(base_exp_path.parent / "eval_per_split.csv", index=False)
-    predictions.to_csv(base_exp_path.parent / "predictions.csv", index=False)
-    results = {
-        "Average": {
-            "Train": float(average_train_topk),
-            "Validation": float(average_validation_topk),
-            "Test": float(average_test_topk),
-        },
-        "Global": {"Test": float(test_global_topk)},
-    }
-    if comparison_score_eval:
-        comparison_score_eval_df = pd.DataFrame(comparison_score_eval)
-        average_comparison_score_test_topk = comparison_score_eval_df.Test.mean()
-        print(f"Eval {comparison_score}")
-        print("Average Splits topk")
-        print(f" -Test : {average_comparison_score_test_topk:.3}")
-        cs_results = {
-            "comparison score": {
-                "Average": {
-                    "Test": float(average_comparison_score_test_topk),
-                },
-            }
-        }
-        if comparison_score in predictions.columns:
-            global_comparison_score_test_topk = topk(
-                predictions[label_name], predictions[comparison_score]
-            )
-            print("Global topk")
-            print(f" -Test : {global_comparison_score_test_topk:.3}")
-            cs_results["comparison score"].update({"Global": {"Test": float(test_global_topk)}})
-    save_yml(results, base_exp_path.parent / "scores.yml")
-
-
-def load_comparison_score_evaluation(
-    comparison_score_file: Path, split: str, comparison_score: str
-) -> pd.Series:
-    """Load and extract comparison score from comparison score evaluation."""
-    eval_score = load_yml(comparison_score_file)
-    series = pd.Series([], dtype=pd.StringDtype())
-    series["split"] = split
-    series["Test"] = eval_score["test"]["test"][comparison_score]["global"]["topk"]
-    return series
-
-
 @click.command()
 @click.option(
     "--data_path",
     "-d",
     type=str,
-    required=True,
+    required=False,
     help="Path to the dataset to be splitted",
+    default=None,
+)
+@click.option(
+    "--data_directory",
+    "-dr",
+    type=str,
+    required=False,
+    help="directory to the splitted dataset",
+    default=None,
 )
 @click.option(
     "--configuration_path",
@@ -367,42 +274,63 @@ def load_comparison_score_evaluation(
 @click.option("--exp_name", "-n", type=str, required=True, help="Experiment name.")
 @click.pass_context
 def cimt(
-    ctx: Union[click.core.Context, Any], data_path: str, configuration_path: str, exp_name: str
+    ctx: Union[click.core.Context, Any],
+    data_path: Optional[str],
+    data_directory: Optional[str],
+    configuration_path: str,
+    exp_name: str,
 ) -> None:
     """Train and Apply features selection approach for a given data."""
     exp_path = MODELS_DIRECTORY / exp_name
     _check_model_folder(exp_path)
+    init_logger(
+        logging_directory=exp_path,
+        file_name="cimt",
+    )
+    log.info("Start Multi Train loop for CIMT.")
     configuration_directory = exp_path / "configuration"
     configuration_directory.mkdir(exist_ok=True, parents=True)
-    data_directory = str(Path(data_path).parent)
     main_configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_path)
     save_yml(main_configuration, configuration_directory / "configuration.yml")
     base_configuration = main_configuration["General"]
     experiments = main_configuration["experiments"]
-    ctx.invoke(
-        cimt_kfold_split,
-        data_path=data_path,
-        configuration_path=None,
-        is_train=False,
-        configuration=base_configuration,
-    )
-    ctx.invoke(
-        cimt_kfold_split,
-        data_path=data_path,
-        configuration_path=None,
-        is_train=True,
-        configuration=base_configuration,
-    )
+    if base_configuration.get("split_data", False):
+        if data_path is None:
+            raise ValueError("data_path must be defined when split_data is True")
+
+        data_directory = str(Path(data_path).parent)
+        log.info("Split Train data using Kfold for features selection ")
+        ctx.invoke(
+            cimt_kfold_split,
+            data_path=data_path,
+            configuration_path=None,
+            is_train=False,
+            configuration=base_configuration,
+        )
+        if base_configuration.get("do_w_train", False):
+            log.info("Split Train data using Kfold for Training")
+            ctx.invoke(
+                cimt_kfold_split,
+                data_path=data_path,
+                configuration_path=None,
+                is_train=True,
+                configuration=base_configuration,
+            )
+    if data_directory is None:
+        raise ValueError("data_directory argument should be defined when split_data is False")
+
     for name, exp_configuration in zip(experiments.keys(), experiments.values()):
         configuration = deepcopy(base_configuration)
+        if exp_configuration is None:
+            exp_configuration = {}
         configuration["features_selection"]["configuration"] = exp_configuration.get(
             "features_selection", {}
         ).get("configuration", {})
-        configuration["train"]["configuration"] = exp_configuration.get("train", {}).get(
+        configuration["w_train"]["configuration"] = exp_configuration.get("w_train", {}).get(
             "configuration", {}
         )
         save_yml(configuration, configuration_directory / f"{name}.yml")
-
+        log.info(f"Start features selection and Training for {name}")
         ctx.invoke(
             cimt_features_selection,
             data_directory=data_directory,
@@ -412,14 +340,16 @@ def cimt(
             sub_folder=exp_name,
         )
 
-        ctx.invoke(
-            cimt_train,
-            data_directory=data_directory,
-            configuration_path=None,
-            exp_name=name,
-            configuration=configuration,
-            sub_folder=exp_name,
-        )
+        if base_configuration.get("do_w_train", False):
+            log.info(f"Start weighted features training for {name}")
+            ctx.invoke(
+                cimt_train,
+                data_directory=data_directory,
+                configuration_path=None,
+                exp_name=name,
+                configuration=configuration,
+                sub_folder=exp_name,
+            )
 
 
 @click.command()
@@ -457,13 +387,13 @@ def cimt_inference(  # noqa
     main_configuration = load_yml(main_exp_path / "configuration" / "configuration.yml")
     base_configuration = main_configuration["General"]
     experiments_name = main_configuration["experiments"].keys()
-    train_n_splits = base_configuration["train"]["n_splits"]
+    train_n_splits = base_configuration["w_train"]["n_splits"]
     for experiment_name in experiments_name:
         experiment_path = main_exp_path / experiment_name / "train"
         split_predictions = []
         for split in range(train_n_splits):
             split_experiment_path = experiment_path / f"split_{split}"
-            split_experiment, data_loader = load_split_experiment_dataloader(
+            split_experiment, data_loader = cimt_helper.load_split_experiment_dataloader(
                 ctx, split_experiment_path, data_path
             )
             split_prediction = split_experiment.inference(data_loader(), save_df=False)
@@ -475,7 +405,7 @@ def cimt_inference(  # noqa
         ]
         label_name = split_experiment.label_name
 
-        test_prediction = aggregate_predictions(
+        test_prediction = cimt_helper.aggregate_predictions(
             data_loader(),
             split_predictions,
             [data_loader.id_column],
@@ -487,18 +417,18 @@ def cimt_inference(  # noqa
         if is_eval:
             exp_eval = {}
             assert label_name in test_prediction.columns
-            print(experiment_name)
-            print(" Splits eval")
+            log.info(experiment_name)
+            log.info(" Splits eval")
             splits_topk = []
             split_eval = {}
             for i, df in enumerate(split_predictions):
                 split_topk = topk(df[label_name], df[prediction_columns_name])
-                print(f"  Eval split {i} : {split_topk:.4}")
+                log.info(f"  Eval split {i} : {split_topk:.4}")
                 splits_topk.append(split_topk)
                 split_eval[f"split_{i}"] = split_topk
-            print(f"  Min Topk: {np.min(splits_topk)}")
-            print(f"  Mean Topk: {np.mean(splits_topk)}")
-            print(f"  Max Topk: {np.max(splits_topk)}\n")
+            log.info(f"  Min Topk: {np.min(splits_topk)}")
+            log.info(f"  Mean Topk: {np.mean(splits_topk)}")
+            log.info(f"  Max Topk: {np.max(splits_topk)}\n")
             split_eval["Min"] = float(np.min(splits_topk))
             split_eval["Mean"] = float(np.mean(splits_topk))
             split_eval["Max"] = float(np.max(splits_topk))
@@ -506,7 +436,7 @@ def cimt_inference(  # noqa
             global_topk = topk(
                 test_prediction[label_name], test_prediction[prediction_columns_name]
             )
-            print(f" Global Topk : {global_topk}")
+            log.info(f" Global Topk : {global_topk}")
             exp_eval["Global"] = {"Test": global_topk}
             eval_dict[experiment_name] = exp_eval
             if comparison_score:
@@ -515,75 +445,6 @@ def cimt_inference(  # noqa
                         data_loader()[label_name], data_loader()[comparison_score]
                     )
                     eval_dict[comparison_score] = comparison_score_topk
-                    print(f"Eval {comparison_score}: {comparison_score_topk}")
+                    log.info(f"Eval {comparison_score}: {comparison_score_topk}")
     if is_eval:
         save_yml(eval_dict, main_exp_path / f"eval_{Path(data_path).stem}.yml")
-
-
-def load_split_experiment_dataloader(
-    ctx: Union[click.core.Context, Any], split_experiment_path: Path, data_path: str
-) -> Tuple[Any, Dataset]:
-    """Load Experiment and dataloader for the given split_experiment_path and data_path."""
-    best_exp_path = split_experiment_path / "best_experiment"
-
-    exp_configuration = load_yml(best_exp_path / "configuration.yml")
-    experiment_name = list(exp_configuration["experiments"])[0]
-    experiment_params = exp_configuration["experiments"][experiment_name]
-    features_file_path = best_exp_path / "features.txt"
-    data_loader = Dataset(
-        click_ctx=ctx,
-        data_path=data_path,
-        configuration=exp_configuration,
-        is_train=False,
-        experiment_path=best_exp_path.parent,
-        force_gcp=True,
-        is_inference=True,
-        process_label=False,
-    ).load_data()
-    experiment_class = import_experiment(exper, experiment_name)
-    experiment = experiment_class(
-        train_data=None,
-        test_data=data_loader,
-        configuration=exp_configuration,
-        experiment_name=experiment_name,
-        folder_name=None,
-        sub_folder_name=None,
-        experiment_directory=best_exp_path,
-        features_file_path=features_file_path,
-        **experiment_params,
-    )
-    return experiment, data_loader
-
-
-def aggregate_predictions(
-    data: pd.DataFrame,
-    split_predictions: List[pd.DataFrame],
-    ids: List[str],
-    features: List[str],
-    prediction_columns_name: str,
-    label_name: str,
-) -> pd.DataFrame:
-    """Aggregate predictions in order to return average predictions of different splits."""
-    label_pred = pd.concat(split_predictions)[ids + [prediction_columns_name]]
-    label_pred = label_pred.groupby(ids)[[prediction_columns_name]].mean().reset_index()
-    columns = ids + features + [label_name]
-    data = data[[col for col in columns if col in data.columns]]
-    test_data = data.merge(label_pred, on=ids, how="left")
-    return test_data
-
-
-def update_configuration(
-    default_configuration: Dict[str, Any], experiment_configuration: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Update the default configuration file with the given experiment configuration."""
-    configuration = deepcopy(default_configuration)
-    for key in experiment_configuration.keys():
-        if isinstance(experiment_configuration[key], Dict):
-            for second_key in experiment_configuration[key].keys():
-                key_configuration = configuration[key]
-                key_configuration[second_key] = experiment_configuration[key][second_key]
-            configuration[key] = key_configuration
-        else:
-            configuration[key] = experiment_configuration[key]
-
-    return configuration
