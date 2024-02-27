@@ -1,159 +1,83 @@
+# CIMT
+
 Applying features selection,training and evaluation on the same dataset can be launched with the `cimt` command where this command will execute a different commands in the following order:
-- cimt-kfold-split (for features selection)
-- cimt-features-selection
-- cimt-kfold-split (for training)
-- cimt-train
 
-# cimt
+1. **cimt-kfold-split**: split the given input data into N splits if `split_data` is True
+2. **cimt-features-selection**: Train and evaluate on the splits and report Top 20 features using the weighting method
+3. **cimt-kfold-split**: split the given input date into N splits for second training stage,if  `split_data` and `do_w_train` are True
+4. **cimt-train**: Train and evaluate on the second splits using the Top20 weighted features if `do_w_train` is True
 
+`split_data` and `do_w_train` are defined in the [main configuration](cimt.md#main-configuration-file) file.
+
+## CIMT command
+### Command usage
 - In Docker container:
 ```bash
-cimt -d <train_data> -c <configuration_file_path> -n <experiment_name>
+cimt -d <train_data> -dr <data_directory> -c <configuration_file_path> -n <experiment_name>
 ```
 - In Conda environment:
 ```bash
-python -m ig.main cimt -d <train_data> -c <configuration_file_path> -n <experiment_name>
+python -m ig.main cimt -d <train_data>   -dr <data_directory> -c <configuration_file_path> -n <experiment_name>
 ```
-
-Example:
-
-- In Docker container:
-```bash
-cimt -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -c CIMT.yml -n BaseFeatures
-```
-- In Conda environment:
-```bash
-python -m ig.main cimt -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -c CIMT.yml -n BaseFeatures
-```
-
 ```bash
 Options:
-  -c       TEXT    Data path to use [required]
+  -d       TEXT    Data path to use [optional]
+
+  -dr      TEXT    Folder path where the splitted data is located  [optional]
 
   -c       TEXT    Configuration file to use [required]
 
   -n       TEXT    Name of the experiment [required]
 ```
-# cimt-kfold-split
+>🚨 Either data path **-d** or Folder path **-dr** should be given as argument
+## How to run cimt command
+The `cimt` command serves various purposes and can be utilized in the following manner:
 
- Split the given data into a different splits train/test using kfold and the splits will be saved under the parent folder of the given data
+  - The `cimt` command offers two types of input data:
+      - **A CSV file**, the `cimt` command splits the data into N partitions (train/test) based on the configurations specified in the configuration file. To activate this feature, ensure that the `split_data` parameter is set to **True**. Failure to do so will result in an exception being raised.
+      - **A directory** containing data splits (train/test) in the form of CSV files.
+  - The cimt command provides two training methods:
 
-- In Docker container:
-```bash
-cimt-kfold-split -d <train_data> -c <configuration_file_path>
-```
-- In Conda environment:
-```bash
-python -m ig.main cimt-kfold-split -d <train_data> -c <configuration_file_path>
-```
+    - **Feature selection and training** for each split: In this method, the command conducts feature selection and training individually for each split.
 
-Example:
-
-- In Docker container:
-```bash
-cimt-kfold-split -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -c CIMT.yml
-```
-- In Conda environment:
-```bash
-python -m ig.main cimt-kfold-split -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -c CIMT.yml
-```
-
-```bash
-Options:
-  -d       TEXT     Data path to use [required]
-
-  -c       TEXT     Configuration file to use [required]
-
-  -t       Flag     If it's for train True and if it's features selection False   [Optional]
-```
-# cimt-features-selection
-
-Launch the train command with features selection for each pair train/test dataset splitted by the `cimt-kfold-split` command and fetch the important features of each split in order to find the top N features overall.
-
-- In Docker container:
-```bash
-cimt-features-selection -d <train_data_directory> -c <configuration_file_path> -n <experiment_name>
-```
-- In Conda environment:
-```bash
-python -m ig.main cimt-features-selection -d <train_data_directory> -c <configuration_file_path> -n <experiment_name>
-```
-
-Example:
-- In Docker container:
-```bash
-cimt-features-selection -d ./data/CIMT2023Public/ -c CIMT.yml -n BaseFeatures
-```
-- In Conda environment:
-```bash
-python -m ig.main cimt-features-selection -d ./data/CIMT2023Public/ -c CIMT.yml -n BaseFeatures
-```
-
-```bash
-Options:
-  -c       TEXT    Folder path where the splitted data is located  [required]
-
-  -c       TEXT    Configuration file to use [required]
-
-  -n       TEXT    Name of the experiment [required]
-```
-# cimt-train
-
-Train each pair train/test dataset splitted by the `cimt-kfold-split` command using the basic train command implemented in the framework and report the global topk and topk per split
-
-- In Docker container:
-```bash
-cimt-train -d <train_data_directory> -c <configuration_file_path> -n <experiment_name>
-```
-- In Conda environment:
-```bash
-python -m ig.main cimt-train -d <train_data_directory> -c <configuration_file_path> -n <experiment_name>
-```
-
-Example:
-```bash
-cimt-train  -d ./data/CIMT2023Public/ -c  CIMT.yml -n BaseFeatures
-```
-```bash
-Options:
-  -d       TEXT    Folder path where the splitted data is located  [required]
-
-  -c       TEXT    Configuration file to use [required]
-
-  -n       TEXT    Name of the experiment [required]
-```
-# How to run cimt command
+    - **Feature selection and training the top20 features** : This method involves feature selection and training for each split while employing a weighting method to identify the top 20 features across splits. Subsequently, the command trains different splits using these top 20 features. if `do_w_train` is set to **True** otherwise it will do **Feature selection and training** only.
 ### 1- Download data
+- In Docker container:
 ```bash
-cd ig/
-make bash
+pull --bucket_path gs://biondeep-data/IG/data/IG_24_03_2023/IG_24_03_2023Netmhcpan/cimt_2024/ --local_path ./data/cimt_2024
 ```
-* Public dataset
+- In Conda environment:
 ```bash
-pull --bucket_path gs://biondeep-data/IG/data/CIMT2023Public/PublicNetmhcpanGoRNA.csv --local_path data/CIMT2023Public/PublicNetmhcpanGoRNA.csv
+python -m ig.main pull --bucket_path gs://biondeep-data/IG/data/IG_24_03_2023/IG_24_03_2023Netmhcpan/cimt_2024/ --local_path ./data/cimt_2024
 ```
-* Features configuration
-```bash
-pull --bucket_path gs://biondeep-data/IG/data/CIMT2023Public/base_features.yml --local_path data/CIMT2023Public/base_features.yml
-```
-```bash
-pull --bucket_path gs://biondeep-data/IG/data/CIMT2023Public/base_features_RNAGO.yml --local_path data/CIMT2023Public/base_features_RNAGO.yml
-```
-**PS**: You need to add the Google Storage  **Authentication credentials** either on **Conda** or on **Docker** path to be able to read data from GCP buckets paths.
+This command will download all available data for CIMT:
 
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS='/path/to/your/client_secret.json'
-```
+    - **Public**: folder contains the clean version of the public dataset.
+    - **CIMT_2024_GeneBased**: folder contains different train/test splits for the public data based on gene.
+    - **CIMT_2024_Random**: folder contains different train/test splits for the public data with random splits.
+
+    **PS**: You need to add the Google Storage  **Authentication credentials** either on **Conda** or on **Docker** path to be able to read data from GCP buckets paths. [GCP Authentication steps](installation.md#google-storage-authentication)
 ### 2- Configuration files
-###  Main configuration file
 ```yaml
 General:
+  split_data: # split data configuration
+  do_w_train: # train using weighted features or not
+  eval:
+    metrics: # evaluation metrics
+      - topk
+      - logloss
+      - roc
+    comparison_columns: # list of the columns which will be compared with  model outcome
+    label_column: # label column
+
   features_selection: # features selection configuration
+    test_file_pattern: # test file pattern with place holder for split number if dr argument is provided (e.g., test_{}.csv)
+    train_file_pattern: # train  file pattern with place holder for split number if dr argument is provided (e.g., train_{}.csv)
     n_splits:  # number os splits
     seed:  # seed which will be used to split the train data
     Ntop_features: # number of the final selected  features
     default_configuration: # default configuration for features selection process
-  train: # train configuration file
+  w_train: # configuration for the train using weighted features
     n_splits: # number os splits
     seed: # seed which will be used to split the train data
     default_configuration: # default configuration for training  process
@@ -168,7 +92,7 @@ experiments:
         section_to_change : #the section name  which will be changed on the default configuration file(e.g.,experiments, label, processing, evaluation,... )
           parameter_1 :  #section's parameter which will be modified
           parameter_2 :
-    train :
+    w_train :
       configuration:
         section_to_change : #the section name which will be changed on the default configuration file(e.g.,experiments, label, processing, evaluation,... )
           parameter_1 :  #section's parameter which will be modified
@@ -188,75 +112,28 @@ experiments:
 
   experiment_name_3:
   # if no changed the experiment will use the default parameters defined in the default configuration fils
-
-
 ```
-Regarding the `configuration` sections for both `features_selection` and `train` are the normal configuration files used with the `train` command
-predefined configuration files are implemented under the configuration file
-- `CIMT.yml`: main configuration file
-- `CIMTFeaturesSelectionBaseFeatures.yml`/`CIMTFeaturesSelectionBaseFeaturesRNAGO.yml`: train configuration file for the features selection process
-- `CIMTTrainingBaseFeatures.yml`/`CIMTTrainingBaseFeaturesRNAGO.yml`: train configuration file for the training  process
+  Predefined configuration files are implemented under the configuration file:
 
-### 3- run cimt command
-
+    - `CIMT.yml`: main configuration file
+    - `CIMTFeaturesSelection.yml`: train configuration file for the features selection process
+    - `CIMTTraining.yml`: train configuration file for the training with weighted features process
+### 3- Run Cimt command
+#### From file
 - In Docker container:
 ```bash
-cimt -d <train_data> -c <configuration_file_path> -n <experiment_name>
+cimt -d ./data/cimt_2024/public/public_cimt.csv -c CIMT.yml -n run
 ```
 - In Conda environment:
 ```bash
-python -m ig.main cimt -d <train_data> -c <configuration_file_path> -n <experiment_name>
+python -m ig.main cimt -d ./data/cimt_2024/public/public_cimt.csv -c CIMT.yml -n run
 ```
-
-```bash
-Options:
-  -d       TEXT    data path  [required]
-
-  -c       TEXT    Configuration file to use [required]
-
-  -n       TEXT    Name of the experiment [required]
-```
-Example:
-
+#### From data directory contains different data splits
 - In Docker container:
 ```bash
-cimt -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -c CIMT.yml -n run_RNA
+cimt -dr ./data/cimt_2024/cimt_2024_random -c CIMT.yml -n run
 ```
 - In Conda environment:
 ```bash
-python -m ig.main cimt -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -c CIMT.yml -n run_RNA
+python -m ig.main cimt -dr ./data/cimt_2024/cimt_2024_random  -c CIMT.yml -n run
 ```
-
-# Inference
-
-- In Docker container:
-```bash
-cimt-inference -d <train_data> -n <experiment_name> -e
-```
-- In Conda environment:
-```bash
-python -m ig.main cimt-inference -d <train_data> -n <experiment_name> -e
-```
-
-```bash
-Options:
-  -d       TEXT    data path  [required]
-
-  -n       TEXT    Name of the experiment [required]
-
-  -e       Flag    Compute topk and print evaluation [Optional]
-
-
-```
-Example:
-
-- In Docker container:
-```bash
-cimt-inference -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -n run_RNA -e
-```
-- In Conda environment:
-```bash
-python -m ig.main cimt-inference -d ./data/CIMT2023Public/PublicNetmhcpanGoRNA.csv -n run_RNA -e
-```
-
-A dataset with the predictions will be saved under `model/<run_name>/<exp_name>/<data_name>.csv` and if the option **eval**  is on the scores of the evaluation will be saved in yml file under `model/<run_name>/file_name.yml`

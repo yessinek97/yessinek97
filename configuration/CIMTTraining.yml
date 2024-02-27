@@ -2,8 +2,8 @@ neptune_logs: false
 experiments:
   KfoldExperiment:
     split_column: fold
-    plot_shap_values: true
-    plot_kfold_shap_values: true
+    plot_shap_values: false
+    plot_kfold_shap_values: false
     operation:
       - mean
     statics:
@@ -14,7 +14,7 @@ feature_paths:
 processing:
   remove_proc_data: false
   trainable_features: features.yml # need to be changed
-  validation_strategy: false
+  validation_strategy: true
   isunlabelled: false
   fill_nan_method: keep
   seed: 1994
@@ -25,7 +25,7 @@ models:
   - xgboost_config.yml
 evaluation:
   print_evals: False
-  comparison_score: tested_score_netmhcpan4.1
+  comparison_score: proxy_score_presentation
   threshold: 0.3
   metrics:
     - topk
