@@ -30,8 +30,6 @@ variables:
 build-image:
   extends: .docker-login
   stage: build
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   script:
     - docker pull $DOCKER_IMAGE_PREVIOUS || docker pull $DOCKER_IMAGE_LATEST || true
     - docker build --cache-from $DOCKER_IMAGE_PREVIOUS --cache-from $DOCKER_IMAGE_LATEST -t
@@ -41,8 +39,6 @@ build-image:
 build-lint:
   extends: .docker-login
   stage: build
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -54,8 +50,6 @@ build-lint:
 build-docs:
   extends: .docker-login
   stage: build
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -67,8 +61,6 @@ build-docs:
 lint:
   image: $DOCKER_IMAGE_LINT
   stage: lint
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   needs: [build-lint]
   script:
     - pre-commit run --all-files
@@ -77,8 +69,6 @@ pytest:
   image: $DOCKER_IMAGE
   needs: [build-image]
   stage: test
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   script:
     - apt-get install zip unzip
     - export stage=test
@@ -103,8 +93,6 @@ pytest:
 test-pages:
   image: $DOCKER_IMAGE_DOCS
   stage: test
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   needs: [build-docs]
   script:
     - mkdocs build --verbose --site-dir docs_public
@@ -115,8 +103,6 @@ test-pages:
 pages:
   image: $DOCKER_IMAGE_DOCS
   stage: publish
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   needs: [build-docs, test-pages]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -129,8 +115,6 @@ pages:
 push-latest-ig:
   extends: .docker-login
   stage: deploy
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   needs:
     - job: build-image
 
@@ -144,8 +128,6 @@ push-latest-ig:
 push-latest-doc:
   extends: .docker-login
   stage: deploy
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   needs:
     - job: build-docs
 
@@ -159,8 +141,6 @@ push-latest-doc:
 push-latest-lint:
   extends: .docker-login
   stage: deploy
-  tags:
-    - node080-autoscaled-docker-kao-instadeep-io
   needs:
     - job: build-docs
 
