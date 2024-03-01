@@ -1,6 +1,5 @@
 # To replace with the following image once it is available on the registry
 FROM python:3.8-slim-buster
-#FROM python:3.8-slim-buster
 
 # Update and upgrade your base image
 RUN apt-get update && \

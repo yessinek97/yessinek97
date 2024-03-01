@@ -8,17 +8,17 @@ stages:
 variables:
   PRE_COMMIT_VERSION: "3.5.0"
 
-  DOCKER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
   DOCKER_IMAGE_PREVIOUS: $CI_REGISTRY_IMAGE:$CI_COMMIT_BEFORE_SHA
   DOCKER_IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
 
   DOCKER_IMAGE_NAME_LINT: $CI_REGISTRY_IMAGE/lint
-  DOCKER_IMAGE_LINT: $DOCKER_IMAGE_NAME_LINT:$CI_COMMIT_SHA
+  DOCKER_IMAGE_LINT: $DOCKER_IMAGE_NAME_LINT:$CI_COMMIT_SHORT_SHA
   DOCKER_IMAGE_PREVIOUS_LINT: $DOCKER_IMAGE_NAME_LINT:$CI_COMMIT_BEFORE_SHA
   DOCKER_IMAGE_LATEST_LINT: $DOCKER_IMAGE_NAME_LINT:latest
 
   DOCKER_IMAGE_NAME_DOCS: $CI_REGISTRY_IMAGE/docs
-  DOCKER_IMAGE_DOCS: $DOCKER_IMAGE_NAME_DOCS:$CI_COMMIT_SHA
+  DOCKER_IMAGE_DOCS: $DOCKER_IMAGE_NAME_DOCS:$CI_COMMIT_SHORT_SHA
   DOCKER_IMAGE_PREVIOUS_DOCS: $DOCKER_IMAGE_NAME_DOCS:$CI_COMMIT_BEFORE_SHA
   DOCKER_IMAGE_LATEST_DOCS: $DOCKER_IMAGE_NAME_DOCS:latest
 
@@ -30,6 +30,8 @@ variables:
 build-image:
   extends: .docker-login
   stage: build
+  tags:
+    - kao-k8s-runner
   script:
     - docker pull $DOCKER_IMAGE_PREVIOUS || docker pull $DOCKER_IMAGE_LATEST || true
     - docker build --cache-from $DOCKER_IMAGE_PREVIOUS --cache-from $DOCKER_IMAGE_LATEST -t
@@ -39,6 +41,8 @@ build-image:
 build-lint:
   extends: .docker-login
   stage: build
+  tags:
+    - kao-k8s-runner
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -50,6 +54,8 @@ build-lint:
 build-docs:
   extends: .docker-login
   stage: build
+  tags:
+    - kao-k8s-runner
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -61,6 +67,8 @@ build-docs:
 lint:
   image: $DOCKER_IMAGE_LINT
   stage: lint
+  tags:
+    - kao-k8s-runner
   needs: [build-lint]
   script:
     - pre-commit run --all-files
@@ -69,6 +77,8 @@ pytest:
   image: $DOCKER_IMAGE
   needs: [build-image]
   stage: test
+  tags:
+    - kao-k8s-runner
   script:
     - apt-get install zip unzip
     - export stage=test
@@ -93,6 +103,8 @@ pytest:
 test-pages:
   image: $DOCKER_IMAGE_DOCS
   stage: test
+  tags:
+    - kao-k8s-runner
   needs: [build-docs]
   script:
     - mkdocs build --verbose --site-dir docs_public
@@ -103,6 +115,8 @@ test-pages:
 pages:
   image: $DOCKER_IMAGE_DOCS
   stage: publish
+  tags:
+    - kao-k8s-runner
   needs: [build-docs, test-pages]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -115,6 +129,8 @@ pages:
 push-latest-ig:
   extends: .docker-login
   stage: deploy
+  tags:
+    - kao-k8s-runner
   needs:
     - job: build-image
 
@@ -128,6 +144,8 @@ push-latest-ig:
 push-latest-doc:
   extends: .docker-login
   stage: deploy
+  tags:
+    - kao-k8s-runner
   needs:
     - job: build-docs
 
@@ -141,6 +159,8 @@ push-latest-doc:
 push-latest-lint:
   extends: .docker-login
   stage: deploy
+  tags:
+    - kao-k8s-runner
   needs:
     - job: build-docs
 

@@ -7,7 +7,7 @@ PROJECT_NAME = biondeep-ig
 TAG = latest
 
 HOME_DIRECTORY = /home/app/ig
-DOCKER_RUN_FLAGS = -d --volume $(PWD):$(HOME_DIRECTORY) -e MACHINE_ID=`hostname` --name $(CONTAINER_NAME)
+DOCKER_RUN_FLAGS = --gpus all -d --volume $(PWD):$(HOME_DIRECTORY) -e MACHINE_ID=`hostname` --name $(CONTAINER_NAME)
 
 #Variables for creating the biondeepIG Container and documentation Docker container
 DOCKER_IMAGE_TAG = $(shell git rev-parse --short HEAD)
