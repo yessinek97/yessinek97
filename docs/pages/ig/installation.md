@@ -12,10 +12,16 @@ Then you can choose to work using the [Docker based setup](#docker-based-setup) 
 
 ### Docker Installation
 
-1. Install `Docker` following the [official documentation](https://docs.docker.com/get-docker/).
+1. Install `Docker` following the [official documentation](https://docs.docker.com/engine/install/ubuntu/).
+
 2. For Linux, please execute the
    [post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/).
-3. (Optional for developers) If you are using VS Code you should install the `Docker` extension and `Remote Development` Extension Pack which will allow you to [attach VS Code to a running container](https://code.visualstudio.com/docs/devcontainers/attach-container) and work inside the container.
+
+3. Install [the NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#installing-with-apt) and [configure docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#configuring-docker) (**don’t use** rootless mode!)
+
+4. Then [verify that your installation](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/sample-workload.html#running-a-sample-workload-with-docker) is working correctly
+
+5. (Optional for developers) If you are using VS Code you should install the `Docker` extension and `Remote Development` Extension Pack which will allow you to [attach VS Code to a running container](https://code.visualstudio.com/docs/devcontainers/attach-container) and work inside the container.
 
 ### Install biondeep-IG Docker container
 
