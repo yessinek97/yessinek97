@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 
 from ig import CONFIGURATION_DIRECTORY, DATA_DIRECTORY
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.logger import get_logger
 from ig.src.utils import load_yml
 

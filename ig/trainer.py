@@ -23,8 +23,8 @@ from ig import (
 )
 from ig.bucket.click import arguments
 from ig.constants import EvalExpType, MetricsEvalType, TuneResults
+from ig.dataset.dataset import Dataset
 from ig.feature_selection import feature_selection_main
-from ig.src.dataset import Dataset
 from ig.src.evaluation import Evaluation
 from ig.src.experiments.tuning import Tuning
 from ig.src.logger import NeptuneLogs, get_logger, init_logger

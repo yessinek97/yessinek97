@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.trainer import (
     _check_model_folder,
     _generate_single_exp_config,

@@ -8,7 +8,7 @@ import click
 
 import ig.src.experiments as exper
 from ig import DATAPROC_DIRECTORY, MODELS_DIRECTORY
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.logger import get_logger, init_logger
 from ig.src.utils import import_experiment, load_experiments, load_models, load_yml
 

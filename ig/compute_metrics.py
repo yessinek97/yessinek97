@@ -9,7 +9,7 @@ import click
 import ig.src.experiments as exper
 from ig import DATAPROC_DIRECTORY, MODELS_DIRECTORY
 from ig.constants import EvalExpType
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.logger import get_logger, init_logger
 from ig.src.utils import (
     get_best_experiment,

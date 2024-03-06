@@ -8,7 +8,7 @@ import pandas as pd
 
 from ig import DEFAULT_SEED, KFOLD_MODEL_NAME
 from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsEvalType
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.experiments.base import BaseExperiment
 from ig.src.logger import get_logger
 from ig.src.models import BaseModel, TrainMultiSeedKfold

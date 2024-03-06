@@ -15,7 +15,7 @@ import seaborn as sns
 
 import ig.src.experiments as exper
 from ig import FEATURES_DIRECTORY
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.logger import get_logger
 from ig.src.metrics import logloss, roc_auc_curve, roc_auc_score, topk
 from ig.src.utils import import_experiment, load_pkl, load_yml, read_data, save_yml

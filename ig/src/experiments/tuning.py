@@ -12,7 +12,7 @@ from hyperopt.fmin import fmin
 import ig.src.models as src_model
 from ig import FEATURES_SELECTION_DIRECTORY, MODELS_DIRECTORY
 from ig.constants import TuningOptParamsType
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.experiments.base import create_model
 from ig.src.metrics import topk_global
 from ig.src.models import BaseModelType, TrainTuneType

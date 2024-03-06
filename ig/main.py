@@ -3,6 +3,7 @@ import click
 
 from ig.buckets import pull, push
 from ig.cimt import cimt
+from ig.cli.compute_embedding import compute_embedding
 from ig.compute_metrics import compute_metrics
 from ig.ensemble import ensemblexprs, ensoneexp
 from ig.feature_selection import featureselection
@@ -11,7 +12,6 @@ from ig.inference import exp_inference, inference
 from ig.multi_trainer import multi_exp_inference, multi_inference, multi_train
 from ig.multi_trainer_distributed import multi_train_distributed
 from ig.processing import processing
-from ig.run_esm_embeddings import compute_embeddings
 from ig.trainer import compute_comparison_score, train, train_seed_fold, tune
 
 
@@ -39,7 +39,8 @@ main.add_command(multi_inference)
 main.add_command(multi_train_distributed)
 main.add_command(exp_inference)
 main.add_command(multi_exp_inference)
-main.add_command(compute_embeddings)
+main.add_command(compute_embedding)
+
 
 if __name__ == "__main__":
     main()

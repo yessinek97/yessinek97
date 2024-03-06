@@ -18,7 +18,7 @@ from ig.constants import (
     InferenceExpTypeBase,
     MetricsEvalType,
 )
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.evaluation import Evaluation
 from ig.src.logger import get_logger
 from ig.src.models import BaseModelType, TrainType

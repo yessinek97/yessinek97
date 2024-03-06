@@ -38,7 +38,7 @@ missing.csv
 !docs/**/*.png
 # IG
 !configuration/*.txt
-data*
+data/*
 models*
 tests/models
 tests/data

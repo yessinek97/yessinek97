@@ -9,7 +9,7 @@ import click
 
 import ig.src.feature_selection as fese
 from ig import CONFIGURATION_DIRECTORY, FEATURES_SELECTION_DIRECTORY, MODELS_DIRECTORY
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.logger import NeptuneLogs, get_logger, init_logger
 from ig.src.utils import get_model_by_name, load_fs, load_yml, save_yml
 

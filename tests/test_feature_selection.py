@@ -6,13 +6,13 @@ from unittest import mock
 
 from click.testing import CliRunner
 
+from ig.dataset.dataset import Dataset
 from ig.feature_selection import (
     _check_model_folder,
     _fs_func,
     feature_selection_main,
     featureselection,
 )
-from ig.src.dataset import Dataset
 
 
 @mock.patch("click.confirm")

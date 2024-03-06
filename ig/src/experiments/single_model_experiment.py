@@ -6,7 +6,7 @@ import pandas as pd
 
 from ig import SINGLE_MODEL_NAME
 from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsEvalType
-from ig.src.dataset import Dataset
+from ig.dataset.dataset import Dataset
 from ig.src.experiments.base import BaseExperiment
 from ig.src.models import TrainSingleModelType
 from ig.src.utils import load_pkl, save_yml
