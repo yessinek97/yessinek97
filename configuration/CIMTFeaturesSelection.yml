@@ -12,18 +12,20 @@ label: cd8_any
 processing:
   remove_proc_data: true
   trainable_features: features.yml #need be changed
-  validation_strategy: true
+  exclude_features:
+    - neofox
+  validation_strategy: false
   isunlabelled: false
   fill_nan_method: keep
   seed: 1994
   validation_ratio: 0.1
-  fold: 2
+  fold: 5
   nan_ratio: 0.6
 models:
   - xgboost_config.yml
 evaluation:
   print_evals: False
-  comparison_score: proxy_score_presentation
+  # comparison_score: proxy_score_score_binding
   threshold: 0.3
   metrics:
     - topk
@@ -45,7 +47,7 @@ FS:
   separate_forced_features: false
   force_features:
     - expression
-    - proxy_score_presentation
+    - proxy_score_score_binding
   n_thread: 30
   FS_methods:
     - Fspca.yml

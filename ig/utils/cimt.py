@@ -467,8 +467,8 @@ def compute_comparison_scores_metrics_per_split(
     evaluation: Dict[str, Dict[str, Any]] = defaultdict(dict)
     for comparison_column in comparison_columns:
 
-        train_scores = compute_scores(train, label, comparison_column)
-        test_scores = compute_scores(test, label, comparison_column)
+        train_scores = compute_scores(train, label, comparison_column, fillna=True)
+        test_scores = compute_scores(test, label, comparison_column, fillna=True)
 
         evaluation[comparison_column]["train"] = train_scores
         evaluation[comparison_column]["validation"] = train_scores
@@ -570,18 +570,23 @@ def compute_model_metrics(
     return test, evaluation
 
 
-def compute_scores(data: pd.DataFrame, label: str, prediction_name: str) -> Dict[str, Any]:
+def compute_scores(
+    data: pd.DataFrame, label: str, prediction_name: str, fillna: bool = False
+) -> Dict[str, Any]:
     """Compute scores based on the input data.
 
     Args:
         data: A pandas DataFrame containing the data.
         label: A string representing the label column in the data.
         prediction_name: A string representing the column containing the prediction values.
+        fillna: A boolean indicating whether to fill missing values with the mean of the column.
 
     Return:
         A dictionary with keys "topk", "roc", "logloss", and "roc_auc_curve" and their respective
         computed scores.
     """
+    if fillna:
+        data[prediction_name].fillna(data[prediction_name].mean(), inplace=True)
     return {
         "topk": topk(data[label], data[prediction_name]),
         "roc": roc_auc_score(data[label], data[prediction_name]),
@@ -737,7 +742,7 @@ def global_evaluation(
     """
     scores = {}
     for comparison_column in comparison_columns:
-        scores[comparison_column] = compute_scores(tests_df, label, comparison_column)
+        scores[comparison_column] = compute_scores(tests_df, label, comparison_column, fillna=True)
 
     scores["Immunogenicity Model"] = compute_scores(tests_df, label, prediction_name)
     log.info("Evaluate Public Table (Combined test splits):")

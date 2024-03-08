@@ -102,6 +102,7 @@ def cimt_features_selection(
         configuration = load_yml(CONFIGURATION_DIRECTORY / configuration_path)
     assert configuration is not None
     train_configuration_file = configuration["features_selection"]["default_configuration"]
+    do_w_train = configuration.get("do_w_train", False)
     train_configuration = load_yml(CONFIGURATION_DIRECTORY / train_configuration_file)
     train_configuration = cimt_helper.update_configuration(
         train_configuration, configuration["features_selection"].get("configuration", {})
@@ -159,10 +160,10 @@ def cimt_features_selection(
             train_path=train_data_path,
             test_path=test_data_path,
         )
-
-    cimt_helper.features_importance_extraction(
-        base_exp_path, exp_name, n_splits, train_fold, ntop_features, do_w_train
-    )
+    if do_w_train:
+        cimt_helper.features_importance_extraction(
+            base_exp_path, exp_name, n_splits, train_fold, ntop_features, do_w_train
+        )
 
     experiment_results_path = base_exp_path / "results"
     experiment_results_path.mkdir(exist_ok=True, parents=True)
