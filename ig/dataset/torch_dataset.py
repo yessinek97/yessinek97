@@ -2,6 +2,7 @@
 import re
 from typing import Any, Dict, List, Tuple, Union
 
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
@@ -106,3 +107,79 @@ class OneSequenceDatasetForEmbedding(Dataset):
         str: The joined string with elements separated by a space.
         """
         return " ".join(x)
+
+
+class PeptidePairsDataset(torch.utils.data.Dataset):
+    """Pytorch dataset class for finetuning.
+
+    Args:
+        torch.utils.data.Datasets (_type_): _description_.
+    """
+
+    def __init__(
+        self,
+        mutated_peptides: list,
+        wild_type_peptides: list,
+        labels: list,
+        tokenizer: AutoTokenizer,
+        max_length: int = 2001,
+    ):
+        """Initializes the dataset object.
+
+        Args:
+            mutated_peptides (list[str]): list of sequences of mutated peptides.
+            wild_type_peptides (list[str]): list of sequences of wild_type peptides.
+            tokenizer (AutoTokenizer): used to tokenize sequences
+            labels (list[int]): IG labels of the (wild_type, mutated) sequence pairs.
+            max_length (int): maximum treatable length.
+        """
+        self._mutated_peptides = mutated_peptides
+        self._wild_type_peptides = wild_type_peptides
+        self._labels = labels
+        self._max_length = max_length
+        self._tokenizer = tokenizer
+
+    # used as collate_fn when creating the dataloader
+    def tokenize_batch_of_pairs(self, pairs_batch: list) -> Tuple[torch.Tensor, np.ndarray]:
+        """Tokenzies a batch of pairs of (wild_type, mutated) sequences.
+
+        Args:
+            pairs_batch (list): batch of (wild_type, mutated) sequence pairs
+
+        Returns:
+            torch.Tensor: tokenized batch of (wild_type, mutated) sequence pairs.
+            np.ndarray: array of labels
+        """
+        batch_sequence_pairs, batch_labels = zip(*pairs_batch)
+
+        # flatten batch sequence pairs to be tokenized in one pass
+        flattened_batch_sequence_pairs = [seq for pair in batch_sequence_pairs for seq in pair]
+
+        batch_pair_token_ids = self._tokenizer.batch_encode_plus(
+            flattened_batch_sequence_pairs,
+            return_tensors="pt",
+            padding="max_length",
+            max_length=self._max_length,
+        )["input_ids"]
+
+        # reshape batch token_ids back in pair-wise shape
+        batch_pair_token_ids = torch.reshape(batch_pair_token_ids, (-1, 2, self._max_length))
+
+        return batch_pair_token_ids, torch.Tensor(batch_labels)
+
+    def __len__(self) -> int:
+        """Returns the number of samples in the whole dataset."""
+        return len(self._labels)
+
+    def __getitem__(self, idx: int) -> Tuple[Tuple[str, str], list]:
+        """Returns a pair of (wild_type, mutated) and corresponding label.
+
+        Args:
+            idx (int): index or list of indexes of pairs to return.
+
+        Returns:
+            Tuple[Tuple[str, str], list]: tokenized sequenes pair and label.
+        """
+        pair = (self._wild_type_peptides[idx], self._mutated_peptides[idx])
+        label = self._labels[idx]
+        return pair, label

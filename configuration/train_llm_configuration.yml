@@ -1,0 +1,19 @@
+neptune_logs: True
+
+general_parameters:
+  train_dataset_path: "/home/app/ig/peptides_df.csv"
+  validation_dataset_path: "/home/app/ig/peptides_df.csv"
+  experiment_name: "NT-DIFF-MEAN"
+  dataset_name: "dummy_dataset"
+
+model_architecture:
+  llm_hf_model_path: "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species"
+  model_type: peft_model #peft_model, finetuning_model, probing_model
+  k_for_kmers: 6
+
+training_parameters:
+  batch_size: 4
+  batch_size_test: 32
+  shuffle_dataloader: False
+  lr: 0.001
+  num_epochs: 10
