@@ -137,7 +137,7 @@ class XgboostModel(BaseModel):
         """Prediction method."""
         dmatrix = self._create_matrix(data, with_label)
         best_iteration = self.model.best_iteration
-        return self.model.predict(dmatrix, ntree_limit=best_iteration)
+        return self.model.predict(dmatrix, iteration_range=(0, best_iteration + 1))
 
     def _create_matrix(self, data: pd.DataFrame, with_label: bool = True) -> Any | None:
         """Data model creation."""
@@ -158,6 +158,8 @@ class LgbmModel(BaseModel):
         true_data = train_data
         train_data = self._create_matrix(train_data)
         val_data = self._create_matrix(val_data, with_label=True)
+        verbose_eval = self.other_params["verbose_eval"]
+        early_stopping_rounds = self.other_params.get("early_stopping_rounds")
 
         # train model
         self.model = lgb.train(
@@ -165,8 +167,7 @@ class LgbmModel(BaseModel):
             train_data,
             num_boost_round=self.other_params.get("num_boost_round"),
             valid_sets=[val_data],
-            verbose_eval=self.other_params["verbose_eval"],
-            early_stopping_rounds=self.other_params.get("early_stopping_rounds"),
+            callbacks=[lgb.early_stopping(early_stopping_rounds), lgb.log_evaluation(verbose_eval)],
         )
         self.shap_values = self.generate_shap_values(true_data[self.features])
         if self.checkpoints and self.save_model:

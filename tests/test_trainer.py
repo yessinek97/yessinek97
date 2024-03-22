@@ -2,6 +2,7 @@
 """This module includes the tests for trainer module."""
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Union
 from unittest import mock
@@ -223,7 +224,7 @@ def test__train_func(
     folder_name: str = "training_fixtures",
 ) -> None:
     """This function tests the behavior of _train_func."""
-    _, display = _train_func(
+    results, display = _train_func(
         experiment_name,
         experiment_params,
         model_type,
@@ -235,8 +236,23 @@ def test__train_func(
         folder_name,
         logger,
     )
+
+    # Check that the ouput scores are as expected
+    display_scores = re.findall(r"\d+\.\d{3}", display)
+    training_display_scores = re.findall(r"\d+\.\d{3}", training_display)
+    assert display_scores == training_display_scores, "train_func output scores has changed!"
+
+    # Check the display message
     display = "".join(display.splitlines()).replace(" ", "")
-    assert display == training_display, "Check train_func!"
+    assert display == training_display, "Check train_func display message!"
+
+    # Check the ouput results
+    assert len(results) == 1, "train_func should output the results for 1 experiment only!"
+    assert list(results[0].keys()) == [
+        "validation",
+        "test",
+        "statistic",
+    ], "Check train_func evaluation output format!"
 
 
 def test_compute_comparison_score(

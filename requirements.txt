@@ -10,7 +10,7 @@ fsspec==2024.2.0
 gcsfs==2024.2.0
 google-cloud-storage==2.3.0
 hyperopt== 0.2.5
-lightgbm==3.2.1
+lightgbm==4.3.0
 matplotlib==3.5.1
 neptune==1.2.0
 numpy==1.19.5
@@ -37,5 +37,5 @@ torch==2.2.0
 tqdm==4.60.0
 transformers==4.38.1
 typing-extensions==4.8.0
-xgboost==1.4.2
+xgboost==2.0.3
 xlrd==1.2.0

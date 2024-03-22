@@ -371,7 +371,7 @@ def model_type() -> str:
 @pytest.fixture(scope="session")
 def training_display() -> str:
     """Expected training display."""
-    return "-XgboostModel:*Features:train_featuresprediction_mean:Validation:0.498Test:0.526"
+    return "-XgboostModel:*Features:train_featuresprediction_mean:Validation:0.475Test:0.506"
 
 
 @pytest.fixture(scope="session")

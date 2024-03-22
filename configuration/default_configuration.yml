@@ -27,7 +27,7 @@ experiments:
   #   plot_shap_values: True
 label: cd8_any
 # feature_paths:
-#   - transformer
+#   - train_features
 processing:
   remove_unnecessary_folders: false
   trainable_features: "features.yml"
@@ -58,6 +58,7 @@ processing:
   nan_ratio: 0.6
 models:
   - xgboost_config.yml
+  # - lgbm_config.yml
 
 evaluation:
   print_evals: True
@@ -86,9 +87,9 @@ FS:
   keep_features_number: False
   separate_forced_features: False
   force_features:
-    - proxy_score_binding
+    #- proxy_score_binding
     - expression
-    - proxy_score_presnetation
+    - proxy_score_presentation
   n_thread: 10
   FS_methods:
     - Fspca.yml
@@ -103,4 +104,4 @@ FS:
     # - Fsrfexgboost.yml
     # - Fsrelief.yml
     # - Fsmi.yml
-    #- Fsboruta.yml
+    # - Fsboruta.yml
