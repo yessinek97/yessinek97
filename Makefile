@@ -10,7 +10,7 @@ HOME_DIRECTORY = /home/app/ig
 DOCKER_RUN_FLAGS = --gpus all -d --volume $(PWD):$(HOME_DIRECTORY) -e MACHINE_ID=`hostname` --name $(CONTAINER_NAME)
 
 #Variables for creating the biondeepIG Container and documentation Docker container
-DOCKER_IMAGE_TAG = $(shell git rev-parse --short HEAD)
+DOCKER_IMAGE_TAG = $(shell git rev-parse --short=8 HEAD)
 
 DOCKER_IMAGE_NAME = $(DOCKER_REGISTRY)/$(PROJECT_NAME)
 DOCKER_IMAGE = $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
@@ -31,15 +31,18 @@ RUN_MKDOCS = mkdocs serve -a 0.0.0.0:$(MKDOCS_PORT)
 login:	##Login to the GitLab Docker registry
 	docker login $(DOCKER_REGISTRY)
 
-build: login ## Builds the docker image.
+pull: login ## Pull the latest docker image
 	docker pull $(DOCKER_IMAGE_LATEST)
-	docker build -t $(DOCKER_IMAGE)  --build-arg TAG=$(TAG) \
+
+build: pull## Builds the docker image
+	docker build --cache-from $(DOCKER_IMAGE_LATEST) -t $(DOCKER_IMAGE_LATEST) -f Dockerfile .
+	docker build -t $(IMAGE_NAME)   --build-arg TAG=$(TAG) \
 									--build-arg host_gid=$$(id -g) \
 									--build-arg host_uid=$$(id -u) \
 									-f Dockerfile.local .
 
 run: build ## Create the container.
-	docker run -it $(DOCKER_RUN_FLAGS)  $(DOCKER_IMAGE)
+	docker run -it $(DOCKER_RUN_FLAGS)  $(IMAGE_NAME)
 
 bash: ## gets a bash in the container
 	docker start  $(CONTAINER_NAME)

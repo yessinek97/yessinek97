@@ -31,7 +31,7 @@ build-image:
   extends: .docker-login
   stage: build
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   script:
     - docker pull $DOCKER_IMAGE_PREVIOUS || docker pull $DOCKER_IMAGE_LATEST || true
     - docker build --cache-from $DOCKER_IMAGE_PREVIOUS --cache-from $DOCKER_IMAGE_LATEST -t
@@ -42,7 +42,7 @@ build-lint:
   extends: .docker-login
   stage: build
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -55,7 +55,7 @@ build-docs:
   extends: .docker-login
   stage: build
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
@@ -68,7 +68,7 @@ lint:
   image: $DOCKER_IMAGE_LINT
   stage: lint
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   needs: [build-lint]
   script:
     - pre-commit run --all-files
@@ -78,7 +78,7 @@ pytest:
   needs: [build-image]
   stage: test
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   script:
     - apt-get install zip unzip
     - export stage=test
@@ -104,7 +104,7 @@ test-pages:
   image: $DOCKER_IMAGE_DOCS
   stage: test
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   needs: [build-docs]
   script:
     - mkdocs build --verbose --site-dir docs_public
@@ -116,7 +116,7 @@ pages:
   image: $DOCKER_IMAGE_DOCS
   stage: publish
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   needs: [build-docs, test-pages]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -130,7 +130,7 @@ push-latest-ig:
   extends: .docker-login
   stage: deploy
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   needs:
     - job: build-image
 
@@ -145,7 +145,7 @@ push-latest-doc:
   extends: .docker-login
   stage: deploy
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   needs:
     - job: build-docs
 
@@ -160,7 +160,7 @@ push-latest-lint:
   extends: .docker-login
   stage: deploy
   tags:
-    - kao-k8s-runner
+    - node080-autoscaled-kubernetes-internal
   needs:
     - job: build-docs
 
