@@ -26,6 +26,14 @@ warnings.filterwarnings("ignore")
 
 Path(FS_CONFIGURATION_DIRECTORY / "FS_feature_lists_created").mkdir(parents=True, exist_ok=True)
 
+# This is necessary for new versions of numpy>=1.20.0
+# https://numpy.org/devdocs/release/1.20.0-notes.html#using-the-aliases-of-builtin-types-like-np-int-is-deprecated
+# Otherwise Boruta(0.3) will raise an error
+# This can be removed when Boruta gets updated (>0.3)
+np.int = np.int_
+np.float = np.float_
+np.bool = np.bool_
+
 
 # ---------------------------------------- #
 class BaseFeatureSelection(ABC):
@@ -545,7 +553,7 @@ class Fscorr(BaseFeatureSelection):
 
 def dropnans(df: pd.DataFrame, target: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Dropping the NaN values."""
-    inds = pd.isnull(df).any(1).to_numpy().nonzero()[0]
+    inds = pd.isnull(df).any(axis=1).to_numpy().nonzero()[0]
     df = df.drop(inds)
     target = target.drop(inds)
     inds = pd.isnull(target).any().nonzero()[0]

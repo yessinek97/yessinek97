@@ -447,9 +447,9 @@ def data_description(data: pd.DataFrame, names: List[str]) -> pd.DataFrame:
     output = pd.DataFrame()
     output["Name"] = names
     output["Type"] = output.Name.map(data.dtypes)
-    output["Min"] = output.Name.map(data.min(axis=0))
-    output["Max"] = output.Name.map(data.max(axis=0))
-    output["Mean"] = output.Name.map(data.mean(axis=0))
+    output["Min"] = output.Name.map(data.min(axis=0, numeric_only=True))
+    output["Max"] = output.Name.map(data.max(axis=0, numeric_only=True))
+    output["Mean"] = output.Name.map(data.mean(axis=0, numeric_only=True))
     output["Nan count"] = output.Name.map(data.isna().sum())
     output["Nan Ratio"] = output.Name.map(data.isna().mean())
     output["Nunique"] = output.Name.map(data.nunique())
