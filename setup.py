@@ -33,7 +33,7 @@ setup(
             "tune=ig.trainer:tune",
             "featureselection=ig.feature_selection:featureselection",
             "multi-train=ig.multi_trainer:multi_train",
-            "train_llm=ig.cli.llm_based_trainer:train",
+            "predict_llm=ig.cli.llm_based_predictor:predict",
             # inference
             "inference=ig.inference:inference",
             "exp-inference=ig.inference:exp_inference",

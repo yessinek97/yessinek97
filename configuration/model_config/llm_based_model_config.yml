@@ -1,0 +1,47 @@
+model_type: LLMBasedModel # LLMBasedModel, MixedModel
+model_config:
+  general_params:
+    llm_hf_model_path: "facebook/esm2_t33_650M_UR50D"
+    is_masked_model: False
+    experiment_name: "NT-DIFF-MEAN"
+    dataset_name: "public_train-optima_test"
+    training_type: peft #peft, finetuning, probing
+    save_llm_only: True # Only used with LLMBasedModel
+    pretrained_llm_path: # None, Path (Only used with MixedModel)
+    # ML model params (only needed for MixedModel)
+    num_boost_round: 20000000
+    verbose_eval: 10
+    early_stopping_rounds: 15
+    wildtype_col_name: wildtype_peptide
+    mutated_col_name: tested_peptide
+  model_params:
+    context_length: # supported sequence length on base pairs
+    embed_dim: 1280
+    mlp_layer_sizes:
+    k_for_kmers: 6
+    batch_size: 16
+    batch_size_test: 16
+    shuffle_dataloader: False
+    lr: 0.01
+    num_epochs: 1
+    threshold: 0.1
+    seed: 2020
+    lora_config: # used in case of doing PEFT
+      r: 8
+      lora_alpha: 32
+      lora_dropout: 0.1
+      target_modules: [query, key, value]
+    ml_model_params: # used in case of using MixedModel
+      alpha: 0.02
+      booster: gbtree
+      colsample_bytree: 1
+      eta: 0.01
+      eval_metric: logloss
+      gamma: 0.4
+      lambda: 5
+      max_depth: 7
+      min_child_weight: 19
+      nthread: 32
+      objective: binary:logistic
+      seed: 2020
+      subsample: 1

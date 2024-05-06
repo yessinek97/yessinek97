@@ -3,10 +3,10 @@ from typing import Any, Dict, Optional
 
 import torch
 from peft import LoraConfig, TaskType, get_peft_model
-from transformers import AutoModelForMaskedLM, AutoTokenizer
+from transformers import AutoModel, AutoModelForMaskedLM, AutoTokenizer
 
 
-class BaseModel(torch.nn.Module):
+class TorchBaseModel(torch.nn.Module):
     """Classifies the aggregated embeddings of the mutated and wild type sequences.
 
     Args:
@@ -15,26 +15,35 @@ class BaseModel(torch.nn.Module):
 
     def __init__(
         self,
+        llm_hf_model_path: str,
+        is_masked_model: bool,
         model_configuration: Dict[str, Any],
     ):
         """Initializes the model object.
 
         Args:
+            llm_hf_model_path (str): path to HuggingFace model
+            is_masked_model (bool): uses AutoModelMaskedLM if True
             model_configuration (Dict[str, Any]): dict containing model configuration
-            attention_mask (Optional[np.array], optional): attention mask
         """
         super().__init__()
         self._model_configuration = model_configuration
-        self._llm_hf_model_path = model_configuration["llm_hf_model_path"]
-        self._llm = AutoModelForMaskedLM.from_pretrained(
-            self._llm_hf_model_path, trust_remote_code=True
-        )
+        self._llm_hf_model_path = llm_hf_model_path
+        if is_masked_model:
+            self.llm = AutoModelForMaskedLM.from_pretrained(
+                self._llm_hf_model_path, trust_remote_code=True
+            )
+        else:
+            self.llm = self.llm = AutoModel.from_pretrained(
+                self._llm_hf_model_path, trust_remote_code=True
+            )
 
         mlp_layer_sizes = self._model_configuration["mlp_layer_sizes"]
         if not mlp_layer_sizes:
-            mlp_layer_sizes = [self._model_configuration["embed_dim"]]
+            mlp_layer_sizes = [self._model_configuration["embed_dim"], 1]
 
-        mlp_layer_sizes += [1]
+        else:
+            mlp_layer_sizes = [self._model_configuration["embed_dim"]] + mlp_layer_sizes + [1]
 
         self._mlp_layers = torch.nn.ModuleList(
             [
@@ -46,7 +55,7 @@ class BaseModel(torch.nn.Module):
         self._sigmoid = torch.nn.Sigmoid()
 
 
-class FinetuningModel(BaseModel):
+class FinetuningModel(TorchBaseModel):
     """Classifies the aggregated embeddings of the mutated and wild type sequences.
 
     Args:
@@ -56,28 +65,36 @@ class FinetuningModel(BaseModel):
     def __init__(
         self,
         model_configuration: Dict[str, Any],
-        model_type: str,
+        llm_hf_model_path: str,
+        is_masked_model: bool,
+        training_type: str,
         tokenizer: AutoTokenizer,
     ):
         """Initializes the model object.
 
         Args:
             model_configuration (Dict[str, Any]): dict containing model configuration
-            model_type (str): finetuning_model or peft_model
+            llm_hf_model_path (str): path to HuggingFace model
+            is_masked_model (bool): uses AutoModelMaskedLM if True
+            training_type: training strategy, peft, finetuning or probing
             tokenizer (AutoTokenizer): tokenize sequences according to the chosen LLM
         """
-        super().__init__(model_configuration)
+        super().__init__(
+            model_configuration=model_configuration,
+            llm_hf_model_path=llm_hf_model_path,
+            is_masked_model=is_masked_model,
+        )
         self._tokenizer = tokenizer
-        if model_type == "peft_model":
+        if training_type == "peft":
             peft_config = LoraConfig(
                 task_type=TaskType.FEATURE_EXTRACTION,
                 inference_mode=False,
-                r=8,
-                lora_alpha=32,
-                lora_dropout=0.1,
-                target_modules=["query", "key", "value"],
+                r=self._model_configuration["lora_config"]["r"],
+                lora_alpha=self._model_configuration["lora_config"]["lora_alpha"],
+                lora_dropout=self._model_configuration["lora_config"]["lora_dropout"],
+                target_modules=self._model_configuration["lora_config"]["target_modules"],
             )
-            self._llm = get_peft_model(self._llm, peft_config)
+            self.llm = get_peft_model(self.llm, peft_config)
 
     def forward(
         self,
@@ -96,7 +113,7 @@ class FinetuningModel(BaseModel):
             attention_mask = x != self._tokenizer.cls_token_id
 
         # batch embeddings of the (wild_type, mutated) sequence pairs
-        x = self._llm(
+        x = self.llm(
             x.view(batch_size * 2, -1),  # flatten along batch to compute all embeddings in one pass
             attention_mask=attention_mask.view(batch_size * 2, -1),
             encoder_attention_mask=attention_mask,

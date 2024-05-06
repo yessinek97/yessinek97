@@ -1,4 +1,5 @@
 """File that contains the implementation of the base classes."""
+import gc
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -8,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import torch
 
 import ig.src.models as src_model
 from ig import FEATURES_SELECTION_DIRECTORY, MODELS_DIRECTORY, SINGLE_MODEL_NAME
@@ -21,7 +23,7 @@ from ig.constants import (
 from ig.dataset.dataset import Dataset
 from ig.src.evaluation import Evaluation
 from ig.src.logger import get_logger
-from ig.src.models import BaseModelType, TrainType
+from ig.src.models import BaseModelType
 from ig.src.utils import (
     get_model_by_name,
     load_features,
@@ -179,7 +181,7 @@ class BaseExperiment(ABC):
         return self.features_configuration["id"].lower()
 
     @abstractmethod
-    def train(self) -> TrainType:
+    def train(self) -> None:
         """Training method."""
 
     @abstractmethod
@@ -272,13 +274,8 @@ class BaseExperiment(ABC):
         split_column: str,
         sub_model_directory: Optional[str] = None,
         multi_seed: bool = False,
-    ) -> Dict[str, BaseModelType]:
-        """Multiple fit model.
-
-        Return:
-            models: list of the trained model.
-        """
-        models = {}
+    ) -> None:
+        """Multiple fit model."""
         shap_values = []
         checkpoints = (
             self.checkpoint_directory / sub_model_directory
@@ -305,7 +302,6 @@ class BaseExperiment(ABC):
             )
 
             display += "##### End Split train #####"
-            models[split] = model
             if self.plot_shap_values:
                 shap_values.append(
                     pd.DataFrame(
@@ -315,6 +311,10 @@ class BaseExperiment(ABC):
                         }
                     )
                 )
+                del model
+                gc.collect()
+                torch.cuda.empty_cache()
+
         if self.plot_shap_values and self.plot_kfold_shap_values:
             shap_values_df = pd.concat(shap_values)
             shap_values_df = (
@@ -328,8 +328,6 @@ class BaseExperiment(ABC):
                 plotting_kfold_shap_values(shap_values_df, self.eval_directory / "shap.png")
         if self.evaluator.print_evals:
             log.debug(display)
-
-        return models
 
     def eval_test(self) -> EvalExpType:
         """Eval method for single data set."""
@@ -391,12 +389,15 @@ class BaseExperiment(ABC):
             "LogisticRegressionModel",
             "RandomForestModel",
             "SupportVectorMachineModel",
+            "LLMBasedModel",
+            "MixedModel",
         ]:
             raise NotImplementedError(
                 f"{model_type} is not supported."
                 "The possible choices are:"
                 "[XgboostModel, LgbmModel, CatBoostModel,"
-                " LabelPropagationModel, RandomForestModel, SupportVectorMachineModel]"
+                " LabelPropagationModel, RandomForestModel, SupportVectorMachineModel"
+                " LLMBasedModel, MixedModel]"
             )
         return model_type
 

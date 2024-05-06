@@ -389,3 +389,17 @@ def check_and_create_folder(experiment_path: Path) -> None:
         shutil.rmtree(experiment_path)
 
     experiment_path.mkdir(exist_ok=True, parents=True)
+
+
+def crop_sequences(
+    sequences: List[str], mutation_start_positions: List[int], context_length: int
+) -> List[str]:
+    """Crops the sequences to match desired context length."""
+    sequences = [
+        seq[
+            max(0, mut_pos - context_length // 2) : max(0, mut_pos - context_length // 2)
+            + context_length
+        ]
+        for seq, mut_pos in zip(sequences, mutation_start_positions)
+    ]
+    return sequences

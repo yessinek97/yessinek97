@@ -11,7 +11,6 @@ from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsE
 from ig.dataset.dataset import Dataset
 from ig.src.experiments.base import BaseExperiment
 from ig.src.logger import get_logger
-from ig.src.models import TrainKfoldType
 from ig.src.utils import load_pkl, maybe_int, save_yml
 
 log: Logger = get_logger("Kfold")
@@ -65,10 +64,9 @@ class KfoldExperiment(BaseExperiment):
             f"prediction_{operation}" for operation in self.kfold_operations
         ]
 
-    def train(self) -> TrainKfoldType:
+    def train(self) -> None:
         """Training method."""
-        models = self.multiple_fit(train=self.train_data(), split_column=self.split_column)
-        return models
+        self.multiple_fit(train=self.train_data(), split_column=self.split_column)
 
     def predict(self, save_df: bool = True) -> ExpPredictType:
         """Predict method."""

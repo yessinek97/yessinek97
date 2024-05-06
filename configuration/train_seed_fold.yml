@@ -2,8 +2,8 @@ neptune_logs: False
 experiments:
   KfoldExperiment:
     split_column: fold
-    plot_shap_values: True
-    plot_kfold_shap_values: True # False when using Logistic regression
+    plot_shap_values: False
+    plot_kfold_shap_values: False # False when using Logistic regression
     operation:
       - mean
       - max
@@ -15,13 +15,13 @@ experiments:
       - min
   SingleModel:
     validation_column: validation
-    plot_shap_values: True
+    plot_shap_values: False
 label: cd8_any
 feature_paths:
   - train_features
 processing:
   remove_unnecessary_folders: False
-  trainable_features: features_float.biondeep_02_06_2022_transformer_public_v2
+  trainable_features: llm_based_features_config.yml
   # exclude_features:
   validation_strategy: true
   isunlabelled: false
@@ -29,16 +29,15 @@ processing:
   #normalizer_per_id:
   #normalizer_id: patientid
   fill_nan_method: keep
-  seeds: [1994, 2002]
+  seeds: [1994]
   validation_ratio: 0.1
-  folds: [5, 4, 6]
+  folds: [2]
   nan_ratio: 0.6
 
 models:
-  - xgboost_config.yml
+  - llm_based_model_config.yml
 evaluation:
   print_evals: True
-  comparison_score: tested_score_biondeep_mhci
   # eval_id_name: patientid
   observations_number: 20
   threshold: 0.3

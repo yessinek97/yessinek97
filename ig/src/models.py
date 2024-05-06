@@ -1,11 +1,13 @@
 """File that contains all the model that will be used in the experiment."""
 from __future__ import annotations
 
+import math
 import sys
 import warnings
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 import lightgbm as lgb
 import numpy as np
@@ -14,6 +16,7 @@ import shap
 import torch
 import xgboost as xgb
 from catboost import CatBoostClassifier
+from peft import LoraConfig, TaskType, get_peft_model
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.semi_supervised import LabelPropagation
@@ -21,13 +24,14 @@ from sklearn.svm import SVC
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
-from ig.dataset.torch_dataset import PeptidePairsDataset
+from ig.dataset.torch_dataset import MixedDataset, PeptidePairsDataset
 from ig.src.evaluation import Evaluation
 from ig.src.llm_based_models import FinetuningModel
 from ig.src.logger import ModelLogWriter, get_logger
-from ig.src.utils import save_as_pkl
+from ig.src.torch_utils import set_torch_reproducibility
+from ig.src.utils import crop_sequences, save_as_pkl
 
 log = get_logger("Train/model")
 original_stdout = sys.__stdout__
@@ -90,6 +94,7 @@ class BaseModel(ABC):
     def eval_model(self, data: pd.DataFrame, split_name: str, evaluator: Evaluation) -> None:
         """Eval method."""
         data = data.copy()
+
         data[self.prediction_name] = self.predict(data, with_label=False)
         evaluator.compute_metrics(
             data=data,
@@ -335,8 +340,11 @@ class LLMBasedModel(BaseModel):
         model_type: str,
         experiment_name: str,
         dataset_name: str,
-        tokenizer: AutoTokenizer,
         checkpoints: Path,
+        features: list[str],
+        label_name: str,
+        prediction_name: str,
+        other_params: dict[str, Any],
         attention_mask: torch.Tensor | None = None,
         save_model: bool = False,
     ):
@@ -358,10 +366,10 @@ class LLMBasedModel(BaseModel):
         """
         super().__init__(
             parameters=parameters,
-            features=["llm_embeddings"],
-            label_name="label",
-            prediction_name="prediction",
-            other_params={},
+            features=features,
+            label_name=label_name,
+            prediction_name=prediction_name,
+            other_params=other_params,
             folder_name=folder_name,
             model_type=model_type,
             experiment_name=experiment_name,
@@ -369,32 +377,44 @@ class LLMBasedModel(BaseModel):
             checkpoints=checkpoints,
             save_model=save_model,
         )
-        self._tokenizer = tokenizer
+        # set torch in deterministic mode (for reproducibility)
+        self._tokenizer = AutoTokenizer.from_pretrained(other_params["llm_hf_model_path"])
         self._attention_mask = attention_mask
-        self.check_model_type()
-        if model_type in ["finetuning_model", "peft_model"]:
+        self._training_type = other_params["training_type"]
+        self.check_training_type()
+        set_torch_reproducibility(self.parameters["seed"])
+
+        if self._training_type in ["finetuning", "peft"]:
             self._llm_based_model = FinetuningModel(
                 model_configuration=parameters,
-                tokenizer=tokenizer,
-                model_type=model_type,
+                llm_hf_model_path=other_params["llm_hf_model_path"],
+                is_masked_model=other_params["is_masked_model"],
+                tokenizer=self._tokenizer,
+                training_type=self._training_type,
             )
 
-        elif model_type == "probing_model":
+        elif self._training_type == "probing_model":
             # TODO: add instanciation of probing model when ready
             raise NotImplementedError
 
+        # only save finetuned backbone to use for another task
+        # instead of saving the whole LLMBasedModel
+        self._save_llm_only = other_params["save_llm_only"]
+
         self._use_cuda = torch.cuda.is_available()
         self._device = torch.device("cuda" if self._use_cuda else "cpu")
+        if self._use_cuda:
+            # send model to GPU and enable multi-gpu usage
+
+            self._llm_based_model = torch.nn.DataParallel(self._llm_based_model).to(self._device)
+
+        self._wildtype_col_name = other_params["wildtype_col_name"]
+        self._mutated_col_name = other_params["mutated_col_name"]
+
+        self._prob_threshold = parameters["threshold"]
         self._criterion = torch.nn.BCEWithLogitsLoss()
         self._optimizer = Adam(self._llm_based_model.parameters(), lr=self.parameters["lr"])
-        self._metrics: dict = {
-            "train_loss_per_step": [],
-            "train_loss_per_epoch": [],
-            "train_acc": [],
-            "val_loss_per_step": [],
-            "val_loss_per_epoch": [],
-            "val_acc": [],
-        }
+        self._metrics: dict[str, list[float]] = defaultdict(list)
 
     def fit(
         self,
@@ -414,19 +434,34 @@ class LLMBasedModel(BaseModel):
         val_dataloader, max_length_val = self._create_matrix(val_data, with_label=True)
 
         # number of tokens of the longest sequence
-        max_length = max([max_length_train, max_length_val])
-
-        if self._use_cuda:
-            # send model to GPU and enable multi-gpu usage
-            self._llm_based_model = torch.nn.DataParallel(self._llm_based_model).to(self._device)
+        log.info(
+            f"Maximum length in train: {max_length_train} - "
+            f"Maximum length in validation: {max_length_val}"
+        )
 
         num_epochs = self.parameters["num_epochs"]
         epochs_iterator = tqdm(range(num_epochs))
         for epoch_num in epochs_iterator:
             epochs_iterator.set_description(f"epoch: {epoch_num}/{num_epochs}")
-            self.train_one_epoch(train_dataloader, max_length)
-            self.validate_one_epoch(val_dataloader, max_length)
+            self.train_one_epoch(train_dataloader, max_length_train)
+            self.validate_one_epoch(val_dataloader, max_length_val)
+            epochs_iterator.set_postfix({"Train accuracy": self._metrics["train_acc"][epoch_num]})
             self.log_metrics(epoch_num)
+
+        if self.save_model:
+            log.info(f"Saving model to: {self.checkpoints}")
+            # Save torch model checkpoint
+            if self._save_llm_only:
+                dict_to_save = {"model_state_dict": self._llm_based_model.module.llm.state_dict()}
+            else:
+                dict_to_save = {
+                    "model_state_dict": self._llm_based_model.state_dict(),
+                    "optimizer_state_dict": self._optimizer.state_dict(),
+                    "metrics": self._metrics,
+                }
+            torch.save(dict_to_save, str(self.checkpoints).replace("model.pkl", "torch_model.pt"))
+            # pickle LLMBasedModel object
+            save_as_pkl(self, self.checkpoints)
 
     def train_one_epoch(self, train_dataloader: DataLoader, max_length: int) -> None:
         """Train model for one epoch.
@@ -438,17 +473,23 @@ class LLMBasedModel(BaseModel):
         self._llm_based_model.train()
         epoch_preds = []
         epoch_labels = []
-        for pair, label in tqdm(train_dataloader):
+        iterator = tqdm(train_dataloader)
+        for pair, label in iterator:
             batch_loss, batch_preds, batch_labels = self.train_one_step(pair, label, max_length)
+            iterator.set_postfix({"Loss": batch_loss.item()})
             epoch_preds += batch_preds
             epoch_labels += batch_labels
 
-        epoch_preds = torch.Tensor(epoch_preds)
-        self._metrics["train_acc"].append(
-            np.average(np.array(torch.round(epoch_preds)) == epoch_labels)
-        )
-        # loss at the last step
-        self._metrics["train_loss_per_epoch"].append(batch_loss)
+        epoch_preds = torch.Tensor(epoch_preds).detach().cpu()
+        epoch_labels = torch.Tensor(epoch_labels).detach().cpu()
+
+        positive_indexes = [idx for idx in range(len(epoch_labels)) if epoch_labels[idx] == 1]
+        epoch_pos_preds = [
+            1 if epoch_preds[idx] == epoch_labels[idx] else 0 for idx in positive_indexes
+        ]
+
+        self._metrics["train_acc"].append(np.average(epoch_preds == epoch_labels))
+        self._metrics["train_acc_pos"].append(np.average(epoch_pos_preds))
 
     def train_one_step(
         self, pair: torch.Tensor, label: torch.Tensor, max_length: int
@@ -464,10 +505,20 @@ class LLMBasedModel(BaseModel):
         label = label.to(self._device)
 
         # forward pass
-        prediction = self._llm_based_model(pair, max_length, self._attention_mask)
+        logits = self._llm_based_model(pair, max_length, self._attention_mask)
+        probs = torch.nn.Sigmoid()(logits)
+        prediction = (
+            probs.detach()
+            .cpu()
+            .apply_(
+                lambda prob: math.floor(prob) if prob < self._prob_threshold else math.ceil(prob)
+            )
+            .squeeze(-1)
+        )
 
         # calculate step loss
-        batch_loss = self._criterion(prediction.squeeze(1), label)
+        batch_loss = self._criterion(logits.squeeze(1), label)
+
         self._metrics["train_loss_per_step"].append(batch_loss.item())
 
         # back propagate loss and update gradient
@@ -491,19 +542,25 @@ class LLMBasedModel(BaseModel):
         with torch.no_grad():
             epoch_preds = []
             epoch_labels = []
-            for pair, label in tqdm(val_dataloader):
+            iterator = tqdm(val_dataloader)
+            for pair, label in iterator:
                 batch_loss, batch_preds, batch_labels = self.validate_one_step(
                     pair, label, max_length
                 )
-            epoch_preds += batch_preds
-            epoch_labels += batch_labels
+                iterator.set_postfix({"Loss": batch_loss.item()})
+                epoch_preds += batch_preds
+                epoch_labels += batch_labels
 
-        epoch_preds = torch.Tensor(epoch_preds)
-        self._metrics["val_acc"].append(
-            np.average(np.array(torch.round(epoch_preds)) == epoch_labels)
-        )
-        # loss at the last step
-        self._metrics["val_loss_per_epoch"].append(batch_loss)
+        epoch_preds = torch.Tensor(epoch_preds).detach().cpu()
+        epoch_labels = torch.Tensor(epoch_labels).detach().cpu()
+
+        positive_indexes = [idx for idx in range(len(epoch_labels)) if epoch_labels[idx] == 1]
+        epoch_pos_preds = [
+            1 if epoch_preds[idx] == epoch_labels[idx] else 0 for idx in positive_indexes
+        ]
+
+        self._metrics["val_acc"].append(np.average(epoch_preds == epoch_labels))
+        self._metrics["val_acc_pos"].append(np.average(epoch_pos_preds))
 
     def validate_one_step(
         self, pair: torch.Tensor, label: torch.Tensor, max_length: int
@@ -519,10 +576,19 @@ class LLMBasedModel(BaseModel):
         label = label.to(self._device)
 
         # forward pass
-        prediction = self._llm_based_model(pair, max_length, self._attention_mask)
+        logits = self._llm_based_model(pair, max_length, self._attention_mask)
+        probs = torch.nn.Sigmoid()(logits)
+        prediction = (
+            probs.detach()
+            .cpu()
+            .apply_(
+                lambda prob: math.floor(prob) if prob < self._prob_threshold else math.ceil(prob)
+            )
+            .squeeze(-1)
+        )
 
         # calculate step loss
-        batch_loss = self._criterion(prediction.squeeze(1), label)
+        batch_loss = self._criterion(logits.squeeze(1), label)
         self._metrics["val_loss_per_step"].append(batch_loss.item())
 
         return batch_loss, prediction, label
@@ -533,42 +599,35 @@ class LLMBasedModel(BaseModel):
         Args:
             epoch_num (_type_): _description_
         """
-        epoch_train_loss = self._metrics["train_loss_per_epoch"][epoch_num]
         epoch_train_acc = self._metrics["train_acc"][epoch_num]
-        epoch_val_loss = self._metrics["val_loss_per_epoch"][epoch_num]
         epoch_val_acc = self._metrics["val_acc"][epoch_num]
+        epoch_train_acc_pos = self._metrics["train_acc_pos"][epoch_num]
+        epoch_val_acc_pos = self._metrics["val_acc_pos"][epoch_num]
 
         log.info(
-            f"Epoch: {epoch_num + 1} | Train Loss: {epoch_train_loss: .3f} \
-            | Train Accuracy: {epoch_train_acc: .3f} \
-            | Val Loss: {epoch_val_loss: .3f} \
-            | Val Accuracy: {epoch_val_acc: .3f}"
+            f"Epoch {epoch_num + 1} metrics: \
+            | Train Acc: {epoch_train_acc: .3f} | Train Acc Positives: {epoch_train_acc_pos: .3f} \
+            | Val Acc: {epoch_val_acc: .3f} | Val Acc Positives: {epoch_val_acc_pos: .3f}"
         )
 
     def predict(self, data: pd.DataFame, with_label: bool) -> Any:
         """Prediction method."""
         inference_dataloader, max_length = self._create_matrix(data, with_label)
 
-        if self._use_cuda:
-            # send model to GPU and enable multi-gpu usage
-            self._llm_based_model = torch.nn.DataParallel(self._llm_based_model).to(self._device)
         log.info(f"Started inference using: {self._device}")
 
         predictions = []
-        labels = []
-        for pair, label in tqdm(inference_dataloader):
-            logits = self._llm_based_model(pair, max_length)
-            predictions.append(torch.nn.sigmoid(logits))
-            labels.append(label)
+        with torch.no_grad():
+            for pair, _ in tqdm(inference_dataloader):
+                pair = pair.to(self._device)
+                logits = self._llm_based_model(pair, max_length, self._attention_mask)
+                predictions += torch.nn.Sigmoid()(logits).detach().cpu()
 
-        if not with_label:
-            log.info("The returned lables are randomly generated")
-
-        return predictions, labels
+        return predictions
 
     def _create_matrix(self, data: pd.DataFrame, with_label: bool) -> Any:
         """Return the correct data structure. Object that is required by the model."""
-        if self.model_type in ["finetuning_model", "peft_model"]:
+        if self._training_type in ["finetuning", "peft"]:
             dataloader, max_length = self.create_peptide_pairs_dataloader(data, with_label)
         else:
             # TODO add EmbeddingPairs dataloader creator when ready
@@ -584,24 +643,36 @@ class LLMBasedModel(BaseModel):
 
         Args:
             dataframe (pd.DataFrame): dataframe containing sequence pairs and labels.
+            with_label (bool): whether or not the dataset is labeled.
 
         Returns:
             Tuple[DataLoader, int]: Returns finetuning dataloader and length of longest seq.
         """
         # read sequences and labels from dataframe
-        wild_type_sequences = dataframe["wild_type"]
-        mutated_sequences = dataframe["mutated"]
+        wild_type_sequences = list(dataframe[self._wildtype_col_name])
+        mutated_sequences = list(dataframe[self._mutated_col_name])
+
+        labels = []
         if with_label:
-            labels = dataframe["label"]
-        else:
-            # if the dataset is unlabled, generate random binary labels
-            labels = np.random.randint(2, size=len(wild_type_sequences))
+            labels = list(dataframe[self.label_name])
+
+        # crop sequences to match desired context length
+        if self.parameters["context_length"]:
+            mutation_start_positions = list(dataframe["mutation_start_position"])
+            context_length = self.parameters["context_length"]
+            wild_type_sequences = crop_sequences(
+                wild_type_sequences, mutation_start_positions, context_length
+            )
+            mutated_sequences = crop_sequences(
+                mutated_sequences, mutation_start_positions, context_length
+            )
 
         # number of tokens of the longest sequence
-        max_length = (
-            max([len(seq) for seq in wild_type_sequences + mutated_sequences])
-            // self.parameters["k_for_kmers"]
-            + 1  # account for the prepended cls token
+        max_length = max(
+            [
+                len(self._tokenizer.encode_plus(seq)["input_ids"])
+                for seq in tqdm(wild_type_sequences + mutated_sequences)
+            ]
         )
 
         # instanciate PeptidePairs dataset
@@ -617,11 +688,268 @@ class LLMBasedModel(BaseModel):
         )
         return peptide_pairs_dataloader, max_length
 
-    def check_model_type(self) -> None:
+    def check_training_type(self) -> None:
         """Checks if the chosen model type is valid."""
-        supprted_types = ["finetuning_model", "probing_model", "peft_model"]
-        if self.model_type not in supprted_types:
-            raise ValueError(f"type '{self.model_type}' not in {supprted_types}")
+        supprted_types = ["finetuning", "probing", "peft"]
+        if self._training_type not in supprted_types:
+            raise ValueError(f"type '{self._training_type}' not in {supprted_types}")
+
+
+class MixedModel(BaseModel):
+    """Architecture that combines the LLM based model with an ML algorithm."""
+
+    def __init__(
+        self,
+        parameters: dict[str, Any],
+        folder_name: str,
+        model_type: str,
+        experiment_name: str,
+        dataset_name: str,
+        checkpoints: Path,
+        features: list[str],
+        label_name: str,
+        prediction_name: str,
+        other_params: dict[str, Any],
+        save_model: bool = False,
+    ):
+        """Initializes LLMBasedModel.
+
+        Args:
+            parameters (dict[str, Any]): _description_
+            folder_name (str): _description_
+            model_type (str): _description_
+            experiment_name (str): _description_
+            dataset_name (str): _description_
+            tokenizer (AutoTokenizer): _description_
+            checkpoints (Path): _description_
+            attention_mask (Optional[torch.Tensor], optional): _description_. Defaults to None.
+            save_model (bool, optional): _description_. Defaults to False.
+
+        Raises:
+            NotImplementedError: _description_
+        """
+        super().__init__(
+            parameters=parameters,
+            features=features,
+            label_name=label_name,
+            prediction_name=prediction_name,
+            other_params=other_params,
+            folder_name=folder_name,
+            model_type=model_type,
+            experiment_name=experiment_name,
+            dataset_name=dataset_name,
+            checkpoints=checkpoints,
+            save_model=save_model,
+        )
+        self._tokenizer = AutoTokenizer.from_pretrained(other_params["llm_hf_model_path"])
+        self._use_cuda = torch.cuda.is_available()
+        self._device = torch.device("cuda" if self._use_cuda else "cpu")
+
+        self._llm = AutoModelForMaskedLM.from_pretrained(
+            other_params["llm_hf_model_path"], trust_remote_code=True
+        )
+        if other_params["training_type"] == "peft":
+            peft_config = LoraConfig(
+                task_type=TaskType.FEATURE_EXTRACTION,
+                inference_mode=False,
+                r=self.parameters["lora_config"]["r"],
+                lora_alpha=self.parameters["lora_config"]["lora_alpha"],
+                lora_dropout=self.parameters["lora_config"]["lora_dropout"],
+                target_modules=self.parameters["lora_config"]["target_modules"],
+            )
+            self._llm = get_peft_model(self._llm, peft_config)
+
+        # two stages MixedModel
+        if other_params["pretrained_llm_path"]:
+            llm_state_dict = torch.load(other_params["pretrained_llm_path"])["model_state_dict"]
+            self._llm.load_state_dict(llm_state_dict)
+
+        if self._use_cuda:
+            # send model to GPU and enable multi-gpu usage
+            self._llm = torch.nn.DataParallel(self._llm).to(self._device)
+
+        self._wildtype_col_name = other_params["wildtype_col_name"]
+        self._mutated_col_name = other_params["mutated_col_name"]
+        self._metrics: dict[str, list[float]] = defaultdict(list)
+
+    def fit(
+        self,
+        train_data: pd.DataFrame,
+        val_data: pd.DataFrame,
+    ) -> None:
+        """Fit method."""
+        log.info(f"Started training: {self.model_type} | using: {self._device}")
+
+        train_dataloader, max_length_train = self._create_matrix(train_data, with_label=True)
+        val_dataloader, max_length_val = self._create_matrix(val_data, with_label=True)
+        # number of tokens of the longest sequence
+        log.info(
+            f"Maximum length in train: {max_length_train} - "
+            f"Maximum length in validation: {max_length_val}"
+        )
+        self.train(train_dataloader, val_dataloader)
+        self.log_metrics()
+
+        if self.save_model:
+            # pickle MixedModel object
+            save_as_pkl(self, self.checkpoints)
+
+    def compute_combined_features(self, dataloader: DataLoader) -> tuple[np.array, list]:
+        """Computes embeddings and combines them with tabular features.
+
+        Args:
+            dataloader (_type_): _description_
+
+        Returns:
+            Tuple[np.array, list]: _description_
+        """
+        pair_embeddings, pair_features, pair_labels = [], [], []
+        iterator = tqdm(dataloader)
+        # compute embeddings
+        for pair, features, label in iterator:
+            pair_embeddings += list(pair.detach().cpu().numpy())
+            pair_features += features
+            pair_labels += list(label)
+
+        # combine embeddings with tabular features
+        combined_features = np.array(
+            [
+                np.concatenate((embeddings, features))
+                for embeddings, features in zip(pair_embeddings, pair_features)
+            ]
+        )
+        return combined_features, pair_labels
+
+    def compute_metrics(self, preds: list, labels: list) -> tuple[np.float, np.float]:
+        """Computes global and positiva class accuracies.
+
+        Args:
+            preds (list): _description_
+            labels (list): _description_
+
+        Returns:
+            tuple[np.float, np.float]: _description_
+        """
+        # compute and save metrics
+        positive_indexes = [idx for idx in range(len(labels)) if labels[idx] == 1]
+        epoch_pos_preds = [1 if preds[idx] == labels[idx] else 0 for idx in positive_indexes]
+        # global accuracy
+        acc = np.average(preds == labels)
+        # positive class accuracy
+        acc_pos = np.average(epoch_pos_preds)
+        return acc, acc_pos
+
+    def train(self, train_dataloader: DataLoader, val_dataloader: DataLoader) -> None:
+        """Train MixedModel model.
+
+        Args:
+            train_dataloader (DataLoader): _description_
+            val_dataloader (_type_): _description_
+        """
+        log.info("Preparing combined features and labels")
+        train_combined_features, train_labels = self.compute_combined_features(train_dataloader)
+        val_combined_features, val_labels = self.compute_combined_features(val_dataloader)
+
+        dtrain = xgb.DMatrix(data=train_combined_features, label=train_labels)
+        dval = xgb.DMatrix(data=val_combined_features, label=val_labels)
+
+        log.info("fitting ML model")
+        self.ml_model = xgb.train(
+            params=self.parameters["ml_model_params"],
+            dtrain=dtrain,
+            evals=[(dtrain, "train"), (dval, "valid")],
+            num_boost_round=self.other_params.get("num_boost_round", 20000),
+            verbose_eval=self.other_params.get("verbose_eval", True),
+            early_stopping_rounds=self.other_params.get("early_stopping_rounds", 20),
+        )
+
+        best_iteration = self.ml_model.best_iteration
+        train_preds = np.round(
+            self.ml_model.predict(dtrain, iteration_range=(0, best_iteration + 1))
+        )
+        val_preds = np.round(self.ml_model.predict(dval, iteration_range=(0, best_iteration + 1)))
+
+        train_acc, train_acc_pos = self.compute_metrics(train_preds, train_labels)
+        val_acc, val_acc_pos = self.compute_metrics(val_preds, val_labels)
+        self._metrics["train_acc"] = train_acc
+        self._metrics["val_acc"] = val_acc
+        self._metrics["train_acc_pos"] = train_acc_pos
+        self._metrics["val_acc_pos"] = val_acc_pos
+
+    def predict(self, data: pd.DataFame, with_label: bool) -> Any:
+        """Prediction method."""
+        inference_dataloader, _ = self._create_matrix(data, with_label)
+        combined_features, labels = self.compute_combined_features(inference_dataloader)
+        dinference = xgb.DMatrix(data=combined_features, label=labels)
+        best_iteration = self.ml_model.best_iteration
+        predictions = self.ml_model.predict(dinference, iteration_range=(0, best_iteration + 1))
+        return predictions
+
+    def _create_matrix(self, data: pd.DataFrame, with_label: bool) -> Any:
+        """Return the correct data structure. Object that is required by the model."""
+        return self.create_mixed_dataloader(data, with_label)
+
+    # dataloader creator for mixed approach
+    def create_mixed_dataloader(
+        self, dataframe: pd.DataFrame, with_label: bool
+    ) -> tuple[DataLoader, int]:
+        """Creates mixed dataset for mixed approach."""
+        # read sequences and labels from dataframe
+        wild_type_sequences = list(dataframe[self._wildtype_col_name])
+        mutated_sequences = list(dataframe[self._mutated_col_name])
+        tabular_features_dict = {feature: list(dataframe[feature]) for feature in self.features}
+
+        labels = []
+        if with_label:
+            labels = list(dataframe[self.label_name])
+
+            # crop sequences to match desired context length
+        if self.parameters["context_length"]:
+            mutation_start_positions = list(dataframe["mutation_start_position"])
+            context_length = self.parameters["context_length"]
+            wild_type_sequences = crop_sequences(
+                wild_type_sequences, mutation_start_positions, context_length
+            )
+            mutated_sequences = crop_sequences(
+                mutated_sequences, mutation_start_positions, context_length
+            )
+
+        # number of tokens of the longest sequence
+        max_length = max(
+            [
+                len(self._tokenizer.encode_plus(seq)["input_ids"])
+                for seq in tqdm(wild_type_sequences + mutated_sequences)
+            ]
+        )
+        # instanciate Mixed dataset
+        mixed_dataset = MixedDataset(
+            wild_type_sequences,
+            mutated_sequences,
+            tabular_features_dict,
+            labels,
+            self._llm,
+            self._tokenizer,
+            self._device,
+            max_length,
+        )
+        # instanciate Mixed dataloader
+        mixed_dataloader = DataLoader(
+            mixed_dataset,
+            batch_size=self.parameters["batch_size"],
+            shuffle=self.parameters["shuffle_dataloader"],
+            collate_fn=mixed_dataset.compute_batch_mutation_embeddings,
+        )
+
+        return mixed_dataloader, max_length
+
+    def log_metrics(self) -> None:
+        """Log epoch metrics."""
+        log.info(
+            f"Metrics: Train Acc: {self._metrics['train_acc']: .3f} \
+            | Train Acc Positives: {self._metrics['train_acc_pos']: .3f} \
+            | Val Acc: {self._metrics['val_acc']: .3f} \
+            | Val Acc Positives: {self._metrics['val_acc_pos']: .3f}"
+        )
 
 
 BaseModelType = Union[
@@ -632,17 +960,6 @@ BaseModelType = Union[
     LogisticRegressionModel,
     RandomForestModel,
     SupportVectorMachineModel,
-]
-
-TrainSingleModelType = BaseModelType
-TrainKfoldType = Dict[str, BaseModelType]
-TrainDoubleKfold = Dict[str, BaseModelType]
-TrainMultiSeedKfold = Dict[str, Dict[str, BaseModelType]]
-TrainTuneType = Dict[str, Any]
-TrainType = Union[
-    TrainSingleModelType,
-    TrainKfoldType,
-    TrainDoubleKfold,
-    TrainMultiSeedKfold,
-    TrainTuneType,
+    LLMBasedModel,
+    MixedModel,
 ]

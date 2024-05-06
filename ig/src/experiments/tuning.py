@@ -2,7 +2,7 @@
 import logging
 from logging import Logger
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,7 @@ from ig.constants import TuningOptParamsType
 from ig.dataset.dataset import Dataset
 from ig.src.experiments.base import create_model
 from ig.src.metrics import topk_global
-from ig.src.models import BaseModelType, TrainTuneType
+from ig.src.models import BaseModelType
 from ig.src.utils import (
     convert_int_params,
     get_model_by_name,
@@ -266,7 +266,7 @@ class Tuning:
         model_param["model_params"] = model_configuration_dynamic
         return model_param
 
-    def train(self) -> TrainTuneType:  # pylint: disable=W0221
+    def train(self) -> Dict[str, Union[str, float]]:
         """Train method."""
         if self.experiment_name == "SingleModel":
             results, all_trials = self.tune_single_model(

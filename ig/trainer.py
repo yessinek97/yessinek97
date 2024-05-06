@@ -274,6 +274,7 @@ def train_seed_fold(  # noqa
         configuration = copy.deepcopy(general_configuration)
         configuration.pop("models")
         displays += f"\n Method :{experiment_name}: "
+
         for model_type, model_param in zip(model_types, model_params):
             log.info("  -%s :", model_type)
             for seed in seeds:

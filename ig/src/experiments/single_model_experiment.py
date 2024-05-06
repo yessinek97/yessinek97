@@ -8,7 +8,6 @@ from ig import SINGLE_MODEL_NAME
 from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsEvalType
 from ig.dataset.dataset import Dataset
 from ig.src.experiments.base import BaseExperiment
-from ig.src.models import TrainSingleModelType
 from ig.src.utils import load_pkl, save_yml
 
 
@@ -57,15 +56,14 @@ class SingleModel(BaseExperiment):
             self.train_split = self.train_data()[self.train_data()[self.validation_column] == 0]
         self.prediction_columns_name = ["prediction"]
 
-    def train(self) -> TrainSingleModelType:
+    def train(self) -> None:
         """Training method."""
-        model = self.single_fit(
+        self.single_fit(
             self.train_split,
             self.validation_split,
             self.checkpoint_directory,
             prediction_name=self.prediction_columns_name[0],
         )
-        return model
 
     def predict(self, save_df: bool = True) -> ExpPredictType:
         """Predict method."""

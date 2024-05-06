@@ -11,7 +11,7 @@ from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsE
 from ig.dataset.dataset import Dataset
 from ig.src.experiments.base import BaseExperiment
 from ig.src.logger import get_logger
-from ig.src.models import BaseModel, TrainMultiSeedKfold
+from ig.src.models import BaseModel
 from ig.src.utils import load_pkl, maybe_int, plotting_kfold_shap_values, save_yml
 
 log: Logger = get_logger("KfoldMultiSeed")
@@ -79,9 +79,8 @@ class KfoldMultiSeedExperiment(BaseExperiment):
         """Return fold number for kfold split."""
         return int(self.configuration["processing"].get("fold", 5))
 
-    def train(self) -> TrainMultiSeedKfold:
+    def train(self) -> None:
         """Training method."""
-        models_seeds: TrainMultiSeedKfold = {}
         shap_values: List[pd.DataFrame] = []
         self.train_data.force_validation_strategy()
         self.evaluator.print_evals = self.print_seeds_evals
@@ -97,13 +96,12 @@ class KfoldMultiSeedExperiment(BaseExperiment):
                 self.model_configuration["model_params"] = model_params
                 sub_model_directory += "_model"
             self.sub_model_directory_names.append(sub_model_directory)
-            models = self.multiple_fit(
+            self.multiple_fit(
                 train=self.train_data(),
                 split_column=self.split_column,
                 sub_model_directory=sub_model_directory,
                 multi_seed=True,
             )
-            models_seeds[sub_model_directory] = models
             self.train_predictions[sub_model_directory] = self.seed_predict(
                 sub_model_directory, save_df=self.save_seed_predictions
             )
@@ -122,7 +120,6 @@ class KfoldMultiSeedExperiment(BaseExperiment):
             plotting_kfold_shap_values(shap_values_df, self.eval_directory / "shap.png")
 
         self.evaluator.reset_print_evals()
-        return models_seeds
 
     def predict(self, save_df: bool = True) -> ExpPredictType:
         """Predict method."""

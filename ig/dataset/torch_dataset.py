@@ -1,12 +1,11 @@
 """Module used to define the torch dataset."""
 import re
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from transformers import AutoTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 
 class OneSequenceDatasetForEmbedding(Dataset):
@@ -118,8 +117,8 @@ class PeptidePairsDataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        mutated_peptides: list,
         wild_type_peptides: list,
+        mutated_peptides: list,
         labels: list,
         tokenizer: AutoTokenizer,
         max_length: int = 2001,
@@ -127,20 +126,23 @@ class PeptidePairsDataset(torch.utils.data.Dataset):
         """Initializes the dataset object.
 
         Args:
-            mutated_peptides (list[str]): list of sequences of mutated peptides.
             wild_type_peptides (list[str]): list of sequences of wild_type peptides.
+            mutated_peptides (list[str]): list of sequences of mutated peptides.
             tokenizer (AutoTokenizer): used to tokenize sequences
             labels (list[int]): IG labels of the (wild_type, mutated) sequence pairs.
             max_length (int): maximum treatable length.
         """
-        self._mutated_peptides = mutated_peptides
         self._wild_type_peptides = wild_type_peptides
-        self._labels = labels
+        self._mutated_peptides = mutated_peptides
         self._max_length = max_length
         self._tokenizer = tokenizer
+        if labels == []:
+            self._labels = [float("inf") for _ in range(len(mutated_peptides))]
+        else:
+            self._labels = labels
 
     # used as collate_fn when creating the dataloader
-    def tokenize_batch_of_pairs(self, pairs_batch: list) -> Tuple[torch.Tensor, np.ndarray]:
+    def tokenize_batch_of_pairs(self, pairs_batch: list) -> Tuple[torch.Tensor, torch.Tensor]:
         """Tokenzies a batch of pairs of (wild_type, mutated) sequences.
 
         Args:
@@ -171,7 +173,7 @@ class PeptidePairsDataset(torch.utils.data.Dataset):
         """Returns the number of samples in the whole dataset."""
         return len(self._labels)
 
-    def __getitem__(self, idx: int) -> Tuple[Tuple[str, str], list]:
+    def __getitem__(self, idx: int) -> Tuple[Tuple[str, str], float]:
         """Returns a pair of (wild_type, mutated) and corresponding label.
 
         Args:
@@ -183,3 +185,124 @@ class PeptidePairsDataset(torch.utils.data.Dataset):
         pair = (self._wild_type_peptides[idx], self._mutated_peptides[idx])
         label = self._labels[idx]
         return pair, label
+
+
+class MixedDataset(torch.utils.data.Dataset):
+    """Pytorch dataset class for mixed approach.
+
+    Args:
+        torch.utils.data.Datasets (_type_): _description_.
+    """
+
+    def __init__(
+        self,
+        wild_type_peptides: list,
+        mutated_peptides: list,
+        tabular_features: Dict[str, list],
+        labels: list,
+        llm: AutoModelForMaskedLM,
+        tokenizer: AutoTokenizer,
+        device: str,
+        max_length: int = 2001,
+    ):
+        """Initializes the dataset object.
+
+        Args:
+            wild_type_peptides (list[str]): list of sequences of wild_type peptides.
+            mutated_peptides (list[str]): list of sequences of mutated peptides.
+            tabular_features (dict[str, list]): dictionnary containing tabular featuer values
+            labels (list[int]): IG labels of the (wild_type, mutated) sequence pairs.
+            llm (AutoModelFroMaskedLM): LLM to compute sequence embeddigs.
+            tokenizer (AutoTokenizer): used to tokenize sequences
+            device (str): device on which the embeddings will be computed
+            max_length (int): maximum treatable length.
+        """
+        self._wild_type_peptides = wild_type_peptides
+        self._mutated_peptides = mutated_peptides
+        self._tabular_features = tabular_features
+        self._llm = llm
+        self._tokenizer = tokenizer
+        self._device = device
+        self._max_length = max_length
+        if labels == []:
+            self._labels = [float("inf") for _ in range(len(mutated_peptides))]
+        else:
+            self._labels = labels
+
+    def compute_batch_mutation_embeddings(
+        self, pairs_batch: list, attention_mask: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Computes embeddings for a batch of pairs of (wild_type, mutated) sequences.
+
+        Args:
+            pairs_batch (list): batch of (wild_type, mutated) sequence pairs
+
+        Returns:
+            torch.Tensor: batch embeddings of (wild_type, mutated) sequence pairs.
+            torch.Tensor: tensor of batch features
+            torch.Tensor: tensor of batch labels
+        """
+        batch_sequence_pairs, batch_features, batch_labels = zip(*pairs_batch)
+        batch_size = len(batch_sequence_pairs)
+
+        # flatten batch sequence pairs to be tokenized in one pass
+        flattened_batch_sequence_pairs = [seq for pair in batch_sequence_pairs for seq in pair]
+
+        # batch tokenized pairs
+        x = self._tokenizer.batch_encode_plus(
+            flattened_batch_sequence_pairs,
+            return_tensors="pt",
+            padding="max_length",
+            max_length=self._max_length,
+        )["input_ids"]
+
+        if not attention_mask:
+            attention_mask = x != self._tokenizer.cls_token_id
+
+        # batch embedding pairs
+        x = self._llm(
+            x.view(batch_size * 2, -1),  # flatten along batch to compute all embeddings in one pass
+            attention_mask=attention_mask.view(batch_size * 2, -1),
+            encoder_attention_mask=attention_mask,
+            output_hidden_states=True,
+        )["hidden_states"][-1]
+
+        # group embeddings along batch
+        x = torch.reshape(x, (batch_size, 2, self._max_length, -1))
+
+        # mutation embedding given by the difference between the mutated and wild type
+        mutation_embeddings = x[:, 0, :, :] - x[:, 1, :, :]
+
+        # calculate attention mask of the mutation embeddings in a way that positions
+        # that are masked on either of the wild type or mutated sequences,
+        # is masked on the final (mutation) sequence
+        mutation_mask = torch.unsqueeze(
+            torch.mul(attention_mask[0, :], attention_mask[1, :]),
+            dim=-1,
+        ).to(self._device)
+
+        aggregated_embedding = torch.sum(mutation_mask * mutation_embeddings, axis=-2) / torch.sum(
+            mutation_mask
+        )
+
+        return aggregated_embedding, batch_features, batch_labels
+
+    def __len__(self) -> int:
+        """Returns the number of samples in the whole dataset."""
+        return len(self._labels)
+
+    def __getitem__(self, idx: int) -> Tuple[Tuple[str, str], list, float]:
+        """Returns a pair of (wild_type, mutated) and corresponding label.
+
+        Args:
+            idx (int): index or list of indexes of pairs to return.
+
+        Returns:
+            Tuple[Tuple[str, str], list, list]: tokenized sequenes pair, tabular features and label.
+        """
+        sequence_pair = (self._wild_type_peptides[idx], self._mutated_peptides[idx])
+        features = [
+            self._tabular_features[feature][idx] for feature in self._tabular_features.keys()
+        ]
+        label = self._labels[idx]
+        return sequence_pair, features, label
