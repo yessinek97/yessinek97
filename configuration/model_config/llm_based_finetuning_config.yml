@@ -1,0 +1,42 @@
+model_type: LLMBasedModel # LLMBasedModel, MixedModel
+model_config:
+  general_params:
+    # LLM model path from HuggingFace (Protein models: ESM / protBERT or DNA models: NT models)
+    llm_hf_model_path: #"InstaDeepAI/nucleotide-transformer-v2-50m-multi-species" # Rostlab/prot_bert_bfd  # facebook/esm2_t33_650M_UR50D
+    is_masked_model: False
+    training_type: finetuning #peft, finetuning, probing
+    # wild type and mutated/tested sequences (column name used to load sequences from csv file and embeddings file)
+    wildtype_col_name: wildtype_peptide_biondeep_mhci
+    mutated_col_name: tested_peptide_biondeep_mhci
+    save_llm_only: False # Only used with LLMBasedModel
+    pretrained_llm_path: # None, Path (Only used with MixedModel)
+    # ML model params (only needed for MixedModel)
+    num_boost_round: 20000000
+    verbose_eval: 10
+    early_stopping_rounds: 15
+  model_params:
+    context_length: 100 # supported sequence length on base pairs
+    embed_dim: 2560 # 1024 for protBERT & NT 500m, 512 for NT 50m and 2560 for ESM2 3B
+    mlp_layer_sizes: [2048, 512, 128, 32, 8, 2, 1]
+    k_for_kmers: 6
+    batch_size: 16
+    batch_size_test: 16
+    shuffle_dataloader: True
+    lr: 0.005
+    num_epochs: 1
+    threshold: 0.1
+    seed: 2020
+    ml_model_params: # used in case of using MixedModel
+      alpha: 0.02
+      booster: gbtree
+      colsample_bytree: 1
+      eta: 0.01
+      eval_metric: logloss
+      gamma: 0.4
+      lambda: 5
+      max_depth: 7
+      min_child_weight: 19
+      nthread: 32
+      objective: binary:logistic
+      seed: 2020
+      subsample: 1

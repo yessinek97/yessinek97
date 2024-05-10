@@ -39,6 +39,7 @@ from ig.src.utils import (
     load_models,
     load_yml,
     log_summary_results,
+    save_probing_embeddings,
     save_yml,
     seed_basic,
 )
@@ -119,6 +120,17 @@ def train(
         experiment_path=experiment_path,
         force=force,
     )
+
+    # Save probing embeddings file in model directory
+    if "LLMBasedModel" in model_types:
+        if (
+            model_params[model_types.index("LLMBasedModel")]["general_params"]["training_type"]
+            == "probing"
+        ):
+            save_probing_embeddings(
+                experiment_path,
+                model_params[model_types.index("LLMBasedModel")]["general_params"]["emb_file_path"],
+            )
 
     log.info("*********************** Load and process Train , Test *********************** ")
     existing_features_lists: List[str] = general_configuration.get("feature_paths", [])
@@ -253,6 +265,18 @@ def train_seed_fold(  # noqa
     model_types, model_params = load_models(
         general_configuration=general_configuration, experiment_path=experiment_path
     )
+
+    # Save probing embeddings file in model directory
+    if "LLMBasedModel" in model_types:
+        if (
+            model_params[model_types.index("LLMBasedModel")]["general_params"]["training_type"]
+            == "probing"
+        ):
+            save_probing_embeddings(
+                experiment_path,
+                model_params[model_types.index("LLMBasedModel")]["general_params"]["emb_file_path"],
+            )
+
     seeds: List[int] = general_configuration["processing"]["seeds"]
     folds: List[int] = general_configuration["processing"]["folds"]
     eval_configuration: Dict[str, str] = general_configuration["evaluation"]
@@ -433,6 +457,18 @@ def tune(
     model_types, model_params = load_models(
         general_configuration=general_configuration, experiment_path=experiment_path
     )
+
+    # Save probing embeddings file in model directory
+    if "LLMBasedModel" in model_types:
+        if (
+            model_params[model_types.index("LLMBasedModel")]["general_params"]["training_type"]
+            == "probing"
+        ):
+            save_probing_embeddings(
+                experiment_path,
+                model_params[model_types.index("LLMBasedModel")]["general_params"]["emb_file_path"],
+            )
+
     log.info("****************************** Load Models ****************************** ")
     results: List[TuneResults] = []
     save_yml(general_configuration, experiment_path / "configuration.yml")
@@ -568,8 +604,8 @@ def _check_model_folder(experiment_path: Path) -> None:
     if experiment_path.exists():
         click.confirm(
             (
-                f"The model folder with the name {experiment_path.name} already exists."
-                "Do you want to continue the training but"
+                f"The model folder with the name {experiment_path.name} already exists. "
+                "Do you want to continue the training but "
                 "all the checkpoints will be deleted?"
             ),
             abort=True,

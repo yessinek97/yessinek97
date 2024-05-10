@@ -7,6 +7,10 @@ import torch
 from torch.utils.data import Dataset
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 
+from ig.src.logger import get_logger
+
+log = get_logger("Train/model/torch_dataset")
+
 
 class OneSequenceDatasetForEmbedding(Dataset):
     """Pytorch dataset class for embedding computation.
@@ -306,3 +310,61 @@ class MixedDataset(torch.utils.data.Dataset):
         ]
         label = self._labels[idx]
         return sequence_pair, features, label
+
+
+class EmbeddingsPairsDataset(torch.utils.data.Dataset):
+    """Pytorch dataset class for loading embedded sequences.
+
+    Args:
+        torch.utils.data.Datasets (_type_): .
+    """
+
+    def __init__(
+        self,
+        wild_type_sequences: list,
+        mutated_sequences: list,
+        embeddings: Dict,
+        labels: list,
+    ):
+        """Initializes the embeddings dataset object.
+
+        Args:
+            wild_type_sequences (list): list of wild type sequences
+            mutated_sequences (list): list of mutated sequences
+            embeddings (Dict): dictionary containing sequences as keys and their embeddings
+            labels (list): list of labels (floats)
+            config (Dict[str, Any]): dictionary containing the configuration parameters
+        """
+        self._wt_seq = wild_type_sequences
+        self._mt_seq = mutated_sequences
+        self._embeddings = embeddings
+        if labels == []:
+            self._labels = [float("inf") for _ in range(len(mutated_sequences))]
+        else:
+            self._labels = labels
+
+    def __len__(self) -> int:
+        """Returns the number of samples in the whole dataset."""
+        return len(self._labels)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, float]:
+        """Returns a pair of embeddings (wt_emb, mt_emb) and corresponding label.
+
+        Args:
+            idx (int): index of pairs to return.
+
+        Returns:
+            Tuple[Tuple[torch.Tensor, torch.Tensor], torch.Tensor]: (wt_seq, mt_seq) and label.
+        """
+        # use the sample ID to get it's wt_seq, mt_seq
+        wt_seq = self._wt_seq[idx]
+        mt_seq = self._mt_seq[idx]
+        # Use the seq as key to get it's emmbedding vector
+        wt_emb = self._embeddings[wt_seq]
+        mt_emb = self._embeddings[mt_seq]
+        label = self._labels[idx]
+        embeddings_pair = (wt_emb, mt_emb)
+        embeddings_pair = torch.Tensor(embeddings_pair)
+        label = float(label)
+
+        return embeddings_pair, label

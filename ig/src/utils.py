@@ -19,6 +19,8 @@ import shap
 import yaml
 
 from ig import (
+    DATA_DIRECTORY,
+    DATAPROC_DIRECTORY,
     DEFAULT_SEED,
     EXP_NAMES,
     EXPERIMENT_MODEL_CONFIGURATION_DIRECTORY,
@@ -59,6 +61,26 @@ def load_pkl(file_path: Union[str, Path]) -> Any:
         obj = pickle.load(f)
 
     return obj
+
+
+# Loads an embeddings pickle file for probing experiment
+def load_embedding_file(file_path: str) -> Any:
+    """Load pre generated sequence embeddings from a pickle file.
+
+    Args:
+        file_path (str): Path to the embedding file
+
+    Raises:
+        FileNotFoundError: raise an error if the file can't be found
+
+    Returns:
+        Any: return an object with the file
+    """
+    local_path = DATA_DIRECTORY / file_path
+    if Path(local_path).exists():
+        log.info("Loading embedding pickle file at: %s", local_path)
+        return load_pkl(local_path)
+    raise FileNotFoundError("The embeddings pickle file %s cannot be found!!!" % local_path)
 
 
 def load_json(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -155,6 +177,70 @@ def load_models(
         model_types.append(model["model_type"])
         model_config.append(model["model_config"])
     return model_types, model_config
+
+
+def copy_embeddings_file(source_path: Path, destination_path: Path) -> bool:
+    """Save embeddings file when doing probing to the current experiment directory.
+
+    Args:
+        source_path (Path): source embedding file path
+        destination_path (Path): destination path inside the current data_proc directory
+
+    Returns:
+        bool: retrun true if the file was copied correctly
+    """
+    # shutil.copy2() method copies the source file to the destination directory with it's metadata
+    dst = shutil.copy2(source_path, destination_path)
+
+    return dst.exists()
+
+
+def change_embeddings_path(config_path: Path, new_path: Path) -> bool:
+    """Change emb_file_path in llm models config file to the new file that was copyed inside the experiment's data_proc directory.
+
+    Args:
+        config_path (Path): llm models config file path
+        new_path (Path): the path of the copied embeddings file
+
+    Returns:
+        bool: return true if the change was successfull
+    """
+    config = load_yml(config_path)
+
+    config["model_config"]["general_params"]["emb_file_path"] = str(new_path)
+
+    save_yml(config, config_path)
+
+    return config_path.exists()
+
+
+def save_probing_embeddings(experiment_path: Path, emb_file_path: Path) -> None:
+    """Check if the current experiment has an LLM probing model then save it's embeddings file to the models directory.
+
+    Args:
+        experiment_path (Path): Path to the current experiment
+        emb_file_path (Path): Path to the probing embeddings file
+
+    Returns:
+        None
+    """
+    emb_file_path = DATA_DIRECTORY / emb_file_path
+    file_name = Path(emb_file_path).name
+    emb_dest_path = experiment_path / DATAPROC_DIRECTORY / file_name
+
+    # Copy the embeddings file to data_proc/ inside the current experiment directory
+    saved = copy_embeddings_file(emb_file_path, emb_dest_path)
+
+    # Change the embeddings path in current experiment llm model config
+    llm_model_conf_path = (
+        experiment_path / EXPERIMENT_MODEL_CONFIGURATION_DIRECTORY / "llm_based_model_config.yml"
+    )
+    changed = change_embeddings_path(llm_model_conf_path, emb_dest_path)
+
+    if saved & changed:
+        log.info("Embeddings file was successfully copied to : %s", emb_dest_path)
+    else:
+        log.warning("The embeddings file for probing experiment was not saved!!!")
 
 
 def load_fs(config: Dict[str, Any]) -> Tuple[List[str], List[Dict[str, Any]]]:

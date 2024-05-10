@@ -26,12 +26,12 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 
-from ig.dataset.torch_dataset import MixedDataset, PeptidePairsDataset
+from ig.dataset.torch_dataset import EmbeddingsPairsDataset, MixedDataset, PeptidePairsDataset
 from ig.src.evaluation import Evaluation
-from ig.src.llm_based_models import FinetuningModel
+from ig.src.llm_based_models import FinetuningModel, ProbingModel
 from ig.src.logger import ModelLogWriter, get_logger
 from ig.src.torch_utils import set_torch_reproducibility
-from ig.src.utils import crop_sequences, save_as_pkl
+from ig.src.utils import crop_sequences, load_embedding_file, save_as_pkl
 
 log = get_logger("Train/model")
 original_stdout = sys.__stdout__
@@ -377,14 +377,17 @@ class LLMBasedModel(BaseModel):
             checkpoints=checkpoints,
             save_model=save_model,
         )
-        # set torch in deterministic mode (for reproducibility)
-        self._tokenizer = AutoTokenizer.from_pretrained(other_params["llm_hf_model_path"])
+
         self._attention_mask = attention_mask
+
         self._training_type = other_params["training_type"]
         self.check_training_type()
+        log.info("Training type: %s", self._training_type)
+        # set torch in deterministic mode (for reproducibility)
         set_torch_reproducibility(self.parameters["seed"])
 
         if self._training_type in ["finetuning", "peft"]:
+            self._tokenizer = AutoTokenizer.from_pretrained(other_params["llm_hf_model_path"])
             self._llm_based_model = FinetuningModel(
                 model_configuration=parameters,
                 llm_hf_model_path=other_params["llm_hf_model_path"],
@@ -392,10 +395,10 @@ class LLMBasedModel(BaseModel):
                 tokenizer=self._tokenizer,
                 training_type=self._training_type,
             )
-
-        elif self._training_type == "probing_model":
-            # TODO: add instanciation of probing model when ready
-            raise NotImplementedError
+        elif self._training_type == "probing":
+            self._llm_based_model = ProbingModel(model_configuration=parameters)
+            # Load embeddings from pickle file
+            self._embeddings_pkl = load_embedding_file(other_params["emb_file_path"])
 
         # only save finetuned backbone to use for another task
         # instead of saving the whole LLMBasedModel
@@ -405,7 +408,6 @@ class LLMBasedModel(BaseModel):
         self._device = torch.device("cuda" if self._use_cuda else "cpu")
         if self._use_cuda:
             # send model to GPU and enable multi-gpu usage
-
             self._llm_based_model = torch.nn.DataParallel(self._llm_based_model).to(self._device)
 
         self._wildtype_col_name = other_params["wildtype_col_name"]
@@ -443,7 +445,7 @@ class LLMBasedModel(BaseModel):
         num_epochs = self.parameters["num_epochs"]
         epochs_iterator = tqdm(range(num_epochs))
         for epoch_num in epochs_iterator:
-            epochs_iterator.set_description(f"epoch: {epoch_num}/{num_epochs}")
+            epochs_iterator.set_description(f"epoch: {epoch_num+1}/{num_epochs}")
             self.train_one_epoch(train_dataloader, max_length_train)
             self.validate_one_epoch(val_dataloader, max_length_val)
             epochs_iterator.set_postfix({"Train accuracy": self._metrics["train_acc"][epoch_num]})
@@ -506,7 +508,10 @@ class LLMBasedModel(BaseModel):
         label = label.to(self._device)
 
         # forward pass
-        logits = self._llm_based_model(pair, max_length, self._attention_mask)
+        logits = self._llm_based_model(
+            pair=pair, max_length=max_length, attention_mask=self._attention_mask
+        )
+
         probs = torch.nn.Sigmoid()(logits)
         prediction = (
             probs.detach()
@@ -577,7 +582,10 @@ class LLMBasedModel(BaseModel):
         label = label.to(self._device)
 
         # forward pass
-        logits = self._llm_based_model(pair, max_length, self._attention_mask)
+        logits = self._llm_based_model(
+            pair=pair, max_length=max_length, attention_mask=self._attention_mask
+        )
+
         probs = torch.nn.Sigmoid()(logits)
         prediction = (
             probs.detach()
@@ -614,14 +622,16 @@ class LLMBasedModel(BaseModel):
     def predict(self, data: pd.DataFame, with_label: bool) -> Any:
         """Prediction method."""
         inference_dataloader, max_length = self._create_matrix(data, with_label)
-
         log.info(f"Started inference using: {self._device}")
 
         predictions = []
         with torch.no_grad():
             for pair, _ in tqdm(inference_dataloader):
                 pair = pair.to(self._device)
-                logits = self._llm_based_model(pair, max_length, self._attention_mask)
+                logits = self._llm_based_model(
+                    pair=pair, max_length=max_length, attention_mask=self._attention_mask
+                )
+
                 predictions += torch.nn.Sigmoid()(logits).detach().cpu()
 
         return predictions
@@ -631,10 +641,44 @@ class LLMBasedModel(BaseModel):
         if self._training_type in ["finetuning", "peft"]:
             dataloader, max_length = self.create_peptide_pairs_dataloader(data, with_label)
         else:
-            # TODO add EmbeddingPairs dataloader creator when ready
-            raise NotImplementedError
-
+            dataloader, max_length = self.create_embeddings_pairs_dataloader(data, with_label)
         return dataloader, max_length
+
+    # dataloader creator for probing
+    def create_embeddings_pairs_dataloader(
+        self, dataframe: pd.DataFrame, with_label: bool
+    ) -> tuple[DataLoader, int]:
+        """Creates a sequence dataset for finetuning.
+
+        Args:
+            dataframe (pd.DataFrame): dataframe containing sequence pairs and labels.
+            with_label (bool): whether or not the dataset is labeled.
+
+        Returns:
+            Tuple[DataLoader, int]: Returns finetuning dataloader and length of longest seq.
+        """
+        # read sequences and labels from dataframe
+        wild_type_sequences = list(dataframe[self._wildtype_col_name])
+        mutated_sequences = list(dataframe[self._mutated_col_name])
+
+        labels = []
+        if with_label:
+            labels = list(dataframe[self.label_name])
+
+        # length of the longest sequence
+        max_length = len(max(wild_type_sequences, key=len))
+
+        # instanciate Embedding Pairs dataset
+        embedding_pairs_dataset = EmbeddingsPairsDataset(
+            wild_type_sequences, mutated_sequences, self._embeddings_pkl, labels
+        )
+        # instanciate Embedding Pairs dataloader
+        embedding_pairs_dataloader = DataLoader(
+            embedding_pairs_dataset,
+            batch_size=self.parameters["batch_size"],
+            shuffle=self.parameters["shuffle_dataloader"],
+        )
+        return embedding_pairs_dataloader, max_length
 
     # dataloader creator for finetuning or peft
     def create_peptide_pairs_dataloader(
@@ -700,9 +744,9 @@ class LLMBasedModel(BaseModel):
 
     def check_training_type(self) -> None:
         """Checks if the chosen model type is valid."""
-        supprted_types = ["finetuning", "probing", "peft"]
-        if self._training_type not in supprted_types:
-            raise ValueError(f"type '{self._training_type}' not in {supprted_types}")
+        supported_types = ["finetuning", "probing", "peft"]
+        if self._training_type not in supported_types:
+            raise ValueError(f"Training type '{self._training_type}' not in {supported_types}")
 
 
 class MixedModel(BaseModel):
@@ -756,7 +800,7 @@ class MixedModel(BaseModel):
         self._device = torch.device("cuda" if self._use_cuda else "cpu")
 
         self._llm = AutoModelForMaskedLM.from_pretrained(
-            other_params["llm_hf_model_path"], trust_remote_code=True
+            other_params["llm_hf_model_path"], trust_remote_code=True, output_hidden_states=True
         )
         if other_params["training_type"] == "peft":
             peft_config = LoraConfig(
@@ -915,7 +959,7 @@ class MixedModel(BaseModel):
         if with_label:
             labels = list(dataframe[self.label_name])
 
-            # crop sequences to match desired context length
+        # crop sequences to match desired context length
         if self.parameters["context_length"]:
 
             if self._mutation_position_col_name and self._mutation_position_col_name in list(

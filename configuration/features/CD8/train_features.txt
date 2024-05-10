@@ -1,2 +1,2 @@
-wild_type
-mutated
+wildtype_peptide_biondeep_mhci
+tested_peptide_biondeep_mhci

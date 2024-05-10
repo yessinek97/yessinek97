@@ -1,5 +1,5 @@
 """Definition of the LLMBasedModel class."""
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import torch
 from peft import LoraConfig, TaskType, get_peft_model
@@ -15,28 +15,15 @@ class TorchBaseModel(torch.nn.Module):
 
     def __init__(
         self,
-        llm_hf_model_path: str,
-        is_masked_model: bool,
         model_configuration: Dict[str, Any],
     ):
         """Initializes the model object.
 
         Args:
-            llm_hf_model_path (str): path to HuggingFace model
-            is_masked_model (bool): uses AutoModelMaskedLM if True
             model_configuration (Dict[str, Any]): dict containing model configuration
         """
         super().__init__()
         self._model_configuration = model_configuration
-        self._llm_hf_model_path = llm_hf_model_path
-        if is_masked_model:
-            self.llm = AutoModelForMaskedLM.from_pretrained(
-                self._llm_hf_model_path, trust_remote_code=True
-            )
-        else:
-            self.llm = self.llm = AutoModel.from_pretrained(
-                self._llm_hf_model_path, trust_remote_code=True
-            )
 
         mlp_layer_sizes = self._model_configuration["mlp_layer_sizes"]
         if not mlp_layer_sizes:
@@ -79,11 +66,17 @@ class FinetuningModel(TorchBaseModel):
             training_type: training strategy, peft, finetuning or probing
             tokenizer (AutoTokenizer): tokenize sequences according to the chosen LLM
         """
-        super().__init__(
-            model_configuration=model_configuration,
-            llm_hf_model_path=llm_hf_model_path,
-            is_masked_model=is_masked_model,
-        )
+        super().__init__(model_configuration=model_configuration)
+
+        self._llm_hf_model_path = llm_hf_model_path
+        if is_masked_model:
+            self.llm = AutoModelForMaskedLM.from_pretrained(
+                self._llm_hf_model_path, trust_remote_code=True, output_hidden_states=True
+            )
+        else:
+            self.llm = AutoModel.from_pretrained(
+                self._llm_hf_model_path, trust_remote_code=True, output_hidden_states=True
+            )
         self._tokenizer = tokenizer
         if training_type == "peft":
             peft_config = LoraConfig(
@@ -98,15 +91,17 @@ class FinetuningModel(TorchBaseModel):
 
     def forward(
         self,
-        x: torch.Tensor,
-        max_length: int,
-        attention_mask: Optional[torch.Tensor] = None,
+        **kwargs: Dict,
     ) -> torch.Tensor:
         """Definition of the model forward pass.
 
         Returns:
             torch.Tensor: binary immune response prediction
         """
+        x: torch.Tensor = kwargs["pair"]
+        attention_mask: torch.Tensor = kwargs["attention_mask"]
+        max_length = kwargs["max_length"]
+
         batch_size = x.shape[0]
 
         if not attention_mask:
@@ -144,5 +139,47 @@ class FinetuningModel(TorchBaseModel):
             aggregated_embedding = self._relu(aggregated_embedding)
 
         logits = self._mlp_layers[-1](aggregated_embedding)
+
+        return logits
+
+
+class ProbingModel(TorchBaseModel):
+    """Probing Model uses generated embeddings of the mutated and wild type sequences.
+
+    Args:
+        Super class (torch.nn.Module): _description_
+    """
+
+    def __init__(
+        self,
+        model_configuration: Dict[str, Any],
+    ):
+        """Initializes the model object.
+
+        Args:
+            model_configuration (Dict[str, Any]): dict containing model configuration
+        """
+        super().__init__(model_configuration=model_configuration)
+
+    def forward(
+        self,
+        **kwargs: Dict,
+    ) -> torch.Tensor:
+        """Definition of the model forward pass.
+
+        Returns:
+            torch.Tensor: binary immune response prediction
+        """
+        x: torch.Tensor = kwargs["pair"]
+
+        # mutation embedding given by the difference between the mutated and wild type
+        mutation_embeddings = x[:, 0, :] - x[:, 1, :]
+
+        # pass aggregated embedding through MLP layers
+        for layer in self._mlp_layers[:-1]:
+            mutation_embeddings = layer(mutation_embeddings)
+            mutation_embeddings = self._relu(mutation_embeddings)
+
+        logits = self._mlp_layers[-1](mutation_embeddings)
 
         return logits
