@@ -1,4 +1,4 @@
-model_type: LLMBasedModel # LLMBasedModel, MixedModel
+model_type: MixedModel # LLMBasedModel, MixedModel
 model_config:
   general_params:
     llm_hf_model_path: "facebook/esm2_t33_650M_UR50D"
@@ -14,6 +14,7 @@ model_config:
     early_stopping_rounds: 15
     wildtype_col_name: wildtype_peptide
     mutated_col_name: tested_peptide
+    mutation_position_col_name:
   model_params:
     context_length: # supported sequence length on base pairs
     embed_dim: 1280

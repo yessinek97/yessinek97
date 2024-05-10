@@ -410,6 +410,7 @@ class LLMBasedModel(BaseModel):
 
         self._wildtype_col_name = other_params["wildtype_col_name"]
         self._mutated_col_name = other_params["mutated_col_name"]
+        self._mutation_position_col_name = other_params["mutation_position_col_name"]
 
         self._prob_threshold = parameters["threshold"]
         self._criterion = torch.nn.BCEWithLogitsLoss()
@@ -658,14 +659,23 @@ class LLMBasedModel(BaseModel):
 
         # crop sequences to match desired context length
         if self.parameters["context_length"]:
-            mutation_start_positions = list(dataframe["mutation_start_position"])
-            context_length = self.parameters["context_length"]
-            wild_type_sequences = crop_sequences(
-                wild_type_sequences, mutation_start_positions, context_length
-            )
-            mutated_sequences = crop_sequences(
-                mutated_sequences, mutation_start_positions, context_length
-            )
+            if self._mutation_position_col_name and self._mutation_position_col_name in list(
+                dataframe.columns
+            ):
+                mutation_start_positions = list(dataframe["mutation_start_position"])
+                context_length = self.parameters["context_length"]
+                wild_type_sequences = crop_sequences(
+                    wild_type_sequences, mutation_start_positions, context_length
+                )
+                mutated_sequences = crop_sequences(
+                    mutated_sequences, mutation_start_positions, context_length
+                )
+
+            else:
+                raise ValueError(
+                    "if context length is set, mutation positions should be provided"
+                    "and the corresponding column should exist"
+                )
 
         # number of tokens of the longest sequence
         max_length = max(
@@ -770,6 +780,8 @@ class MixedModel(BaseModel):
 
         self._wildtype_col_name = other_params["wildtype_col_name"]
         self._mutated_col_name = other_params["mutated_col_name"]
+        self._mutation_position_col_name = other_params["mutation_position_col_name"]
+
         self._metrics: dict[str, list[float]] = defaultdict(list)
 
     def fit(
@@ -905,14 +917,25 @@ class MixedModel(BaseModel):
 
             # crop sequences to match desired context length
         if self.parameters["context_length"]:
-            mutation_start_positions = list(dataframe["mutation_start_position"])
-            context_length = self.parameters["context_length"]
-            wild_type_sequences = crop_sequences(
-                wild_type_sequences, mutation_start_positions, context_length
-            )
-            mutated_sequences = crop_sequences(
-                mutated_sequences, mutation_start_positions, context_length
-            )
+
+            if self._mutation_position_col_name and self._mutation_position_col_name in list(
+                dataframe.columns
+            ):
+
+                mutation_start_positions = list(dataframe["mutation_start_position"])
+                context_length = self.parameters["context_length"]
+                wild_type_sequences = crop_sequences(
+                    wild_type_sequences, mutation_start_positions, context_length
+                )
+                mutated_sequences = crop_sequences(
+                    mutated_sequences, mutation_start_positions, context_length
+                )
+
+            else:
+                raise ValueError(
+                    "if context length is set, mutation positions should be provided"
+                    "and the corresponding column should exist"
+                )
 
         # number of tokens of the longest sequence
         max_length = max(
