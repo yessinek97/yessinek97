@@ -1,4 +1,4 @@
-model_type: LLMBasedModel # LLMBasedModel, MixedModel
+model_type: LLMModel # LLMModel, LLMMixedModel
 model_config:
   general_params:
     # LLM model path from HuggingFace (Protein models: ESM / protBERT or DNA models: NT models)
@@ -8,9 +8,10 @@ model_config:
     # wild type and mutated/tested sequences (column name used to load sequences from csv file and embeddings file)
     wildtype_col_name: wildtype_peptide_biondeep_mhci
     mutated_col_name: tested_peptide_biondeep_mhci
-    save_llm_only: False # Only used with LLMBasedModel
-    pretrained_llm_path: # None, Path (Only used with MixedModel)
-    # ML model params (only needed for MixedModel)
+    mutation_position_col_name:
+    save_llm_only: False # Only used with LLMModel
+    pretrained_llm_path: # None, Path (Only used with LLMMixedModel)
+    # ML model params (only needed for LLMMixedModel)
     num_boost_round: 20000000
     verbose_eval: 10
     early_stopping_rounds: 15
@@ -26,7 +27,7 @@ model_config:
     num_epochs: 1
     threshold: 0.1
     seed: 2020
-    ml_model_params: # used in case of using MixedModel
+    ml_model_params: # used in case of using LLMMixedModel
       alpha: 0.02
       booster: gbtree
       colsample_bytree: 1

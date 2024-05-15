@@ -60,7 +60,7 @@ processing:
 models:
   # - xgboost_config.yml
   # - lgbm_config.yml
-  - llm_based_model_config.yml
+  - llm_based_probing_config.yml
 
 evaluation:
   print_evals: True

@@ -28,7 +28,7 @@ last_*.yaml
 missing.csv
 
 .coverage*
-.vscode/settings.json
+.vscode/
 .neptune/
 
 !requirements.txt
@@ -39,14 +39,13 @@ missing.csv
 # IG
 !configuration/*.txt
 data/*
-models*
+models/*
 tests/models
 tests/data
 tests/fixtures
 test-results.xml
 tests/fixtures/go_pipeline_test
 tests/data
-*.pyc
 ig.egg-info/
 .cache
 .bash_history

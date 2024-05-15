@@ -46,7 +46,7 @@ processing:
   fold: 5
 models:
   - xgboost_config.yml
-  #- lgbm_config.yml
+  - lgbm_config.yml
 
 evaluation:
   print_evals: True

@@ -9,9 +9,9 @@ import pandas as pd
 from ig import DEFAULT_SEED, KFOLD_MODEL_NAME
 from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsEvalType
 from ig.dataset.dataset import Dataset
+from ig.models.base_model import BaseModel
 from ig.src.experiments.base import BaseExperiment
 from ig.src.logger import get_logger
-from ig.src.models import BaseModel
 from ig.src.utils import load_pkl, maybe_int, plotting_kfold_shap_values, save_yml
 
 log: Logger = get_logger("KfoldMultiSeed")

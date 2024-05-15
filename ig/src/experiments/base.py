@@ -11,7 +11,7 @@ import pandas as pd
 import seaborn as sns
 import torch
 
-import ig.src.models as src_model
+import ig.models as src_model
 from ig import FEATURES_SELECTION_DIRECTORY, MODELS_DIRECTORY, SINGLE_MODEL_NAME
 from ig.constants import (
     EvalExpType,
@@ -21,9 +21,9 @@ from ig.constants import (
     MetricsEvalType,
 )
 from ig.dataset.dataset import Dataset
+from ig.models import BaseModelType
 from ig.src.evaluation import Evaluation
 from ig.src.logger import get_logger
-from ig.src.models import BaseModelType
 from ig.src.utils import (
     get_model_by_name,
     load_features,
@@ -389,15 +389,15 @@ class BaseExperiment(ABC):
             "LogisticRegressionModel",
             "RandomForestModel",
             "SupportVectorMachineModel",
-            "LLMBasedModel",
-            "MixedModel",
+            "LLMModel",
+            "LLMMixedModel",
         ]:
             raise NotImplementedError(
                 f"{model_type} is not supported."
                 "The possible choices are:"
                 "[XgboostModel, LgbmModel, CatBoostModel,"
                 " LabelPropagationModel, RandomForestModel, SupportVectorMachineModel"
-                " LLMBasedModel, MixedModel]"
+                " LLMModel, LLMMixedModel]"
             )
         return model_type
 

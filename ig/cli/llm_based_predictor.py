@@ -11,7 +11,7 @@ from transformers import AutoTokenizer
 
 from ig import CONFIGURATION_DIRECTORY
 from ig.dataset.torch_dataset import PeptidePairsDataset
-from ig.src.llm_based_models import FinetuningModel
+from ig.models.torch_based_models import FinetuningModel
 from ig.src.utils import load_yml
 
 

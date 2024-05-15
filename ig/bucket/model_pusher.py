@@ -6,8 +6,8 @@ from typing import Iterable
 
 from ig.bucket.click.constants import MODELS_BUCKET_NAME
 from ig.bucket.gs import GSManager
+from ig.models.base_model import BaseModel
 from ig.src.logger import get_logger
-from ig.src.models import BaseModel
 
 log = get_logger("Model Pusher")
 

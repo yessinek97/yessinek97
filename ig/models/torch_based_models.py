@@ -1,4 +1,4 @@
-"""Definition of the LLMBasedModel class."""
+"""Definition of the TorchBaseModel class."""
 from typing import Any, Dict
 
 import torch

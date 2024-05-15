@@ -122,14 +122,14 @@ def train(
     )
 
     # Save probing embeddings file in model directory
-    if "LLMBasedModel" in model_types:
+    if "LLMModel" in model_types:
         if (
-            model_params[model_types.index("LLMBasedModel")]["general_params"]["training_type"]
+            model_params[model_types.index("LLMModel")]["general_params"]["training_type"]
             == "probing"
         ):
             save_probing_embeddings(
                 experiment_path,
-                model_params[model_types.index("LLMBasedModel")]["general_params"]["emb_file_path"],
+                model_params[model_types.index("LLMModel")]["general_params"]["emb_file_path"],
             )
 
     log.info("*********************** Load and process Train , Test *********************** ")
@@ -267,14 +267,14 @@ def train_seed_fold(  # noqa
     )
 
     # Save probing embeddings file in model directory
-    if "LLMBasedModel" in model_types:
+    if "LLMModel" in model_types:
         if (
-            model_params[model_types.index("LLMBasedModel")]["general_params"]["training_type"]
+            model_params[model_types.index("LLMModel")]["general_params"]["training_type"]
             == "probing"
         ):
             save_probing_embeddings(
                 experiment_path,
-                model_params[model_types.index("LLMBasedModel")]["general_params"]["emb_file_path"],
+                model_params[model_types.index("LLMModel")]["general_params"]["emb_file_path"],
             )
 
     seeds: List[int] = general_configuration["processing"]["seeds"]
@@ -459,14 +459,14 @@ def tune(
     )
 
     # Save probing embeddings file in model directory
-    if "LLMBasedModel" in model_types:
+    if "LLMModel" in model_types:
         if (
-            model_params[model_types.index("LLMBasedModel")]["general_params"]["training_type"]
+            model_params[model_types.index("LLMModel")]["general_params"]["training_type"]
             == "probing"
         ):
             save_probing_embeddings(
                 experiment_path,
-                model_params[model_types.index("LLMBasedModel")]["general_params"]["emb_file_path"],
+                model_params[model_types.index("LLMModel")]["general_params"]["emb_file_path"],
             )
 
     log.info("****************************** Load Models ****************************** ")

@@ -233,7 +233,7 @@ def save_probing_embeddings(experiment_path: Path, emb_file_path: Path) -> None:
 
     # Change the embeddings path in current experiment llm model config
     llm_model_conf_path = (
-        experiment_path / EXPERIMENT_MODEL_CONFIGURATION_DIRECTORY / "llm_based_model_config.yml"
+        experiment_path / EXPERIMENT_MODEL_CONFIGURATION_DIRECTORY / "llm_based_probing_config.yml"
     )
     changed = change_embeddings_path(llm_model_conf_path, emb_dest_path)
 

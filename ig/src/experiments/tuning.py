@@ -9,13 +9,13 @@ import pandas as pd
 from hyperopt import STATUS_OK, Trials, hp, tpe
 from hyperopt.fmin import fmin
 
-import ig.src.models as src_model
+import ig.models as src_model
 from ig import FEATURES_SELECTION_DIRECTORY, MODELS_DIRECTORY
 from ig.constants import TuningOptParamsType
 from ig.dataset.dataset import Dataset
+from ig.models import BaseModelType
 from ig.src.experiments.base import create_model
 from ig.src.metrics import topk_global
-from ig.src.models import BaseModelType
 from ig.src.utils import (
     convert_int_params,
     get_model_by_name,
