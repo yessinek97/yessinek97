@@ -37,7 +37,7 @@ stages for this pipeline to be functional.
 * Next, you need to __build__ the Docker image then __create__ and __start__ the IG container.
 
     ```bash
-    make build # or make build local=True  to build main docker image locally
+    make build  # or make build-local  to build main docker image locally
     make run
     ```
 

@@ -34,21 +34,20 @@ login:	##Login to the GitLab Docker registry
 pull: login ## Pull the latest docker image
 	docker pull $(DOCKER_IMAGE_LATEST)
 
-ifdef local
-build_local=docker build --cache-from $(DOCKER_IMAGE_LATEST) -t $(DOCKER_IMAGE_LATEST) -f Dockerfile .
-else
-build_local=@echo "local arg is not provided, skipping build of main docker image locally."
-endif
-
 build: pull## Builds the docker image from dockerfile
 
-	$(build_local)
 	docker build -t $(IMAGE_NAME)   --build-arg TAG=$(TAG) \
 								--build-arg host_gid=$$(id -g) \
 								--build-arg host_uid=$$(id -u) \
 								-f Dockerfile.local .
 
-run: ## Create the container.
+build-local:
+	docker build --cache-from $(DOCKER_IMAGE_LATEST) -t $(DOCKER_IMAGE_LATEST) -f Dockerfile .
+	docker build -t $(IMAGE_NAME)   --build-arg TAG=$(TAG) \
+								--build-arg host_gid=$$(id -g) \
+								--build-arg host_uid=$$(id -u) \
+								-f Dockerfile.local .
+run:  ## Create the container.
 	docker run -it $(DOCKER_RUN_FLAGS)  $(IMAGE_NAME)
 
 bash: ## gets a bash in the container
