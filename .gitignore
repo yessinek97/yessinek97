@@ -51,3 +51,4 @@ ig.egg-info/
 .bash_history
 .coverage
 tests/fixtures/splits.csv
+.vscode/launch.json

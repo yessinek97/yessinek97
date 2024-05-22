@@ -80,3 +80,45 @@ At last, we use code reviews to
 - catch bugs.
 
 Therefore, please be nice and objective and do not take comments personally.
+
+## Debugging
+
+In order to debug any IG scripts you can use the available [VScode Python debugger](https://code.visualstudio.com/docs/python/debugging).
+
+1. Add this config file `launch.json` in `.vscode/` directory
+
+    ```JSON
+    {
+      // Use IntelliSense to learn about possible attributes.
+      // Hover to view descriptions of existing attributes.
+      // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "name": "Python Debugger: Module",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "ig.main",
+          "console": "integratedTerminal",
+          "justMyCode": true,
+          //Command to be debugged
+          "args": [
+            "train",
+            "-train",
+            "data/quick_start/train.csv",
+            "-test",
+            "data/quick_start/test.csv",
+            "-n",
+            "quick_start_train",
+            "-c",
+            "quickstart_train.yml"
+          ]
+        }
+      ]
+    }
+    ```
+
+2. Edit `args` to specify the command that you want to debug
+3. Add Breakpoints and logpoints inside the script you want to inspect
+4. Press F5 to launch the debugger
+5. Check VScode Python debugger [documentation](https://code.visualstudio.com/docs/python/debugging) for more advanced options
