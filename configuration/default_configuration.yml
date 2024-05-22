@@ -27,11 +27,10 @@ experiments:
     plot_shap_values: False
 label: cd8_any
 feature_paths:
-  - train_features
-  # - best_exp_features
+  - ml_train_features
 processing:
   remove_unnecessary_folders: false
-  trainable_features: "clean_data_features.yml"
+  trainable_features: "features.yml"
   # exclude_features: # You can use prefixes(neofox..),suffixes(mhci,pmhc) patterns(tested) or the full feature name
   #   - neofox
   #   - ^diff.*whole$ #diff tested pep
@@ -58,9 +57,9 @@ processing:
   fold: 5
   nan_ratio: 0.6
 models:
-  # - xgboost_config.yml
+  - xgboost_config.yml
   # - lgbm_config.yml
-  - llm_based_probing_config.yml
+  # - llm_based_model_config.yml
 
 evaluation:
   print_evals: True

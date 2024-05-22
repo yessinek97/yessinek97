@@ -34,6 +34,7 @@ from ig.src.utils import (
     copy_models_configuration_files,
     generate_random_seeds,
     get_best_experiment,
+    get_features_paths,
     import_experiment,
     load_experiments,
     load_models,
@@ -133,20 +134,27 @@ def train(
             )
 
     log.info("*********************** Load and process Train , Test *********************** ")
-    existing_features_lists: List[str] = general_configuration.get("feature_paths", [])
+    existing_features_lists: List[str] = get_features_paths(general_configuration)
     if "FS" in general_configuration:
 
-        features_names = feature_selection_main(
+        feature_paths = feature_selection_main(
             train_data=train_data,
             general_configuration=general_configuration,
             folder_name=folder_name,
             with_train=True,
         )
-        log.info("features_names : %s", " ".join(features_names))
+        log.info("features_names : %s", " ".join(feature_paths))
         log.info("****************************** Finished FS ****************************** ")
+        if existing_features_lists:
+            feature_paths = existing_features_lists + feature_paths
 
-        feature_paths = existing_features_lists + features_names
         general_configuration["feature_paths"] = feature_paths
+    else:
+        if len(existing_features_lists) == 0:
+            raise ValueError(
+                "Features Selection is not activated and features list are not provided, "
+                "please check your configuration file"
+            )
 
     copy_existing_features_lists(
         existing_features_lists,
@@ -438,6 +446,7 @@ def tune(
     force: bool,
 ) -> None:
     """Tune model params."""
+    seed_basic(DEFAULT_SEED)
     experiment_path = MODELS_DIRECTORY / folder_name
     _check_model_folder(experiment_path)
     init_logger(logging_directory=experiment_path)

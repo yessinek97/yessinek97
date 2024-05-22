@@ -421,14 +421,15 @@ def copy_existing_features_lists(
     feature_list: List[str], experiment_path: Path, label_name: str
 ) -> None:
     """Move features list from features directory to the experiment directory."""
-    original_directory = FEATURES_DIRECTORY / get_task_name(label_name=label_name)
-    features_selection_directory = experiment_path / FEATURES_SELECTION_DIRECTORY
-    features_selection_directory.mkdir(exist_ok=True, parents=True)
-    for feature in feature_list:
-        shutil.copyfile(
-            original_directory / f"{feature}.txt",
-            experiment_path / FEATURES_SELECTION_DIRECTORY / f"{feature}.txt",
-        )
+    if feature_list:
+        original_directory = FEATURES_DIRECTORY / get_task_name(label_name=label_name)
+        features_selection_directory = experiment_path / FEATURES_SELECTION_DIRECTORY
+        features_selection_directory.mkdir(exist_ok=True, parents=True)
+        for feature in feature_list:
+            shutil.copyfile(
+                original_directory / f"{feature}.txt",
+                experiment_path / FEATURES_SELECTION_DIRECTORY / f"{feature}.txt",
+            )
 
 
 def seed_basic(seed: int) -> None:
@@ -489,3 +490,11 @@ def crop_sequences(
         for seq, mut_pos in zip(sequences, mutation_start_positions)
     ]
     return sequences
+
+
+def get_features_paths(configuration: Dict[str, Any]) -> List[str]:
+    """Get the list of features paths."""
+    features_paths = configuration.get("feature_paths", [])
+    if features_paths:
+        return features_paths
+    return []

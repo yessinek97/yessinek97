@@ -3,36 +3,35 @@ neptune_logs: False
 experiments:
   SingleModel:
     validation_column: validation
-    plot_shap_values: False
+
   KfoldExperiment:
     split_column: fold
-    plot_shap_values: True
-    plot_kfold_shap_values: True # False when using Logistic regression
-    operation:
-      - mean
-      - max
-      - min
-      - median
-    statics:
-      - mean
-      - max
-      - min
+
+  KfoldMultiSeedExperiment:
+    split_column: fold
+    model_seed: false
+    split_seed: true
+    nbr_seeds: 3
+    # seeds: [1111, 2222, 3333]
+
 label: cd8_any
 feature_paths:
-  - train_features
+  - ml_train_features
+
 tuning:
   maximize: True
   nbr_trials: 1
 processing:
   # process_data: False
-  trainable_features: "features_float.biondeep_02_06_2022_transformer_public_v2"
+  trainable_features: "features.yml"
   validation_strategy: true
   isunlabelled: false
   fill_nan_method: keep
-  seed: 20015
+  seed: 2024
   validation_ratio: 0.1
-  fold: 4
+  fold: 5
 models:
   - tune_xgboost.yml
+  # - tune_lgbm.yml
 evaluation:
   print_evals: False
