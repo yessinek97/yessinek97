@@ -6,7 +6,7 @@ from typing import Any, Union
 
 import click
 
-import ig.src.experiments as exper
+import ig.cross_validation as exper
 from ig import DATAPROC_DIRECTORY, MODELS_DIRECTORY
 from ig.dataset.dataset import Dataset
 from ig.src.logger import get_logger, init_logger

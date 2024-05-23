@@ -19,9 +19,9 @@ from ig import (
     SINGLE_MODEL_NAME,
 )
 from ig.constants import TuningOptParamsType
+from ig.cross_validation.base import create_model
 from ig.dataset.dataset import Dataset
 from ig.models import BaseModelType
-from ig.src.experiments.base import create_model
 from ig.src.metrics import topk_global
 from ig.src.utils import (
     convert_int_params,

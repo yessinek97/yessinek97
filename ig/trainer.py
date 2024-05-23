@@ -9,7 +9,7 @@ import click
 import numpy as np
 import pandas as pd
 
-import ig.src.experiments as exper
+import ig.cross_validation as exper
 from ig import (
     CONFIGURATION_DIRECTORY,
     DATAPROC_DIRECTORY,
@@ -23,10 +23,10 @@ from ig import (
 )
 from ig.bucket.click import arguments
 from ig.constants import EvalExpType, MetricsEvalType, TuneResults
+from ig.cross_validation.tuning import Tuning
 from ig.dataset.dataset import Dataset
 from ig.feature_selection import feature_selection_main
 from ig.src.evaluation import Evaluation
-from ig.src.experiments.tuning import Tuning
 from ig.src.logger import NeptuneLogs, get_logger, init_logger
 from ig.src.metrics import topk_global
 from ig.src.utils import (

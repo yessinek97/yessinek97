@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-import ig.src.experiments as exper
+import ig.cross_validation as exper
 from ig import FEATURES_DIRECTORY
 from ig.dataset.dataset import Dataset
 from ig.src.logger import get_logger

@@ -8,8 +8,8 @@ import pandas as pd
 
 from ig import KFOLD_MODEL_NAME
 from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsEvalType
+from ig.cross_validation.base import BaseExperiment
 from ig.dataset.dataset import Dataset
-from ig.src.experiments.base import BaseExperiment
 from ig.src.logger import get_logger
 from ig.src.utils import load_pkl, maybe_int, save_yml
 
