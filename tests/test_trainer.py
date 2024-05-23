@@ -12,8 +12,7 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
-from ig.dataset.dataset import Dataset
-from ig.trainer import (
+from ig.cli.trainer import (
     _check_model_folder,
     _generate_single_exp_config,
     _save_best_experiment,
@@ -26,6 +25,7 @@ from ig.trainer import (
     train,
     tune,
 )
+from ig.dataset.dataset import Dataset
 
 
 class Dummycontext(click.Option):

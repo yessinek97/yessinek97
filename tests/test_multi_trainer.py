@@ -8,7 +8,11 @@ from unittest import mock
 import click
 from click.testing import CliRunner
 
-from ig.multi_trainer import experiments_evaluation, generate_experiment_configuration, multi_train
+from ig.cli.multi_trainer import (
+    experiments_evaluation,
+    generate_experiment_configuration,
+    multi_train,
+)
 
 
 @click.pass_context

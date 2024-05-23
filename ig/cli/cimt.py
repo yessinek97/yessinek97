@@ -10,10 +10,10 @@ from sklearn.model_selection import KFold
 
 import ig.utils.cimt as cimt_helper
 from ig import CONFIGURATION_DIRECTORY, DEFAULT_SEED, MODELS_DIRECTORY
+from ig.cli.trainer import _check_model_folder, train
 from ig.src.logger import get_logger, init_logger
 from ig.src.metrics import topk
 from ig.src.utils import load_yml, read_data, save_yml, seed_basic
-from ig.trainer import _check_model_folder, train
 from ig.utils.cimt import CsEvalType
 
 log: Logger = get_logger("CIMT")

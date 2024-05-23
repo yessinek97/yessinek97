@@ -6,7 +6,7 @@ import pytest
 from click.testing import CliRunner
 from google.cloud import storage
 
-from ig.buckets import pull, push
+from ig.cli.buckets import pull, push
 
 
 def test_pull(bucket_path: str, local_path: str) -> None:

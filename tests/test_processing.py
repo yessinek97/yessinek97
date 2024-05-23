@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 from unittest import mock
 
-from ig.processing import process_main_data, process_other_data
+from ig.cli.processing import process_main_data, process_other_data
 
 
 @mock.patch("click.confirm")

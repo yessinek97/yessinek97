@@ -10,11 +10,11 @@ import pandas as pd
 
 from ig import CONFIGURATION_DIRECTORY, DEFAULT_SEED, MODELS_DIRECTORY
 from ig.bucket.click import arguments
-from ig.inference import exp_inference, inference
+from ig.cli.inference import exp_inference, inference
+from ig.cli.trainer import _check_model_folder, train
 from ig.src.logger import get_logger, init_logger
 from ig.src.metrics import global_evaluation
 from ig.src.utils import load_yml, save_yml, seed_basic
-from ig.trainer import _check_model_folder, train
 
 log: Logger = get_logger("Multi_train")
 seed_basic(DEFAULT_SEED)

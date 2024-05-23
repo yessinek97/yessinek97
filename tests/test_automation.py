@@ -8,11 +8,11 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from ig.compute_metrics import compute_metrics
-from ig.feature_selection import featureselection
-from ig.inference import inference
-from ig.multi_trainer import multi_train
-from ig.trainer import train, train_seed_fold, tune
+from ig.cli.compute_metrics import compute_metrics
+from ig.cli.feature_selection import featureselection
+from ig.cli.inference import inference
+from ig.cli.multi_trainer import multi_train
+from ig.cli.trainer import train, train_seed_fold, tune
 
 
 @mock.patch("click.confirm")

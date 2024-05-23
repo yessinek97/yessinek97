@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 from click.testing import CliRunner
 
-from ig.inference import inference
+from ig.cli.inference import inference
 
 
 def test_inference(

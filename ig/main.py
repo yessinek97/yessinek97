@@ -1,18 +1,18 @@
 """Main script."""
 import click
 
-from ig.buckets import pull, push
-from ig.cimt import cimt
+from ig.cli.buckets import pull, push
+from ig.cli.cimt import cimt
 from ig.cli.compute_embedding import compute_embedding
-from ig.compute_metrics import compute_metrics
-from ig.ensemble import ensemblexprs, ensoneexp
-from ig.feature_selection import featureselection
-from ig.generate_pairs_peptide_allele import generate_pairs
-from ig.inference import exp_inference, inference
-from ig.multi_trainer import multi_exp_inference, multi_inference, multi_train
-from ig.multi_trainer_distributed import multi_train_distributed
-from ig.processing import processing
-from ig.trainer import compute_comparison_score, train, train_seed_fold, tune
+from ig.cli.compute_metrics import compute_metrics
+from ig.cli.ensemble import ensemblexprs, ensoneexp
+from ig.cli.feature_selection import featureselection
+from ig.cli.generate_pairs_peptide_allele import generate_pairs
+from ig.cli.inference import exp_inference, inference
+from ig.cli.multi_trainer import multi_exp_inference, multi_inference, multi_train
+from ig.cli.multi_trainer_distributed import multi_train_distributed
+from ig.cli.processing import processing
+from ig.cli.trainer import compute_comparison_score, train, train_seed_fold, tune
 
 
 @click.group()

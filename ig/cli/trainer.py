@@ -22,10 +22,10 @@ from ig import (
     SINGLE_MODEL_NAME,
 )
 from ig.bucket.click import arguments
+from ig.cli.feature_selection import feature_selection_main
 from ig.constants import EvalExpType, MetricsEvalType, TuneResults
 from ig.cross_validation.tuning import Tuning
 from ig.dataset.dataset import Dataset
-from ig.feature_selection import feature_selection_main
 from ig.src.evaluation import Evaluation
 from ig.src.logger import NeptuneLogs, get_logger, init_logger
 from ig.src.metrics import topk_global

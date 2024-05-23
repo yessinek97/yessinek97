@@ -24,35 +24,35 @@ setup(
     include_package_data=True,
     entry_points={
         "console_scripts": [
-            # ablation study
-            "ablation_study=ig.ablation_study:main",
-            "ablation_post=ig.ablation_study:postprocess",
             # training
-            "train=ig.trainer:train",
-            "train-seed-fold=ig.trainer:train_seed_fold",
-            "tune=ig.trainer:tune",
-            "featureselection=ig.feature_selection:featureselection",
-            "multi-train=ig.multi_trainer:multi_train",
-            "predict_llm=ig.cli.llm_based_predictor:predict",
+            "train=ig.cli.trainer:train",
+            "train-seed-fold=ig.cli.trainer:train_seed_fold",
+            "tune=ig.cli.trainer:tune",
+            "featureselection=ig.cli.feature_selection:featureselection",
+            "multi-train=ig.cli.multi_trainer:multi_train",
+            "predict-llm=ig.cli.llm_based_predictor:predict",
             # inference
-            "inference=ig.inference:inference",
-            "exp-inference=ig.inference:exp_inference",
-            "multi-inference=ig.multi_trainer:multi_inference",
-            "multi-exp-inference=ig.multi_trainer:multi_exp_inference",
-            "compute-metrics=ig.compute_metrics:compute_metrics",
-            "ensemblexprs=ig.ensemble:ensemblexprs",
-            "ensoneexp=ig.ensemble:ensoneexp",
+            "inference=ig.cli.inference:inference",
+            "exp-inference=ig.cli.inference:exp_inference",
+            "multi-inference=ig.cli.multi_trainer:multi_inference",
+            "multi-exp-inference=ig.cli.multi_trainer:multi_exp_inference",
+            "compute-metrics=ig.cli.compute_metrics:compute_metrics",
+            "ensemblexprs=ig.cli.ensemble:ensemblexprs",
+            "ensoneexp=ig.cli.ensemble:ensoneexp",
             # push pull GCP command
-            "push=ig.buckets:push",
-            "pull=ig.buckets:pull",
-            "compute_comparison_score=ig.trainer:compute_comparison_score",
+            "push=ig.cli.buckets:push",
+            "pull=ig.cli.buckets:pull",
+            "compute_comparison_score=ig.cli.trainer:compute_comparison_score",
             # Generate peptide allele pairs
-            "generate-pairs=ig.generate_pairs_peptide_allele:generate_pairs",
+            "generate-pairs=ig.cli.generate_pairs_peptide_allele:generate_pairs",
             # cimt model
-            "cimt=ig.cimt:cimt",
-            "cimt-inference=ig.cimt:cimt_inference",
+            "cimt=ig.cli.cimt:cimt",
+            "cimt-kfold-split=ig.cli.cimt:cimt_kfold_split",
+            "cimt-features-selection=ig.cli.cimt:cimt_features_selection",
+            "cimt-train=ig.cli.cimt:cimt_train",
+            "cimt-inference=ig.cli.cimt:cimt_inference",
             # processing
-            "processing=ig.processing:processing",
+            "processing=ig.cli.processing:processing",
             "compute-embeddings=ig.cli.compute_embedding:compute_embedding",
         ]
     },

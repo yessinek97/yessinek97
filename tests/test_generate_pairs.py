@@ -5,7 +5,7 @@ from unittest import mock
 
 from click.testing import CliRunner
 
-from ig.generate_pairs_peptide_allele import generate_pairs
+from ig.cli.generate_pairs_peptide_allele import generate_pairs
 
 
 @mock.patch("click.confirm")

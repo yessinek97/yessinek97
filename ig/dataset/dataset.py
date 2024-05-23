@@ -14,7 +14,7 @@ from sklearn.model_selection import KFold, train_test_split
 
 from ig import DATA_DIRECTORY, DATAPROC_DIRECTORY, KFOLD_EXP_NAMES, SINGLE_MODEL_NAME
 from ig.bucket.click.constants import GS_BUCKET_PREFIX
-from ig.buckets import pull
+from ig.cli.buckets import pull
 from ig.src.logger import get_logger
 from ig.src.utils import load_pkl, load_yml, read_data, remove_bucket_prefix, save_as_pkl, save_yml
 
