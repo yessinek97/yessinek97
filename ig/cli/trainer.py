@@ -512,7 +512,7 @@ def tune(
                     configuration=input_configuration,
                     folder_name=folder_name,
                     experiment_name=experiment_name,
-                    experiment_param=experiment_param,
+                    experiment_param=copy.deepcopy(experiment_param),
                     sub_folder_name=features_list_path_name,
                     features_list_path=features_list_path_name,
                     features_configuration_path=train_data.features_configuration_path,
