@@ -47,9 +47,6 @@ setup(
             "generate-pairs=ig.cli.generate_pairs_peptide_allele:generate_pairs",
             # cimt model
             "cimt=ig.cli.cimt:cimt",
-            "cimt-kfold-split=ig.cli.cimt:cimt_kfold_split",
-            "cimt-features-selection=ig.cli.cimt:cimt_features_selection",
-            "cimt-train=ig.cli.cimt:cimt_train",
             "cimt-inference=ig.cli.cimt:cimt_inference",
             # processing
             "processing=ig.cli.processing:processing",
