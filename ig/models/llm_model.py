@@ -1,10 +1,10 @@
-"""File that contains the LLM model that will be used in finetuning, probing or peft experiments."""
+"""File that contains all the deep learning models."""
 from __future__ import annotations
 
 import math
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ from transformers import AutoTokenizer
 from ig.dataset.torch_dataset import EmbeddingsPairsDataset, PeptidePairsDataset
 from ig.models.base_model import BaseModel, log
 from ig.models.torch_based_models import FinetuningModel, ProbingModel
-from ig.src.torch_utils import set_torch_reproducibility
+from ig.src.torch_utils import create_scheduler, set_torch_reproducibility
 from ig.src.utils import crop_sequences, load_embedding_file, save_as_pkl
 
 
@@ -106,8 +106,11 @@ class LLMModel(BaseModel):
         self._mutation_position_col_name = other_params["mutation_position_col_name"]
 
         self._prob_threshold = parameters["threshold"]
-        self._criterion = torch.nn.BCEWithLogitsLoss()
+
         self._optimizer = Adam(self._llm_based_model.parameters(), lr=self.parameters["lr"])
+        self._criterion = torch.nn.BCEWithLogitsLoss()
+        self.backward_fn = self.create_backward_pass()
+
         self._metrics: dict[str, list[float]] = defaultdict(list)
 
     def fit(
@@ -127,16 +130,24 @@ class LLMModel(BaseModel):
         train_dataloader, max_length_train = self._create_matrix(train_data, with_label=True)
         val_dataloader, max_length_val = self._create_matrix(val_data, with_label=True)
 
+        num_epochs = self.parameters["num_epochs"]
+        if self.other_params["lr_scheduler_config"]["use_scheduler"]:
+            self._scheduler = create_scheduler(
+                self.other_params["lr_scheduler_config"],
+                num_epochs,
+                len(train_dataloader),
+                self._optimizer,
+            )
+
         # number of tokens of the longest sequence
         log.info(
             f"Maximum length in train: {max_length_train} - "
             f"Maximum length in validation: {max_length_val}"
         )
 
-        num_epochs = self.parameters["num_epochs"]
         epochs_iterator = tqdm(range(num_epochs))
         for epoch_num in epochs_iterator:
-            epochs_iterator.set_description(f"epoch: {epoch_num+1}/{num_epochs}")
+            epochs_iterator.set_description(f"epoch: {epoch_num}/{num_epochs}")
             self.train_one_epoch(train_dataloader, max_length_train)
             self.validate_one_epoch(val_dataloader, max_length_val)
             epochs_iterator.set_postfix({"Train accuracy": self._metrics["train_acc"][epoch_num]})
@@ -154,7 +165,7 @@ class LLMModel(BaseModel):
                     "metrics": self._metrics,
                 }
             torch.save(dict_to_save, str(self.checkpoints).replace("model.pkl", "torch_model.pt"))
-            # pickle LLMModel object
+            # pickle LLMBasedModel object
             save_as_pkl(self, self.checkpoints)
 
     def train_one_epoch(self, train_dataloader: DataLoader, max_length: int) -> None:
@@ -185,6 +196,78 @@ class LLMModel(BaseModel):
         self._metrics["train_acc"].append(np.average(epoch_preds == epoch_labels))
         self._metrics["train_acc_pos"].append(np.average(epoch_pos_preds))
 
+    def forward_pass(
+        self, pair: torch.Tensor, max_length: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Performs a forward pass.
+
+        Args:
+            pair (torch.Tensor): _description_
+            max_lenvgth (int): _description_
+
+        Returns:
+            torch.Tensor: returns rounded predictions and logits
+        """
+        # forward pass
+        logits = self._llm_based_model(
+            pair=pair, max_length=max_length, attention_mask=self._attention_mask
+        )
+        probs = torch.nn.Sigmoid()(logits)
+        prediction = (
+            probs.detach()
+            .cpu()
+            .apply_(
+                lambda prob: math.floor(prob) if prob < self._prob_threshold else math.ceil(prob)
+            )
+            .squeeze(-1)
+        )
+        return logits, prediction
+
+    def create_backward_pass(self) -> Callable:
+        """Returns the a backward function depending on using or not using a scheduler.
+
+        Returns:
+            callable: backward function
+        """
+        return (
+            self.backward_pass
+            if not self.other_params["lr_scheduler_config"]["use_scheduler"]
+            else self.backward_pass_with_scheduler
+        )
+
+    def backward_pass(self, logits: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
+        """Performs a backward pass.
+
+        Args:
+            logits (torch.Tensor): _description_
+            label (torch.Tensor): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        # calculate step loss
+        batch_loss = self._criterion(logits.squeeze(1), label)
+        # back propagate loss and update gradient
+        batch_loss.backward()
+        self._optimizer.step()
+        return batch_loss
+
+    def backward_pass_with_scheduler(
+        self, logits: torch.Tensor, label: torch.Tensor
+    ) -> torch.Tensor:
+        """Performs backward pass and updates scheduler.
+
+        Args:
+            logits (torch.Tensor): _description_
+            label (torch.Tensor): _description_
+
+        Returns:
+            torch.Tensor: _description_
+        """
+        self._scheduler.step()
+        batch_loss = self.backward_pass(logits, label)
+        return batch_loss
+
     def train_one_step(
         self, pair: torch.Tensor, label: torch.Tensor, max_length: int
     ) -> tuple[torch.Tensor, list, list]:
@@ -197,31 +280,10 @@ class LLMModel(BaseModel):
         """
         pair = pair.to(self._device)
         label = label.to(self._device)
-
-        # forward pass
-        logits = self._llm_based_model(
-            pair=pair, max_length=max_length, attention_mask=self._attention_mask
-        )
-
-        probs = torch.nn.Sigmoid()(logits)
-        prediction = (
-            probs.detach()
-            .cpu()
-            .apply_(
-                lambda prob: math.floor(prob) if prob < self._prob_threshold else math.ceil(prob)
-            )
-            .squeeze(-1)
-        )
-
-        # calculate step loss
-        batch_loss = self._criterion(logits.squeeze(1), label)
-
-        self._metrics["train_loss_per_step"].append(batch_loss.item())
-
-        # back propagate loss and update gradient
-        batch_loss.backward()
-        self._optimizer.step()
-
+        # perform forward pass
+        logits, prediction = self.forward_pass(pair, max_length)
+        # perform backward pass
+        batch_loss = self.backward_fn(logits, label)
         return batch_loss, prediction, label
 
     def validate_one_epoch(self, val_dataloader: DataLoader, max_length: int) -> None:
@@ -271,22 +333,7 @@ class LLMModel(BaseModel):
         """
         pair = pair.to(self._device)
         label = label.to(self._device)
-
-        # forward pass
-        logits = self._llm_based_model(
-            pair=pair, max_length=max_length, attention_mask=self._attention_mask
-        )
-
-        probs = torch.nn.Sigmoid()(logits)
-        prediction = (
-            probs.detach()
-            .cpu()
-            .apply_(
-                lambda prob: math.floor(prob) if prob < self._prob_threshold else math.ceil(prob)
-            )
-            .squeeze(-1)
-        )
-
+        logits, prediction = self.forward_pass(pair, max_length)
         # calculate step loss
         batch_loss = self._criterion(logits.squeeze(1), label)
         self._metrics["val_loss_per_step"].append(batch_loss.item())
@@ -319,11 +366,8 @@ class LLMModel(BaseModel):
         with torch.no_grad():
             for pair, _ in tqdm(inference_dataloader):
                 pair = pair.to(self._device)
-                logits = self._llm_based_model(
-                    pair=pair, max_length=max_length, attention_mask=self._attention_mask
-                )
-
-                predictions += torch.nn.Sigmoid()(logits).detach().cpu()
+                _, step_predictions = self.forward_pass(pair, max_length)
+                predictions += step_predictions.detach().cpu()
 
         return predictions
 

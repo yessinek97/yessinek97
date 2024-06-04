@@ -1,4 +1,4 @@
-"""File that contains all the model that will be used in the experiment."""
+"""File that contains the base model."""
 from __future__ import annotations
 
 import sys

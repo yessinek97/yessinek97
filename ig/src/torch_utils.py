@@ -3,6 +3,8 @@ import random
 
 import torch
 import torch.nn.functional as functional
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler, OneCycleLR
 
 
 def sigmoid_focal_loss(
@@ -64,3 +66,23 @@ def set_torch_reproducibility(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+
+def create_scheduler(
+    scheduler_config: dict, num_epochs: int, steps_per_epoch: int, optimizer: Optimizer
+) -> LRScheduler:
+    """Returns lr scheduler according to config.
+
+    Args:
+        scheduler_config (dict): _description_
+
+    Returns:
+        CyclicLR: _description_
+    """
+    scheduler = OneCycleLR(
+        optimizer,
+        max_lr=scheduler_config["max_lr"],
+        epochs=num_epochs,
+        steps_per_epoch=steps_per_epoch,
+    )
+    return scheduler

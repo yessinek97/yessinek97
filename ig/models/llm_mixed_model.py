@@ -205,8 +205,8 @@ class LLMMixedModel(BaseModel):
     def predict(self, data: pd.DataFame, with_label: bool) -> Any:
         """Prediction method."""
         inference_dataloader, _ = self._create_matrix(data, with_label)
-        combined_features, labels = self.compute_combined_features(inference_dataloader)
-        dinference = xgb.DMatrix(data=combined_features, label=labels)
+        combined_features, _ = self.compute_combined_features(inference_dataloader)
+        dinference = xgb.DMatrix(data=combined_features, label=None)
         best_iteration = self.ml_model.best_iteration
         predictions = self.ml_model.predict(dinference, iteration_range=(0, best_iteration + 1))
         return predictions

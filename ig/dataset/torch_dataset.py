@@ -161,12 +161,13 @@ class PeptidePairsDataset(torch.utils.data.Dataset):
         # flatten batch sequence pairs to be tokenized in one pass
         flattened_batch_sequence_pairs = [seq for pair in batch_sequence_pairs for seq in pair]
 
-        batch_pair_token_ids = self._tokenizer.batch_encode_plus(
-            flattened_batch_sequence_pairs,
-            return_tensors="pt",
-            padding="max_length",
-            max_length=self._max_length,
-        )["input_ids"]
+        batch_pair_token_ids = torch.Tensor(
+            self._tokenizer(
+                flattened_batch_sequence_pairs,
+                padding="max_length",
+                max_length=self._max_length,
+            )["input_ids"]
+        ).to(torch.int64)
 
         # reshape batch token_ids back in pair-wise shape
         batch_pair_token_ids = torch.reshape(batch_pair_token_ids, (-1, 2, self._max_length))
@@ -253,12 +254,13 @@ class MixedDataset(torch.utils.data.Dataset):
         flattened_batch_sequence_pairs = [seq for pair in batch_sequence_pairs for seq in pair]
 
         # batch tokenized pairs
-        x = self._tokenizer.batch_encode_plus(
-            flattened_batch_sequence_pairs,
-            return_tensors="pt",
-            padding="max_length",
-            max_length=self._max_length,
-        )["input_ids"]
+        x = torch.Tensor(
+            self._tokenizer(
+                flattened_batch_sequence_pairs,
+                padding="max_length",
+                max_length=self._max_length,
+            )["input_ids"]
+        ).to(torch.int64)
 
         if not attention_mask:
             attention_mask = x != self._tokenizer.cls_token_id
