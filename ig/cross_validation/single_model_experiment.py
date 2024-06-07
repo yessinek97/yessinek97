@@ -9,6 +9,7 @@ from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsE
 from ig.cross_validation.base import BaseExperiment
 from ig.dataset.dataset import Dataset
 from ig.src.utils import load_pkl, save_yml
+from ig.utils.torch_helper import empty_cache
 
 
 class SingleModel(BaseExperiment):
@@ -58,12 +59,14 @@ class SingleModel(BaseExperiment):
 
     def train(self) -> None:
         """Training method."""
-        self.single_fit(
+        model = self.single_fit(
             self.train_split,
             self.validation_split,
             self.checkpoint_directory,
             prediction_name=self.prediction_columns_name[0],
         )
+        del model
+        empty_cache()
 
     def predict(self, save_df: bool = True) -> ExpPredictType:
         """Predict method."""
@@ -87,6 +90,8 @@ class SingleModel(BaseExperiment):
             prediction_data[self.columns_to_save(prediction_data)].to_csv(
                 self.prediction_directory / (file_name + ".csv"), index=False
             )
+        del model
+        empty_cache()
         return prediction_data
 
     def eval_exp(self, comparison_score_metrics: Optional[pd.DataFrame] = None) -> EvalExpType:

@@ -12,6 +12,7 @@ from ig.cross_validation.base import BaseExperiment
 from ig.dataset.dataset import Dataset
 from ig.src.logger import get_logger
 from ig.src.utils import load_pkl, maybe_int, save_yml
+from ig.utils.torch_helper import empty_cache
 
 log: Logger = get_logger("Kfold")
 
@@ -81,6 +82,9 @@ class KfoldExperiment(BaseExperiment):
             data["prediction"] = model.predict(data, with_label=False)
 
             train_data.append(data)
+            del model
+            empty_cache()
+
         train_data_df = pd.concat(train_data)
 
         if save_df:
@@ -101,6 +105,8 @@ class KfoldExperiment(BaseExperiment):
             model = load_pkl(model_path / "model.pkl")
             prediction_data[f"prediction_{split}"] = model.predict(data, with_label=False)
             prediction_columns_name.append(f"prediction_{split}")
+            del model
+            empty_cache()
 
         self.prediction_columns_name = prediction_columns_name
 

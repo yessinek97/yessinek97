@@ -10,6 +10,7 @@ from ig.cross_validation.base import BaseExperiment
 from ig.dataset.dataset import Dataset
 from ig.src.logger import get_logger
 from ig.src.utils import load_pkl, maybe_int, save_yml
+from ig.utils.torch_helper import empty_cache
 
 log = get_logger("DoubleKfold")
 
@@ -91,7 +92,8 @@ class DoubleKfold(BaseExperiment):
                 nfold += 1
                 model = load_pkl(model_path / "model.pkl")
                 data["prediction"] += model.predict(data, with_label=False)
-
+                del model
+                empty_cache()
             data["prediction"] /= nfold
             train_data.append(data)
         train_data_df = pd.concat(train_data)
@@ -116,9 +118,13 @@ class DoubleKfold(BaseExperiment):
             for model_path in sub_model_paths.iterdir():
                 nfold += 1
                 model = load_pkl(model_path / "model.pkl")
+
                 prediction_data[f"prediction_{sub_model_split}"] += model.predict(
                     data, with_label=False
                 )
+
+                del model
+                empty_cache()
             prediction_data[f"prediction_{sub_model_split}"] /= nfold
             prediction_columns_name.append(f"prediction_{sub_model_split}")
 

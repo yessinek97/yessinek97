@@ -34,6 +34,7 @@ seaborn==0.13.2
 shap==0.44.1
 sklearn-relief==1.0.0b2
 torch==2.2.1+cu118
+torcheval==0.0.7
 tqdm==4.66.2
 transformers==4.39.1
 typing-extensions==4.10.0

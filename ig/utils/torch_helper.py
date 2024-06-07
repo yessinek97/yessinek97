@@ -1,4 +1,5 @@
 """Module used to define all the helper functions for torch model."""
+import gc
 from logging import Logger
 
 import torch
@@ -20,3 +21,9 @@ def get_device() -> str:
         device = "cpu"
         log.info("CUDA is not available. Using CPU.")
     return device
+
+
+def empty_cache() -> None:
+    """Delete model class from memory."""
+    torch.cuda.empty_cache()
+    gc.collect()

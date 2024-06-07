@@ -1,5 +1,6 @@
 """Module de define torch helper functions."""
 import random
+from typing import List
 
 import torch
 import torch.nn.functional as functional
@@ -86,3 +87,8 @@ def create_scheduler(
         steps_per_epoch=steps_per_epoch,
     )
     return scheduler
+
+
+def round_probs(probs: torch.Tensor, threshold: float) -> List[int]:
+    """Rounds probabilities according to chosen threshold."""
+    return (probs > threshold).long()

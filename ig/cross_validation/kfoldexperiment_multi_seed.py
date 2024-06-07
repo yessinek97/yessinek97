@@ -13,6 +13,7 @@ from ig.dataset.dataset import Dataset
 from ig.models.base_model import BaseModel
 from ig.src.logger import get_logger
 from ig.src.utils import load_pkl, maybe_int, plotting_kfold_shap_values, save_yml
+from ig.utils.torch_helper import empty_cache
 
 log: Logger = get_logger("KfoldMultiSeed")
 
@@ -201,6 +202,8 @@ class KfoldMultiSeedExperiment(BaseExperiment):
             data["prediction"] = model.predict(data, with_label=False)
 
             train_data.append(data)
+            del model
+            empty_cache()
         train_data_df = pd.concat(train_data)
 
         if save_df:
@@ -231,6 +234,8 @@ class KfoldMultiSeedExperiment(BaseExperiment):
                 data, with_label=False
             )
             prediction_columns_name.append(f"prediction_{sub_model_directory_name}_{split}")
+            del model
+            empty_cache()
         for operation in self.kfold_operations:
             prediction_data[f"prediction_{sub_model_directory_name}_{operation}"] = getattr(
                 np, operation

@@ -1,7 +1,6 @@
 """File that contains all the deep learning models."""
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable
@@ -11,13 +10,14 @@ import pandas as pd
 import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
+from torcheval.metrics.functional import binary_auroc, binary_f1_score
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
 from ig.dataset.torch_dataset import EmbeddingsPairsDataset, PeptidePairsDataset
 from ig.models.base_model import BaseModel, log
 from ig.models.torch_based_models import FinetuningModel, ProbingModel
-from ig.src.torch_utils import create_scheduler, set_torch_reproducibility
+from ig.src.torch_utils import create_scheduler, round_probs, set_torch_reproducibility
 from ig.src.utils import crop_sequences, load_embedding_file, save_as_pkl
 
 
@@ -150,7 +150,6 @@ class LLMModel(BaseModel):
             epochs_iterator.set_description(f"epoch: {epoch_num}/{num_epochs}")
             self.train_one_epoch(train_dataloader, max_length_train)
             self.validate_one_epoch(val_dataloader, max_length_val)
-            epochs_iterator.set_postfix({"Train accuracy": self._metrics["train_acc"][epoch_num]})
             self.log_metrics(epoch_num)
 
         if self.save_model:
@@ -176,25 +175,18 @@ class LLMModel(BaseModel):
             max_length (int): _description_
         """
         self._llm_based_model.train()
-        epoch_preds = []
+        epoch_probs = []
         epoch_labels = []
         iterator = tqdm(train_dataloader)
         for pair, label in iterator:
-            batch_loss, batch_preds, batch_labels = self.train_one_step(pair, label, max_length)
+            batch_loss, batch_probs, batch_labels = self.train_one_step(pair, label, max_length)
             iterator.set_postfix({"Loss": batch_loss.item()})
-            epoch_preds += batch_preds
+            epoch_probs += batch_probs
             epoch_labels += batch_labels
 
-        epoch_preds = torch.Tensor(epoch_preds).detach().cpu()
+        epoch_probs = torch.Tensor(epoch_probs).detach().cpu()
         epoch_labels = torch.Tensor(epoch_labels).detach().cpu()
-
-        positive_indexes = [idx for idx in range(len(epoch_labels)) if epoch_labels[idx] == 1]
-        epoch_pos_preds = [
-            1 if epoch_preds[idx] == epoch_labels[idx] else 0 for idx in positive_indexes
-        ]
-
-        self._metrics["train_acc"].append(np.average(epoch_preds == epoch_labels))
-        self._metrics["train_acc_pos"].append(np.average(epoch_pos_preds))
+        self.compute_epoch_metrics(epoch_probs, epoch_labels, "train")
 
     def forward_pass(
         self, pair: torch.Tensor, max_length: int
@@ -213,15 +205,8 @@ class LLMModel(BaseModel):
             pair=pair, max_length=max_length, attention_mask=self._attention_mask
         )
         probs = torch.nn.Sigmoid()(logits)
-        prediction = (
-            probs.detach()
-            .cpu()
-            .apply_(
-                lambda prob: math.floor(prob) if prob < self._prob_threshold else math.ceil(prob)
-            )
-            .squeeze(-1)
-        )
-        return logits, prediction
+
+        return logits, probs
 
     def create_backward_pass(self) -> Callable:
         """Returns the a backward function depending on using or not using a scheduler.
@@ -281,10 +266,12 @@ class LLMModel(BaseModel):
         pair = pair.to(self._device)
         label = label.to(self._device)
         # perform forward pass
-        logits, prediction = self.forward_pass(pair, max_length)
+        logits, probs = self.forward_pass(pair, max_length)
         # perform backward pass
         batch_loss = self.backward_fn(logits, label)
-        return batch_loss, prediction, label
+        self._metrics["train_loss_per_step"].append(batch_loss.item())
+
+        return batch_loss, probs, label
 
     def validate_one_epoch(self, val_dataloader: DataLoader, max_length: int) -> None:
         """Validate model for one epoch.
@@ -299,27 +286,20 @@ class LLMModel(BaseModel):
         """
         self._llm_based_model.eval()
         with torch.no_grad():
-            epoch_preds = []
+            epoch_probs = []
             epoch_labels = []
             iterator = tqdm(val_dataloader)
             for pair, label in iterator:
-                batch_loss, batch_preds, batch_labels = self.validate_one_step(
+                batch_loss, batch_probs, batch_labels = self.validate_one_step(
                     pair, label, max_length
                 )
                 iterator.set_postfix({"Loss": batch_loss.item()})
-                epoch_preds += batch_preds
+                epoch_probs += batch_probs
                 epoch_labels += batch_labels
 
-        epoch_preds = torch.Tensor(epoch_preds).detach().cpu()
+        epoch_probs = torch.Tensor(epoch_probs).detach().cpu()
         epoch_labels = torch.Tensor(epoch_labels).detach().cpu()
-
-        positive_indexes = [idx for idx in range(len(epoch_labels)) if epoch_labels[idx] == 1]
-        epoch_pos_preds = [
-            1 if epoch_preds[idx] == epoch_labels[idx] else 0 for idx in positive_indexes
-        ]
-
-        self._metrics["val_acc"].append(np.average(epoch_preds == epoch_labels))
-        self._metrics["val_acc_pos"].append(np.average(epoch_pos_preds))
+        self.compute_epoch_metrics(epoch_probs, epoch_labels, "val")
 
     def validate_one_step(
         self, pair: torch.Tensor, label: torch.Tensor, max_length: int
@@ -333,12 +313,42 @@ class LLMModel(BaseModel):
         """
         pair = pair.to(self._device)
         label = label.to(self._device)
-        logits, prediction = self.forward_pass(pair, max_length)
+        logits, probs = self.forward_pass(pair, max_length)
         # calculate step loss
         batch_loss = self._criterion(logits.squeeze(1), label)
         self._metrics["val_loss_per_step"].append(batch_loss.item())
 
-        return batch_loss, prediction, label
+        return batch_loss, probs, label
+
+    def compute_top_k(self, epoch_probs: list[float], epoch_labels: list[int]) -> float:
+        """Computes epoch topK accuracy."""
+        top_k_indices, top_k_probs = torch.topk(epoch_probs, list(epoch_labels).count(1))
+        top_k_preds = round_probs(top_k_probs, self._prob_threshold)
+        top_k_labels = [
+            epoch_labels[idx] for idx in range(len(epoch_labels)) if idx in top_k_indices
+        ]
+        top_k_accuracy = np.average(top_k_preds == top_k_labels)
+        return top_k_accuracy
+
+    def compute_f1_score(self, epoch_probs: list[int], epoch_labels: list[int]) -> float:
+        """Computes epoch F1-score."""
+        return binary_f1_score(
+            input=epoch_probs, target=epoch_labels, threshold=self._prob_threshold
+        )
+
+    def compute_roc_score(self, epoch_probs: list[float], epoch_labels: list[int]) -> float:
+        """Computes epoch ROC score."""
+        return binary_auroc(epoch_probs, epoch_labels)
+
+    def compute_epoch_metrics(
+        self, epoch_probs: list[float], epoch_labels: list[int], stage: str
+    ) -> None:
+        """Computes epoch metrics and appends them to metrics dict."""
+        epoch_preds = round_probs(epoch_probs, self._prob_threshold)
+        self._metrics[f"{stage}_accuracy"].append(np.average(epoch_preds == epoch_labels))
+        self._metrics[f"{stage}_top_k"].append(self.compute_top_k(epoch_probs, epoch_labels))
+        self._metrics[f"{stage}_f1"].append(self.compute_f1_score(epoch_preds, epoch_labels))
+        self._metrics[f"{stage}_roc"].append(self.compute_roc_score(epoch_probs, epoch_labels))
 
     def log_metrics(self, epoch_num: int) -> None:
         """Log epoch metrics.
@@ -346,21 +356,27 @@ class LLMModel(BaseModel):
         Args:
             epoch_num (_type_): _description_
         """
-        epoch_train_acc = self._metrics["train_acc"][epoch_num]
-        epoch_val_acc = self._metrics["val_acc"][epoch_num]
-        epoch_train_acc_pos = self._metrics["train_acc_pos"][epoch_num]
-        epoch_val_acc_pos = self._metrics["val_acc_pos"][epoch_num]
+        epoch_train_acc = self._metrics["train_accuracy"][epoch_num]
+        epoch_val_acc = self._metrics["val_accuracy"][epoch_num]
+        epoch_train_top_k = self._metrics["train_top_k"][epoch_num]
+        epoch_val_top_k = self._metrics["val_top_k"][epoch_num]
+        epoch_train_f1 = self._metrics["train_f1"][epoch_num]
+        epoch_val_f1 = self._metrics["val_f1"][epoch_num]
+        epoch_train_roc = self._metrics["train_roc"][epoch_num]
+        epoch_val_roc = self._metrics["val_roc"][epoch_num]
 
         log.info(
-            f"Epoch {epoch_num + 1} metrics: \
-            | Train Acc: {epoch_train_acc: .3f} | Train Acc Positives: {epoch_train_acc_pos: .3f} \
-            | Val Acc: {epoch_val_acc: .3f} | Val Acc Positives: {epoch_val_acc_pos: .3f}"
+            f"\n Epoch {epoch_num + 1} metrics:\n \
+            | Train Accuracy: {epoch_train_acc: .3f} | Val Accuracy: {epoch_val_acc: .3f} \n \
+            | Train topK: {epoch_train_top_k: .3f} | Val topK: {epoch_val_top_k: .3f} \n \
+            | Train F1-score: {epoch_train_f1: .3f} | Val F1-score: {epoch_val_f1: .3f} \n \
+            | Train ROC-score: {epoch_train_roc: .3f} | Val ROC-score: {epoch_val_roc: .3f} \n \
+            "
         )
 
     def predict(self, data: pd.DataFame, with_label: bool) -> Any:
         """Prediction method."""
         inference_dataloader, max_length = self._create_matrix(data, with_label)
-        log.info(f"Started inference using: {self._device}")
 
         predictions = []
         with torch.no_grad():

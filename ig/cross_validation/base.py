@@ -1,5 +1,4 @@
 """File that contains the implementation of the base classes."""
-import gc
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -9,7 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import torch
 
 import ig.models as src_model
 from ig import FEATURES_SELECTION_DIRECTORY, MODELS_DIRECTORY, SINGLE_MODEL_NAME
@@ -33,6 +31,7 @@ from ig.src.utils import (
     save_features,
     save_yml,
 )
+from ig.utils.torch_helper import empty_cache
 
 log = get_logger("Train/Exp")
 
@@ -311,10 +310,8 @@ class BaseExperiment(ABC):
                         }
                     )
                 )
-                del model
-                gc.collect()
-                torch.cuda.empty_cache()
-
+            del model
+            empty_cache()
         if self.plot_shap_values and self.plot_kfold_shap_values:
             shap_values_df = pd.concat(shap_values)
             shap_values_df = (
