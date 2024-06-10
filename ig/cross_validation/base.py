@@ -20,18 +20,17 @@ from ig.constants import (
 )
 from ig.dataset.dataset import Dataset
 from ig.models import BaseModelType
-from ig.src.evaluation import Evaluation
-from ig.src.logger import get_logger
-from ig.src.utils import (
+from ig.utils.cross_validation import (
     get_model_by_name,
     load_features,
-    load_yml,
     plotting_kfold_shap_values,
     plotting_shap_values,
     save_features,
-    save_yml,
 )
-from ig.utils.torch_helper import empty_cache
+from ig.utils.evaluation import Evaluation
+from ig.utils.io import load_yml, save_yml
+from ig.utils.logger import get_logger
+from ig.utils.torch import empty_cache
 
 log = get_logger("Train/Exp")
 

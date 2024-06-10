@@ -12,7 +12,7 @@ from ig.bucket.click.constants import (
     OneOrManyPathType,
 )
 from ig.bucket.utils import get_bucket_manager, get_local_path  # type: ignore
-from ig.src.logger import get_logger
+from ig.utils.logger import get_logger
 
 log: Logger = get_logger("bucket")
 

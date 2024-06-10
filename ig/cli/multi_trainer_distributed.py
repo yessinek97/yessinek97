@@ -1,20 +1,19 @@
 """Module used to train many experiments with one configuration file."""
-import copy
 import json
 import os
-from collections import defaultdict
 from logging import Logger
 from pathlib import Path
-from typing import Any, DefaultDict, Dict, List
+from typing import List
 
 import click
-import pandas as pd
 
 from ig import CONFIGURATION_DIRECTORY, DEFAULT_SEED, MODELS_DIRECTORY
 from ig.bucket.click import arguments
-from ig.cli.trainer import _check_model_folder, train
-from ig.src.logger import get_logger, init_logger
-from ig.src.utils import load_yml, save_yml, seed_basic
+from ig.cli.trainer import train
+from ig.utils.evaluation import experiments_evaluation
+from ig.utils.general import seed_basic
+from ig.utils.io import check_model_folder, generate_experiment_configuration, load_yml
+from ig.utils.logger import get_logger, init_logger
 
 log: Logger = get_logger("Multi_train")
 seed_basic(DEFAULT_SEED)
@@ -44,7 +43,7 @@ seed_basic(DEFAULT_SEED)
     "-dc",
     type=str,
     required=True,
-    help=" Path to the deafult configuration file.",
+    help=" Path to the default configuration file.",
 )
 @arguments.force(help="Force overwrite the local file if it already exists.")  # type: ignore
 @click.pass_context
@@ -57,11 +56,11 @@ def multi_train_distributed(
     folder_name: str,
     force: bool,
 ) -> None:
-    """Launch the traning of multiple experimnets using one configuration file."""
+    """Launch the training of multiple experiments using one configuration file."""
     experiments_path = MODELS_DIRECTORY / folder_name
     experiments_configuration_path = experiments_path / "configuration"
     experiment_results_path = experiments_path / "results"
-    _check_model_folder(experiments_path)
+    check_model_folder(experiments_path)
     experiments_configuration_path.mkdir(exist_ok=True, parents=True)
     experiment_results_path.mkdir(exist_ok=True, parents=True)
     init_logger(folder_name)
@@ -101,88 +100,3 @@ def multi_train_distributed(
         if task_index == i:
             train_fun(experiment_name=experiment_name)
     experiments_evaluation(experiment_paths, experiments_path, params)
-
-
-def experiments_evaluation(
-    experiment_paths: List[Path], experiments_path: Path, params: Dict[str, Any]
-) -> None:
-    """Evalute each experimnet and save the results."""
-    experiments_metrics: DefaultDict[str, List[pd.Series]] = defaultdict(list)
-    for experiment_path in experiment_paths:
-        best_experiment_results_path = experiment_path / "best_experiment" / "eval" / "results.csv"
-
-        if best_experiment_results_path.exists():
-            best_experiment_results = pd.read_csv(best_experiment_results_path)
-            prediction_name = load_yml(experiment_path / "best_experiment" / "configuration.yml")[
-                "evaluation"
-            ]["prediction_name_selector"]
-            metrics_names = [
-                col for col in best_experiment_results.columns if col not in ["split", "prediction"]
-            ]
-            for metric_name in metrics_names:
-                metric_results = pd.Series([], dtype=pd.StringDtype())
-                metric_results["metric_name"] = metric_name
-                metric_results["experiment_name"] = experiment_path.name
-                metric_results["train"] = best_experiment_results[
-                    (best_experiment_results.split == "train")
-                ][metric_name].mean()
-                metric_results["validation"] = best_experiment_results[
-                    (best_experiment_results.split == "validation")
-                    & (best_experiment_results.prediction == prediction_name)
-                ][metric_name].iloc[0]
-                metric_results["test"] = best_experiment_results[
-                    (best_experiment_results.split == "test")
-                    & (best_experiment_results.prediction == prediction_name)
-                ][metric_name].iloc[0]
-                experiments_metrics[metric_name].append(metric_results)
-
-    experiments_metrics_dfs: Dict[str, pd.DataFrame] = {}
-    for metric_name in metrics_names:
-        experiments_metrics_dfs[metric_name] = pd.DataFrame(experiments_metrics[metric_name])
-        experiments_metrics_dfs[metric_name].to_csv(
-            experiments_path / "results" / f"{metric_name}.csv", index=False
-        )
-    display_metrics = [
-        metric_name
-        for metric_name in params["metrics"]
-        if metric_name in experiments_metrics_dfs.keys()
-    ]
-    for metric_name in display_metrics:
-        log.info("%s evalution: ############################################", metric_name)
-        for line in experiments_metrics_dfs[metric_name].to_string().split("\n"):
-            log.info("%s", line)
-
-
-def generate_experiment_configuration(
-    default_configuration: Dict[str, Any],
-    experiment_configuration: Dict[str, Any],
-    experiments_configuration_path: Path,
-    experiment_name: str,
-) -> str:
-    """Make a copy and modify the default configuration file.
-
-    Change the default configuration settings with the new settings from experiment configuration
-    save the new configuration file in a temporary folder.
-
-    Args:
-        default_configuration: Dictionary contains the default settings
-        experiment_configuration: Dictionary holds the new settings
-        experiments_configuration_path: Path where the generted configuration files will bes saved
-        experiment_name: name of the experiment
-
-    Output:
-        path to the modified configuration file
-    """
-    configuration = copy.deepcopy(default_configuration)
-    for key in experiment_configuration.keys():
-        if isinstance(experiment_configuration[key], Dict):
-            for second_key in experiment_configuration[key].keys():
-                key_configuration = configuration[key]
-                key_configuration[second_key] = experiment_configuration[key][second_key]
-            configuration[key] = key_configuration
-        else:
-            configuration[key] = experiment_configuration[key]
-
-    path = str(experiments_configuration_path / f"{experiment_name}.yml")
-    save_yml(configuration, path)
-    return path

@@ -10,15 +10,10 @@ import ig.cross_validation as exper
 from ig import DATAPROC_DIRECTORY, MODELS_DIRECTORY
 from ig.constants import EvalExpType
 from ig.dataset.dataset import Dataset
-from ig.src.logger import get_logger, init_logger
-from ig.src.utils import (
-    get_best_experiment,
-    import_experiment,
-    load_experiments,
-    load_models,
-    load_yml,
-    log_summary_results,
-)
+from ig.utils.cross_validation import import_experiment, load_experiments, load_models
+from ig.utils.io import load_yml
+from ig.utils.logger import get_logger, init_logger
+from ig.utils.trainer import get_best_experiment, log_summary_results
 
 log: Logger = get_logger("Eval")
 

@@ -22,16 +22,15 @@ from ig.constants import TuningOptParamsType
 from ig.cross_validation.base import create_model
 from ig.dataset.dataset import Dataset
 from ig.models import BaseModelType
-from ig.src.metrics import topk_global
-from ig.src.utils import (
+from ig.utils.cross_validation import (
     convert_int_params,
-    generate_random_seeds,
     get_model_by_name,
     load_features,
-    save_as_pkl,
     save_features,
-    save_yml,
 )
+from ig.utils.general import generate_random_seeds
+from ig.utils.io import save_as_pkl, save_yml
+from ig.utils.metrics import topk_global
 
 logger: Logger = logging.getLogger("Tuning")
 

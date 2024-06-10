@@ -10,8 +10,8 @@ from typing import Any
 import pandas as pd
 import shap
 
-from ig.src.evaluation import Evaluation
-from ig.src.logger import ModelLogWriter, get_logger
+from ig.utils.evaluation import Evaluation
+from ig.utils.logger import ModelLogWriter, get_logger
 
 log = get_logger("Train/model")
 original_stdout = sys.__stdout__

@@ -6,7 +6,7 @@ import pandas as pd
 import shap
 
 from ig.models.base_model import BaseModel, original_stdout
-from ig.src.utils import save_as_pkl
+from ig.utils.io import save_as_pkl
 
 
 class LgbmModel(BaseModel):

@@ -12,20 +12,17 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
-from ig.cli.trainer import (
-    _check_model_folder,
-    _generate_single_exp_config,
-    _save_best_experiment,
-    _train_func,
-    compute_comparison_score,
-    eval_comparison_score,
-    load_datasets,
-    parse_comparison_score_metrics_to_df,
-    remove_unnecessary_folders,
-    train,
-    tune,
-)
+from ig.cli.trainer import compute_comparison_score, train, tune
 from ig.dataset.dataset import Dataset
+from ig.utils.evaluation import eval_comparison_score, parse_comparison_score_metrics_to_df
+from ig.utils.io import check_model_folder
+from ig.utils.trainer import (
+    generate_single_exp_config,
+    load_datasets,
+    remove_unnecessary_folders,
+    save_best_experiment,
+    train_func,
+)
 
 
 class Dummycontext(click.Option):
@@ -194,7 +191,7 @@ def test__generate_single_exp_config(
     model_params: Dict[str, Any],
 ) -> None:
     """This function tests the behavior of _generate_single_exp_config function."""
-    new_config_file = _generate_single_exp_config(
+    new_config_file = generate_single_exp_config(
         config, experiment_name, experiment_params, model_type, model_params
     )
 
@@ -224,7 +221,7 @@ def test__train_func(
     folder_name: str = "training_fixtures",
 ) -> None:
     """This function tests the behavior of _train_func."""
-    results, display = _train_func(
+    results, display = train_func(
         experiment_name,
         experiment_params,
         model_type,
@@ -303,10 +300,10 @@ def test_parse_comparison_score_metrics_to_df(
 
 
 @mock.patch("click.confirm")
-def test__check_model_folder(mock_click: mock.MagicMock, test_experiment_path: Path) -> None:
-    """This function tests the behavior of _check_model_folder."""
+def test_check_model_folder(mock_click: mock.MagicMock, test_experiment_path: Path) -> None:
+    """This function tests the behavior of check_model_folder."""
     mock_click.return_value = "n"
-    _check_model_folder(test_experiment_path / "new")
+    check_model_folder(test_experiment_path / "new")
 
     assert (test_experiment_path / "new").exists(), "Experiment folder doesn't exist!"
 
@@ -337,7 +334,7 @@ def test_remove_unnecessary_folders(test_experiment_path, data_proc_dir, remove=
 
 def test__save_best_experiment(best_experiment_id: List[str], training_fixtures_path: Path) -> None:
     """This function tests the behavior of _save_best_experiment function."""
-    _save_best_experiment(best_experiment_id, training_fixtures_path)
+    save_best_experiment(best_experiment_id, training_fixtures_path)
 
     assert set(os.listdir(training_fixtures_path / "best_experiment")) == {
         "features.txt",

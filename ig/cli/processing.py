@@ -8,8 +8,9 @@ import click
 import pandas as pd
 
 from ig import CONFIGURATION_DIRECTORY, DATA_DIRECTORY, PROC_SEC_ID
-from ig.src.logger import get_logger, init_logger
-from ig.src.processing_helper import (  # data_cleaning,; fix_expression_columns,; get_columns_with_unique_value,; get_data_type,; get_list_type,; merge_expression,; remove_columns,; remove_duplicate_columns,
+from ig.utils.io import check_and_create_folder, load_yml, read_data, save_yml
+from ig.utils.logger import get_logger, init_logger
+from ig.utils.processing import (  # data_cleaning,; fix_expression_columns,; get_columns_with_unique_value,; get_data_type,; get_list_type,; merge_expression,; remove_columns,; remove_duplicate_columns,
     LoadProcessingConfiguration,
     add_features,
     cross_validation,
@@ -24,7 +25,6 @@ from ig.src.processing_helper import (  # data_cleaning,; fix_expression_columns
     report_missing_columns,
     union_type_from_features_type,
 )
-from ig.src.utils import check_and_create_folder, load_yml, read_data, save_yml
 
 log: Logger = get_logger("Processing_main")
 warnings.simplefilter(action="ignore")

@@ -6,7 +6,7 @@ from typing import Iterable, Type
 from cloudpathlib import CloudPath
 
 from ig.bucket.utils import get_bucket_manager
-from ig.src.logger import get_logger
+from ig.utils.logger import get_logger
 
 log = get_logger("Puller")
 

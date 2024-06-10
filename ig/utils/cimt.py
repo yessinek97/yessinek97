@@ -1,4 +1,4 @@
-"""Module de define a helper functions for cimt command."""
+"""Module used to define helper functions for cimt command."""
 from collections import defaultdict
 from copy import deepcopy
 from logging import Logger
@@ -16,9 +16,10 @@ import seaborn as sns
 import ig.cross_validation as exper
 from ig import FEATURES_DIRECTORY
 from ig.dataset.dataset import Dataset
-from ig.src.logger import get_logger
-from ig.src.metrics import logloss, roc_auc_curve, roc_auc_score, topk
-from ig.src.utils import import_experiment, load_pkl, load_yml, read_data, save_yml
+from ig.utils.cross_validation import import_experiment
+from ig.utils.io import load_pkl, load_yml, read_data, save_yml
+from ig.utils.logger import get_logger
+from ig.utils.metrics import logloss, roc_auc_curve, roc_auc_score, topk
 
 log: Logger = get_logger("utils/cimt")
 CsEvalType = Dict[str, Dict[str, Any]]

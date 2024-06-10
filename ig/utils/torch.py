@@ -1,11 +1,17 @@
-"""Module de define torch helper functions."""
+"""Module used to define all the helper functions for torch model."""
+import gc
 import random
+from logging import Logger
 from typing import List
 
 import torch
 import torch.nn.functional as functional
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler, OneCycleLR
+
+from ig.utils.logger import get_logger
+
+log: Logger = get_logger("utils/torch")
 
 
 def sigmoid_focal_loss(
@@ -92,3 +98,23 @@ def create_scheduler(
 def round_probs(probs: torch.Tensor, threshold: float) -> List[int]:
     """Rounds probabilities according to chosen threshold."""
     return (probs > threshold).long()
+
+
+def get_device() -> str:
+    """Function to check if CUDA is available and return the appropriate device.
+
+    Returns a string indicating the selected device.
+    """
+    if torch.cuda.is_available():
+        device = "cuda"
+        log.info("CUDA is available. Using GPU.")
+    else:
+        device = "cpu"
+        log.info("CUDA is not available. Using CPU.")
+    return device
+
+
+def empty_cache() -> None:
+    """Delete model class from memory."""
+    torch.cuda.empty_cache()
+    gc.collect()

@@ -8,9 +8,10 @@ import pandas as pd
 from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsEvalType
 from ig.cross_validation.base import BaseExperiment
 from ig.dataset.dataset import Dataset
-from ig.src.logger import get_logger
-from ig.src.utils import load_pkl, maybe_int, save_yml
-from ig.utils.torch_helper import empty_cache
+from ig.utils.cross_validation import maybe_int
+from ig.utils.io import load_pkl, save_yml
+from ig.utils.logger import get_logger
+from ig.utils.torch import empty_cache
 
 log = get_logger("DoubleKfold")
 

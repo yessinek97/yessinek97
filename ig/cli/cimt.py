@@ -1,4 +1,4 @@
-"""Module used to define all the helper commands for cimt model."""
+"""Module used to define all the commands for cimt model."""
 from copy import deepcopy
 from logging import Logger
 from pathlib import Path
@@ -8,13 +8,22 @@ import click
 import numpy as np
 from sklearn.model_selection import KFold
 
-import ig.utils.cimt as cimt_helper
 from ig import CONFIGURATION_DIRECTORY, DEFAULT_SEED, MODELS_DIRECTORY
-from ig.cli.trainer import _check_model_folder, train
-from ig.src.logger import get_logger, init_logger
-from ig.src.metrics import topk
-from ig.src.utils import load_yml, read_data, save_yml, seed_basic
-from ig.utils.cimt import CsEvalType
+from ig.cli.trainer import train
+from ig.utils.cimt import (
+    CsEvalType,
+    aggregate_predictions,
+    compute_comparison_scores_metrics_per_split,
+    experiments_evaluation,
+    features_importance_extraction,
+    get_experiment_average_score,
+    load_split_experiment_dataloader,
+    update_configuration,
+)
+from ig.utils.general import seed_basic
+from ig.utils.io import check_model_folder, load_yml, read_data, save_yml
+from ig.utils.logger import get_logger, init_logger
+from ig.utils.metrics import topk
 
 log: Logger = get_logger("CIMT")
 seed_basic(DEFAULT_SEED)
@@ -104,7 +113,7 @@ def cimt_features_selection(
     train_configuration_file = configuration["features_selection"]["default_configuration"]
     do_w_train = configuration.get("do_w_train", False)
     train_configuration = load_yml(CONFIGURATION_DIRECTORY / train_configuration_file)
-    train_configuration = cimt_helper.update_configuration(
+    train_configuration = update_configuration(
         train_configuration, configuration["features_selection"].get("configuration", {})
     )
     n_splits = configuration["features_selection"]["n_splits"]
@@ -154,20 +163,20 @@ def cimt_features_selection(
         )
 
         sub_experiments_path.append(base_exp_path / f"split_{i}")
-        cs_evaluations[f"split_{i}"] = cimt_helper.compute_comparison_scores_metrics_per_split(
+        cs_evaluations[f"split_{i}"] = compute_comparison_scores_metrics_per_split(
             comparison_columns=comparison_columns,
             label=label_column,
-            train_path=train_data_path,
-            test_path=test_data_path,
+            train_path=str(train_data_path),
+            test_path=str(test_data_path),
         )
     if do_w_train:
-        cimt_helper.features_importance_extraction(
+        features_importance_extraction(
             base_exp_path, exp_name, n_splits, train_fold, ntop_features, do_w_train
         )
 
     experiment_results_path = base_exp_path / "results"
     experiment_results_path.mkdir(exist_ok=True, parents=True)
-    cimt_helper.experiments_evaluation(
+    experiments_evaluation(
         sub_experiments_path=sub_experiments_path,
         experiment_path=base_exp_path,
         eval_params=configuration["eval"],
@@ -208,7 +217,7 @@ def cimt_train(
     assert configuration is not None
     train_configuration_file = configuration["w_train"]["default_configuration"]
     train_configuration = load_yml(CONFIGURATION_DIRECTORY / train_configuration_file)
-    train_configuration = cimt_helper.update_configuration(
+    train_configuration = update_configuration(
         train_configuration, configuration["w_train"].get("configuration", {})
     )
     n_splits = configuration["w_train"]["n_splits"]
@@ -240,7 +249,7 @@ def cimt_train(
             logging_directory=base_exp_path,
             file_name="cimt",
         )
-    cimt_helper.get_experiment_average_score(
+    get_experiment_average_score(
         base_exp_path,
         label_name,
         n_splits,
@@ -283,7 +292,7 @@ def cimt(
 ) -> None:
     """Train and Apply features selection approach for a given data."""
     exp_path = MODELS_DIRECTORY / exp_name
-    _check_model_folder(exp_path)
+    check_model_folder(exp_path)
     init_logger(
         logging_directory=exp_path,
         file_name="cimt",
@@ -394,7 +403,7 @@ def cimt_inference(  # noqa
         split_predictions = []
         for split in range(train_n_splits):
             split_experiment_path = experiment_path / f"split_{split}"
-            split_experiment, data_loader = cimt_helper.load_split_experiment_dataloader(
+            split_experiment, data_loader = load_split_experiment_dataloader(
                 ctx, split_experiment_path, data_path
             )
             split_prediction = split_experiment.inference(data_loader(), save_df=False)
@@ -406,7 +415,7 @@ def cimt_inference(  # noqa
         ]
         label_name = split_experiment.label_name
 
-        test_prediction = cimt_helper.aggregate_predictions(
+        test_prediction = aggregate_predictions(
             data_loader(),
             split_predictions,
             [data_loader.id_column],

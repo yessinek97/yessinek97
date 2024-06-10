@@ -19,7 +19,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics.pairwise import cosine_similarity
 
 from ig import FS_CONFIGURATION_DIRECTORY
-from ig.src.logger import get_logger
+from ig.utils.logger import get_logger
 
 log = get_logger("FeatureSelection/FS")
 warnings.filterwarnings("ignore")

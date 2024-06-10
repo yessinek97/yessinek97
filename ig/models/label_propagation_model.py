@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.semi_supervised import LabelPropagation
 
 from ig.models.base_model import BaseModel, log, original_stdout
-from ig.src.utils import save_as_pkl
+from ig.utils.io import save_as_pkl
 
 
 class LabelPropagationModel(BaseModel):

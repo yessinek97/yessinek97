@@ -1,7 +1,7 @@
 """Module used to compute embedding for a given datasets."""
 from logging import Logger
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import click
 import torch
@@ -11,9 +11,10 @@ from transformers import AutoModel, AutoModelForMaskedLM, AutoTokenizer
 
 from ig import CONFIGURATION_DIRECTORY
 from ig.dataset.torch_dataset import OneSequenceDatasetForEmbedding
-from ig.src.logger import get_logger, init_logger
-from ig.src.utils import load_yml, read_data, save_as_pkl
-from ig.utils.torch_helper import get_device
+from ig.utils.embedding import check_output_type, process_batch_embedding
+from ig.utils.io import load_yml, read_data, save_as_pkl
+from ig.utils.logger import get_logger, init_logger
+from ig.utils.torch import get_device
 
 log: Logger = get_logger("ComputeEmbedding")
 
@@ -124,50 +125,3 @@ def compute_embedding(input_file: str, configuration_file: str) -> None:
         log.info("End computing embedding for %s", seq_column)
 
     log.info("Files saved in %s", data_directory)
-
-
-def process_batch_embedding(
-    batch_embedding: Any,
-    attention_mask: torch.Tensor,
-    output_types: List[str],
-    is_masked_model: bool,
-) -> Dict[str, torch.Tensor]:
-    """Process batch embedding and return a dictionary of output types.
-
-    Args:
-        batch_embedding (Any): The batch embedding to process.
-        attention_mask (torch.Tensor): The attention mask to apply.
-        output_types (List[str]): The types of output to include in the returned dictionary.
-
-    Returns:
-        Dict[str, torch.Tensor]: The processed batch embedding.
-    """
-    batch_output: Dict[str, torch.Tensor] = {}
-
-    if is_masked_model:
-        last_hidden_state = batch_embedding["hidden_states"][-1]
-    else:
-        last_hidden_state = batch_embedding.last_hidden_state
-    if "mean" in output_types:
-        masked_outputs = last_hidden_state * attention_mask.unsqueeze(-1)
-        emb = torch.sum(masked_outputs, dim=1) / torch.sum(attention_mask, axis=1).unsqueeze(-1)
-        batch_output["mean"] = emb
-    if "cls" in output_types:
-        batch_output["cls"] = last_hidden_state[:, 0, :]
-    if "raw" in output_types:
-        batch_output["raw"] = last_hidden_state
-
-    return batch_output
-
-
-def check_output_type(output_type: str) -> None:
-    """Function to check the output type and raise a ValueError.
-
-    Raises a ValueError if it is not 'mean', 'cls', or 'raw'.
-
-    Args:
-    output_type (str): The type of output to be checked.
-    """
-    for o_type in output_type:
-        if o_type not in ["mean", "cls", "raw"]:
-            raise ValueError(f"output type {o_type} not in ['mean','cls','raw']")

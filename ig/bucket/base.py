@@ -10,7 +10,7 @@ from cloudpathlib.exceptions import CloudPathNotADirectoryError
 
 from ig import DATA_DIRECTORY, MODELS_DIRECTORY
 from ig.bucket.click import constants
-from ig.src.logger import get_logger
+from ig.utils.logger import get_logger
 
 log = get_logger("Base")
 

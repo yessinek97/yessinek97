@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from ig import CONFIGURATION_DIRECTORY
-from ig.src.processing_helper import (
+from ig.utils.processing import (
     add_features,
     clean_target,
     cross_validation,

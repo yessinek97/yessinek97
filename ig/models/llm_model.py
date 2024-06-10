@@ -17,8 +17,10 @@ from transformers import AutoTokenizer
 from ig.dataset.torch_dataset import EmbeddingsPairsDataset, PeptidePairsDataset
 from ig.models.base_model import BaseModel, log
 from ig.models.torch_based_models import FinetuningModel, ProbingModel
-from ig.src.torch_utils import create_scheduler, round_probs, set_torch_reproducibility
-from ig.src.utils import crop_sequences, load_embedding_file, save_as_pkl
+from ig.utils.embedding import load_embedding_file
+from ig.utils.general import crop_sequences
+from ig.utils.io import save_as_pkl
+from ig.utils.torch import create_scheduler, round_probs, set_torch_reproducibility
 
 
 class LLMModel(BaseModel):

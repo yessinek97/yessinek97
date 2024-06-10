@@ -6,25 +6,8 @@ from unittest import mock
 
 from click.testing import CliRunner
 
-from ig.cli.feature_selection import (
-    _check_model_folder,
-    _fs_func,
-    feature_selection_main,
-    featureselection,
-)
+from ig.cli.feature_selection import _fs_func, feature_selection_main, featureselection
 from ig.dataset.dataset import Dataset
-
-
-@mock.patch("click.confirm")
-def test_check_model_folder(
-    mock_click: mock.MagicMock, models_path: Path, folder_name: str = "dummy_experiment"
-) -> None:
-    """This function tests the _check_model_folder function."""
-    mock_click.return_value = "n"
-    _check_model_folder(folder_name)
-
-    model_folder_path = models_path / folder_name
-    assert model_folder_path.exists()
 
 
 @mock.patch("click.confirm")

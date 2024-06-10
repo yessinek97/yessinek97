@@ -16,7 +16,8 @@ from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 from ig.dataset.torch_dataset import MixedDataset
 from ig.models.base_model import BaseModel, log
-from ig.src.utils import crop_sequences, save_as_pkl
+from ig.utils.general import crop_sequences
+from ig.utils.io import save_as_pkl
 
 
 class LLMMixedModel(BaseModel):

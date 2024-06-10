@@ -6,7 +6,7 @@ import pandas as pd
 from catboost import CatBoostClassifier
 
 from ig.models.base_model import BaseModel, original_stdout
-from ig.src.utils import save_as_pkl
+from ig.utils.io import save_as_pkl
 
 
 class CatBoostModel(BaseModel):

@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 
-from ig.src.logger import get_logger
+from ig.utils.logger import get_logger
 
 log = get_logger("Train/model/torch_dataset")
 

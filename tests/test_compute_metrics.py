@@ -9,7 +9,7 @@ import pytest
 from click.testing import CliRunner
 
 from ig.cli.compute_metrics import compute_metrics
-from ig.src.utils import load_yml
+from ig.utils.io import load_yml
 
 
 def test_compute_metrics(

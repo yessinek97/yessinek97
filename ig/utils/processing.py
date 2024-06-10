@@ -12,8 +12,8 @@ import pandas as pd
 from sklearn.model_selection import KFold, train_test_split
 
 from ig import DATA_DIRECTORY, PROC_SEC_ID
-from ig.src.logger import get_logger
-from ig.src.utils import load_yml, read_data, save_yml
+from ig.utils.io import load_yml, read_data, save_yml
+from ig.utils.logger import get_logger
 
 log: Logger = get_logger("Processing_help")
 

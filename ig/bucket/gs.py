@@ -7,7 +7,7 @@ from cloudpathlib import GSClient
 
 from ig.bucket.base import BaseBucketManager
 from ig.bucket.click import constants
-from ig.src.logger import get_logger
+from ig.utils.logger import get_logger
 
 log = get_logger("Pusher")
 

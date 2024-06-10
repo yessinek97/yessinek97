@@ -1,16 +1,17 @@
 """Command lines to aggregate experiments and checkpoints using mean and max."""
 from logging import Logger
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import click
 import numpy as np
 import pandas as pd
 
 from ig import MODELS_DIRECTORY
-from ig.src.logger import get_logger, init_logger
-from ig.src.metrics import topk
-from ig.src.utils import load_yml
+from ig.utils.evaluation import generate_topk_for_exp
+from ig.utils.io import load_yml
+from ig.utils.logger import get_logger, init_logger
+from ig.utils.metrics import topk
 
 log: Logger = get_logger("Ensemble methods")
 
@@ -102,36 +103,3 @@ def ensoneexp(one_exp: Path) -> None:
         log.info("Top K mean Kfold experiment %s:", topk_kfold)
 
     log.info("Top K mean, max Kfold and Single experiment %s:", max(topk_kfold, topk_single))
-
-
-def generate_topk_for_exp(folder_path: Path, prediction_name: Optional[str] = None) -> float:
-    """Generate the top k for a single of kfold experiment.
-
-    This method calculates the mean prediction for a single
-    or kfold experiment across different features
-    and different base models ie (xgboost or LGBM)
-
-    Args:
-        folder_path: path to experiment
-        and the type of experiment used single of kfold.
-        prediction_name: prediction in case of  using a single model
-        and prediction_mean in case of using a kfold model.
-
-    Returns:
-        Mean topk of the ensembling method.
-
-    """
-    mean_preds: List[np.array] = []
-    for exp_feature in folder_path.iterdir():
-        for model_type in (folder_path / exp_feature).iterdir():
-            file = pd.read_csv(folder_path / exp_feature / model_type / "prediction/test.csv")
-            file = file.dropna(subset=["cd8_any"])
-            labels = file["cd8_any"]
-            configuration = load_yml(folder_path / exp_feature / model_type / "configuration.yml")
-            if not prediction_name:
-                prediction_name = configuration["evaluation"]["prediction_name_selector"]
-            mean_preds.append(file[prediction_name])
-    labels = file["cd8_any"]
-    mean_preds_final = np.mean(mean_preds, axis=0)
-
-    return topk(labels, mean_preds_final)

@@ -15,8 +15,9 @@ from sklearn.model_selection import KFold, train_test_split
 from ig import DATA_DIRECTORY, DATAPROC_DIRECTORY, KFOLD_EXP_NAMES, SINGLE_MODEL_NAME
 from ig.bucket.click.constants import GS_BUCKET_PREFIX
 from ig.cli.buckets import pull
-from ig.src.logger import get_logger
-from ig.src.utils import load_pkl, load_yml, read_data, remove_bucket_prefix, save_as_pkl, save_yml
+from ig.utils.general import remove_bucket_prefix
+from ig.utils.io import load_pkl, load_yml, read_data, save_as_pkl, save_yml
+from ig.utils.logger import get_logger
 
 log: Logger = get_logger("Processing")
 

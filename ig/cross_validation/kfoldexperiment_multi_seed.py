@@ -11,9 +11,10 @@ from ig.constants import EvalExpType, ExpPredictType, InferenceExpType, MetricsE
 from ig.cross_validation.base import BaseExperiment
 from ig.dataset.dataset import Dataset
 from ig.models.base_model import BaseModel
-from ig.src.logger import get_logger
-from ig.src.utils import load_pkl, maybe_int, plotting_kfold_shap_values, save_yml
-from ig.utils.torch_helper import empty_cache
+from ig.utils.cross_validation import maybe_int, plotting_kfold_shap_values
+from ig.utils.io import load_pkl, save_yml
+from ig.utils.logger import get_logger
+from ig.utils.torch import empty_cache
 
 log: Logger = get_logger("KfoldMultiSeed")
 

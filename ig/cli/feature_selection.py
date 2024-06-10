@@ -1,17 +1,18 @@
 """Module used to define the training command."""
 import copy
-import shutil
 from logging import Logger
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
 import click
 
-import ig.src.feature_selection as fese
+import ig.models.feature_selection as fese
 from ig import CONFIGURATION_DIRECTORY, FEATURES_SELECTION_DIRECTORY, MODELS_DIRECTORY
 from ig.dataset.dataset import Dataset
-from ig.src.logger import NeptuneLogs, get_logger, init_logger
-from ig.src.utils import get_model_by_name, load_fs, load_yml, save_yml
+from ig.utils.cross_validation import get_model_by_name
+from ig.utils.general import load_fs
+from ig.utils.io import check_model_folder, load_yml, save_yml
+from ig.utils.logger import NeptuneLogs, get_logger, init_logger
 
 log: Logger = get_logger("FeatureSelection")
 
@@ -36,11 +37,11 @@ def featureselection(
     folder_name: str,
 ) -> None:
     """Feature selection process."""
-    _check_model_folder(folder_name)
-    configuration_file_path = CONFIGURATION_DIRECTORY / configuration_file
-    general_configuration = load_yml(configuration_file_path)
     experiment_path = MODELS_DIRECTORY / folder_name
     init_logger(experiment_path, "FeatureSelection")
+    check_model_folder(experiment_path)
+    configuration_file_path = CONFIGURATION_DIRECTORY / configuration_file
+    general_configuration = load_yml(configuration_file_path)
 
     neptune_log = NeptuneLogs(general_configuration, folder_name=folder_name)
     neptune_log.init_neptune(
@@ -128,20 +129,3 @@ def _fs_func(  # noqa: CCR001
         separate_forced_features=configuration["FS"].get("separate_forced_features", False),
         n_thread=configuration["FS"].get("n_thread", -1),
     ).select_features(train_data("features"), train_data("label"))
-
-
-def _check_model_folder(folder_name: str) -> None:
-    """Check if the checkpoint folder  exists or not."""
-    model_folder_path = MODELS_DIRECTORY / folder_name
-    if model_folder_path.exists():
-        click.confirm(
-            (
-                f"The model folder with the name {folder_name}"
-                "already exists. Do you want to continue the training"
-                "but all the checkpoints will be deleted?"
-            ),
-            abort=True,
-        )
-        shutil.rmtree(model_folder_path)
-
-    model_folder_path.mkdir(exist_ok=True, parents=True)

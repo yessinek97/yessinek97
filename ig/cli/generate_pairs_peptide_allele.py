@@ -6,8 +6,8 @@ from typing import Any, List, Union
 import click
 import pandas as pd
 
-from ig.src.logger import get_logger
-from ig.src.utils import read_data
+from ig.utils.io import read_data
+from ig.utils.logger import get_logger
 
 log: Logger = get_logger("Generate pepetide allele pairs")
 
