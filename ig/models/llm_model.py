@@ -15,7 +15,7 @@ from transformers import AutoTokenizer
 
 from ig.dataset.torch_dataset import EmbeddingsPairsDataset, PeptidePairsDataset
 from ig.models.base_model import BaseModel, log
-from ig.models.torch_based_models import FinetuningModel, ProbingModel
+from ig.models.torch_based_models import FinetuningModel, FocusedFinetuningModel, ProbingModel
 from ig.utils.embedding import load_embedding_file
 from ig.utils.general import crop_sequences
 from ig.utils.io import save_as_pkl
@@ -87,13 +87,19 @@ class LLMModel(BaseModel):
 
         if self._training_type in ["finetuning", "peft"]:
             self._tokenizer = AutoTokenizer.from_pretrained(other_params["llm_hf_model_path"])
-            self._llm_based_model = FinetuningModel(
-                model_configuration=parameters,
-                llm_hf_model_path=other_params["llm_hf_model_path"],
-                is_masked_model=other_params["is_masked_model"],
-                tokenizer=self._tokenizer,
-                training_type=self._training_type,
-            )
+            llm_model_params_dict = {
+                "model_configuration": parameters,
+                "llm_hf_model_path": other_params["llm_hf_model_path"],
+                "is_masked_model": other_params["is_masked_model"],
+                "tokenizer": self._tokenizer,
+                "training_type": self._training_type,
+            }
+            # Initialize model that uses the chosen aggregation method
+            if self.parameters["aggregation"] == "mut_token":
+                self._llm_based_model = FocusedFinetuningModel(**llm_model_params_dict)
+            else:
+                self._llm_based_model = FinetuningModel(**llm_model_params_dict)
+
         elif self._training_type == "probing":
             self._llm_based_model = ProbingModel(model_configuration=parameters)
             # Load embeddings from pickle file

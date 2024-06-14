@@ -2,7 +2,7 @@
 import gc
 import random
 from logging import Logger
-from typing import List
+from typing import List, Union
 
 import torch
 import torch.nn.functional as functional
@@ -67,13 +67,12 @@ def sigmoid_focal_loss(
     return loss
 
 
-def set_torch_reproducibility(seed: int) -> None:
-    """Sets torch and cuda in reproducible mode."""
-    random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+def find_mut_token(wild_type: torch.Tensor, mutated: torch.Tensor) -> Union[int, None]:
+    """Returns the position of the token containing the mutation."""
+    for tok_idx, _ in enumerate(wild_type):
+        if wild_type[tok_idx] != mutated[tok_idx]:
+            return tok_idx
+    raise ValueError("Both sequences are identical")
 
 
 def create_scheduler(
@@ -119,6 +118,15 @@ def compute_f1_score(
 def compute_roc_score(epoch_probs: torch.Tensor, epoch_labels: torch.Tensor) -> float:
     """Computes epoch ROC score."""
     return binary_auroc(epoch_probs, epoch_labels).float()
+
+
+def set_torch_reproducibility(seed: int) -> None:
+    """Sets torch and cuda in reproducible mode."""
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def get_device() -> str:

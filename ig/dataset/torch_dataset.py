@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 from ig.utils.logger import get_logger
+from ig.utils.torch import find_mut_token
 
 log = get_logger("Train/model/torch_dataset")
 
@@ -292,6 +293,63 @@ class MixedDataset(torch.utils.data.Dataset):
         )
 
         return aggregated_embedding, batch_features, batch_labels
+
+    def compute_focused_batch_mutation_embeddings(
+        self, pairs_batch: list, attention_mask: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Computes embeddings for a batch of pairs of (wild_type, mutated) sequences. And only return the embedding oh the token containing the mutation.
+
+        Args:
+            pairs_batch (list): batch of (wild_type, mutated) sequence pairs
+
+        Returns:
+            torch.Tensor: batch embeddings of (wild_type, mutated) sequence pairs.
+            torch.Tensor: tensor of batch features
+            torch.Tensor: tensor of batch labels
+        """
+        batch_sequence_pairs, batch_features, batch_labels = zip(*pairs_batch)
+        batch_size = len(batch_sequence_pairs)
+
+        # flatten batch sequence pairs to be tokenized in one pass
+        flattened_batch_sequence_pairs = [seq for pair in batch_sequence_pairs for seq in pair]
+
+        # batch tokenized pairs
+        x = torch.Tensor(
+            self._tokenizer(
+                flattened_batch_sequence_pairs,
+                padding="max_length",
+                max_length=self._max_length,
+            )["input_ids"]
+        ).to(torch.int64)
+
+        if not attention_mask:
+            attention_mask = x != self._tokenizer.cls_token_id
+
+        # find mutated token positions
+        mut_token_positions = [
+            find_mut_token(pair[0], pair[1]) for pair in x.view(batch_size, 2, -1)
+        ]
+
+        # batch embedding pairs
+        x = self._llm(
+            x,  # flatten along batch to compute all embeddings in one pass
+            attention_mask=attention_mask.view(batch_size * 2, -1),
+            encoder_attention_mask=attention_mask,
+            output_hidden_states=True,
+        )["hidden_states"][-1]
+
+        # group embeddings along batch
+        x = torch.reshape(x, (batch_size, 2, self._max_length, -1))
+
+        # mutation embedding given by the difference between the mutated and wild type
+        mutation_embeddings = x[:, 0, :, :] - x[:, 1, :, :]
+
+        # focus on mutated token only
+        focused_mutation_embeddings = torch.stack(
+            [mutation_embeddings[b, mut_token_positions[b], :] for b in range(batch_size)]
+        )
+
+        return focused_mutation_embeddings, batch_features, batch_labels
 
     def __len__(self) -> int:
         """Returns the number of samples in the whole dataset."""

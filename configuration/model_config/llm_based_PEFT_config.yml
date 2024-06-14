@@ -1,4 +1,4 @@
-model_type: LLMModel # LLMModel, LLMMixedModel
+model_type: LLMMixedModel # LLMModel, LLMMixedModel
 model_config:
   general_params:
     # LLM model path from HuggingFace (Protein models: ESM / protBERT or DNA models: NT models)
@@ -20,6 +20,7 @@ model_config:
       max_lr: 0.003
   model_params:
     context_length: 50 # supported sequence length on base pairs
+    aggregation: mean # mean: average of all tokens , mut_token: embedding of the mutated token
     embed_dim: 1024 # 1024 for protBERT & NT 500m, 512 for NT 50m and 2560 for ESM2 3B
     mlp_layer_sizes:
     k_for_kmers: 6

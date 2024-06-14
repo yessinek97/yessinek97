@@ -283,12 +283,18 @@ class LLMMixedModel(BaseModel):
             self._device,
             max_length,
         )
+        # select collate_fn that uses the chosen aggregation method
+        collate_fn = (
+            mixed_dataset.compute_focused_batch_mutation_embeddings
+            if self.parameters["aggregation"] == "mut_token"
+            else mixed_dataset.compute_batch_mutation_embeddings
+        )
         # instanciate Mixed dataloader
         mixed_dataloader = DataLoader(
             mixed_dataset,
             batch_size=self.parameters["batch_size"],
             shuffle=self.parameters["shuffle_dataloader"],
-            collate_fn=mixed_dataset.compute_batch_mutation_embeddings,
+            collate_fn=collate_fn,
         )
 
         return mixed_dataloader, max_length
