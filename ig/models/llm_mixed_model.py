@@ -18,6 +18,7 @@ from ig.dataset.torch_dataset import MixedDataset
 from ig.models.base_model import BaseModel, log
 from ig.utils.general import crop_sequences
 from ig.utils.io import save_as_pkl
+from ig.utils.torch import compute_f1_score, compute_roc_score, compute_top_k, round_probs
 
 
 class LLMMixedModel(BaseModel):
@@ -84,6 +85,8 @@ class LLMMixedModel(BaseModel):
             )
             self._llm = get_peft_model(self._llm, peft_config)
 
+        self._prob_threshold = parameters["threshold"]
+
         # two stages LLMMixedModel
         if other_params["pretrained_llm_path"]:
             llm_state_dict = torch.load(other_params["pretrained_llm_path"])["model_state_dict"]
@@ -97,7 +100,7 @@ class LLMMixedModel(BaseModel):
         self._mutated_col_name = other_params["mutated_col_name"]
         self._mutation_position_col_name = other_params["mutation_position_col_name"]
 
-        self._metrics: dict[str, list[float]] = defaultdict(list)
+        self._metrics: dict[str, float] = defaultdict(float)
 
     def fit(
         self,
@@ -120,6 +123,41 @@ class LLMMixedModel(BaseModel):
         if self.save_model:
             # pickle LLMMixedModel object
             save_as_pkl(self, self.checkpoints)
+
+    def compute_metrics(self, probs: torch.Tensor, labels: torch.Tensor, stage: str) -> None:
+        """Computes topK, F1 and ROC scores."""
+        preds = round_probs(probs, self._prob_threshold)
+        self._metrics[f"{stage}_accuracy"] = np.average(preds == labels)
+        self._metrics[f"{stage}_top_k"] = compute_top_k(probs, labels)
+        self._metrics[f"{stage}_f1"] = compute_f1_score(probs, labels, self._prob_threshold)
+        self._metrics[f"{stage}_roc"] = compute_roc_score(probs, labels)
+
+    def log_metrics(self) -> None:
+        """Log epoch metrics.
+
+        Args:
+            epoch_num (_type_): _description_
+        """
+        train_acc = self._metrics["train_accuracy"]
+        val_acc = self._metrics["val_accuracy"]
+
+        train_top_k = self._metrics["train_top_k"]
+        val_top_k = self._metrics["val_top_k"]
+
+        train_f1 = self._metrics["train_f1"]
+        val_f1 = self._metrics["val_f1"]
+
+        train_roc = self._metrics["train_roc"]
+        val_roc = self._metrics["val_roc"]
+
+        log.info(
+            f"\n metrics:\n \
+            | Train Accuracy: {train_acc: .3f} | Val Accuracy: {val_acc: .3f} \n \
+            | Train topK: {train_top_k: .3f} | Val topK: {val_top_k: .3f} \n \
+            | Train F1-score: {train_f1: .3f} | Val F1-score: {val_f1: .3f} \n \
+            | Train ROC-score: {train_roc: .3f} | Val ROC-score: {val_roc: .3f} \n \
+            "
+        )
 
     def compute_combined_features(self, dataloader: DataLoader) -> tuple[np.array, list]:
         """Computes embeddings and combines them with tabular features.
@@ -147,25 +185,6 @@ class LLMMixedModel(BaseModel):
         )
         return combined_features, pair_labels
 
-    def compute_metrics(self, preds: list, labels: list) -> tuple[np.float, np.float]:
-        """Computes global and positiva class accuracies.
-
-        Args:
-            preds (list): _description_
-            labels (list): _description_
-
-        Returns:
-            tuple[np.float, np.float]: _description_
-        """
-        # compute and save metrics
-        positive_indexes = [idx for idx in range(len(labels)) if labels[idx] == 1]
-        epoch_pos_preds = [1 if preds[idx] == labels[idx] else 0 for idx in positive_indexes]
-        # global accuracy
-        acc = np.average(preds == labels)
-        # positive class accuracy
-        acc_pos = np.average(epoch_pos_preds)
-        return acc, acc_pos
-
     def train(self, train_dataloader: DataLoader, val_dataloader: DataLoader) -> None:
         """Train LLMMixedModel model.
 
@@ -191,17 +210,11 @@ class LLMMixedModel(BaseModel):
         )
 
         best_iteration = self.ml_model.best_iteration
-        train_preds = np.round(
-            self.ml_model.predict(dtrain, iteration_range=(0, best_iteration + 1))
-        )
-        val_preds = np.round(self.ml_model.predict(dval, iteration_range=(0, best_iteration + 1)))
-
-        train_acc, train_acc_pos = self.compute_metrics(train_preds, train_labels)
-        val_acc, val_acc_pos = self.compute_metrics(val_preds, val_labels)
-        self._metrics["train_acc"] = train_acc
-        self._metrics["val_acc"] = val_acc
-        self._metrics["train_acc_pos"] = train_acc_pos
-        self._metrics["val_acc_pos"] = val_acc_pos
+        train_probs = self.ml_model.predict(dtrain, iteration_range=(0, best_iteration + 1))
+        val_probs = self.ml_model.predict(dval, iteration_range=(0, best_iteration + 1))
+        # using torch metrics to make sure different models are fairly evaluated
+        self.compute_metrics(torch.Tensor(train_probs), torch.Tensor(train_labels), "train")
+        self.compute_metrics(torch.Tensor(val_probs), torch.Tensor(val_labels), "val")
 
     def predict(self, data: pd.DataFame, with_label: bool) -> Any:
         """Prediction method."""
@@ -279,12 +292,3 @@ class LLMMixedModel(BaseModel):
         )
 
         return mixed_dataloader, max_length
-
-    def log_metrics(self) -> None:
-        """Log epoch metrics."""
-        log.info(
-            f"Metrics: Train Acc: {self._metrics['train_acc']: .3f} \
-            | Train Acc Positives: {self._metrics['train_acc_pos']: .3f} \
-            | Val Acc: {self._metrics['val_acc']: .3f} \
-            | Val Acc Positives: {self._metrics['val_acc_pos']: .3f}"
-        )

@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as functional
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler, OneCycleLR
+from torcheval.metrics.functional import binary_auroc, binary_f1_score
 
 from ig.utils.logger import get_logger
 
@@ -98,6 +99,26 @@ def create_scheduler(
 def round_probs(probs: torch.Tensor, threshold: float) -> List[int]:
     """Rounds probabilities according to chosen threshold."""
     return (probs > threshold).long()
+
+
+def compute_top_k(probs: torch.Tensor, labels: torch.Tensor) -> float:
+    """Computes epoch topK accuracy."""
+    _, top_k_indices = torch.topk(probs, list(labels).count(1))
+    top_k_labels = torch.Tensor([labels[idx] for idx in top_k_indices])
+    top_k_accuracy = torch.mean(top_k_labels == 1, dtype=float)
+    return top_k_accuracy.float()
+
+
+def compute_f1_score(
+    epoch_probs: torch.Tensor, epoch_labels: torch.Tensor, prob_threshold: float
+) -> float:
+    """Computes epoch F1-score."""
+    return binary_f1_score(input=epoch_probs, target=epoch_labels, threshold=prob_threshold).float()
+
+
+def compute_roc_score(epoch_probs: torch.Tensor, epoch_labels: torch.Tensor) -> float:
+    """Computes epoch ROC score."""
+    return binary_auroc(epoch_probs, epoch_labels).float()
 
 
 def get_device() -> str:

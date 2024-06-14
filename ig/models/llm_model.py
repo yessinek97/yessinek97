@@ -10,7 +10,6 @@ import pandas as pd
 import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-from torcheval.metrics.functional import binary_auroc, binary_f1_score
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
@@ -20,7 +19,14 @@ from ig.models.torch_based_models import FinetuningModel, ProbingModel
 from ig.utils.embedding import load_embedding_file
 from ig.utils.general import crop_sequences
 from ig.utils.io import save_as_pkl
-from ig.utils.torch import create_scheduler, round_probs, set_torch_reproducibility
+from ig.utils.torch import (
+    compute_f1_score,
+    compute_roc_score,
+    compute_top_k,
+    create_scheduler,
+    round_probs,
+    set_torch_reproducibility,
+)
 
 
 class LLMModel(BaseModel):
@@ -322,35 +328,17 @@ class LLMModel(BaseModel):
 
         return batch_loss, probs, label
 
-    def compute_top_k(self, epoch_probs: list[float], epoch_labels: list[int]) -> float:
-        """Computes epoch topK accuracy."""
-        top_k_indices, top_k_probs = torch.topk(epoch_probs, list(epoch_labels).count(1))
-        top_k_preds = round_probs(top_k_probs, self._prob_threshold)
-        top_k_labels = [
-            epoch_labels[idx] for idx in range(len(epoch_labels)) if idx in top_k_indices
-        ]
-        top_k_accuracy = np.average(top_k_preds == top_k_labels)
-        return top_k_accuracy
-
-    def compute_f1_score(self, epoch_probs: list[int], epoch_labels: list[int]) -> float:
-        """Computes epoch F1-score."""
-        return binary_f1_score(
-            input=epoch_probs, target=epoch_labels, threshold=self._prob_threshold
-        )
-
-    def compute_roc_score(self, epoch_probs: list[float], epoch_labels: list[int]) -> float:
-        """Computes epoch ROC score."""
-        return binary_auroc(epoch_probs, epoch_labels)
-
     def compute_epoch_metrics(
         self, epoch_probs: list[float], epoch_labels: list[int], stage: str
     ) -> None:
         """Computes epoch metrics and appends them to metrics dict."""
         epoch_preds = round_probs(epoch_probs, self._prob_threshold)
         self._metrics[f"{stage}_accuracy"].append(np.average(epoch_preds == epoch_labels))
-        self._metrics[f"{stage}_top_k"].append(self.compute_top_k(epoch_probs, epoch_labels))
-        self._metrics[f"{stage}_f1"].append(self.compute_f1_score(epoch_preds, epoch_labels))
-        self._metrics[f"{stage}_roc"].append(self.compute_roc_score(epoch_probs, epoch_labels))
+        self._metrics[f"{stage}_top_k"].append(compute_top_k(epoch_probs, epoch_labels))
+        self._metrics[f"{stage}_f1"].append(
+            compute_f1_score(epoch_preds, epoch_labels, self._prob_threshold)
+        )
+        self._metrics[f"{stage}_roc"].append(compute_roc_score(epoch_probs, epoch_labels))
 
     def log_metrics(self, epoch_num: int) -> None:
         """Log epoch metrics.
