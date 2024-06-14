@@ -237,7 +237,7 @@ class LLMMixedModel(BaseModel):
                 dataframe.columns
             ):
 
-                mutation_start_positions = list(dataframe["mutation_start_position"])
+                mutation_start_positions = list(dataframe[self._mutation_position_col_name])
                 context_length = self.parameters["context_length"]
                 wild_type_sequences = crop_sequences(
                     wild_type_sequences, mutation_start_positions, context_length
