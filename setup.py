@@ -51,6 +51,7 @@ setup(
             # processing
             "processing=ig.cli.processing:processing",
             "compute-embeddings=ig.cli.compute_embedding:compute_embedding",
+            "augment=ig.cli.data_augmenter:augment",
         ]
     },
 )

@@ -1,0 +1,6 @@
+general_params:
+  dna_wildtype_col_name: dna_wild_type
+  dna_mutated_col_name: dna_mutated
+  dna_mutation_position_col_name: mutation_start_position
+  peptide_wildtype_col_name: wildtype_peptide
+  peptide_mutated_col_name: tested_peptide
