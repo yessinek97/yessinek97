@@ -14,7 +14,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 
 from ig.dataset.torch_dataset import EmbeddingsPairsDataset, PeptidePairsDataset
-from ig.models.base_model import BaseModel, log
+from ig.models.base_model import BaseModel, log, original_stdout
 from ig.models.torch_based_models import FinetuningModel, FocusedFinetuningModel, ProbingModel
 from ig.utils.embedding import load_embedding_file
 from ig.utils.general import crop_sequences
@@ -127,6 +127,18 @@ class LLMModel(BaseModel):
 
         self._metrics: dict[str, list[float]] = defaultdict(list)
 
+        # Get early stopping params
+        self._val_frequency = float(self.parameters["val_frequency"])  # should be in ]0, 1]
+        self._max_patience = int(self.parameters["early_stop_patience"])
+        self._early_stop_metric = self.parameters["early_stop_metric"]
+        self._is_early_stop = False
+        if self.parameters["early_stop_metric_max"]:
+            self._best_metric = 0.0
+        else:
+            self._best_metric = np.inf
+
+        self._shuffle_dataloader = self.parameters["shuffle_dataloader"]
+
     def fit(
         self,
         train_data: pd.DataFrame,
@@ -138,11 +150,28 @@ class LLMModel(BaseModel):
         )
         log.info(
             f"Started training: {self.model_type} | using: {self._device}\n\
-            number of trainable parameter: {num_trainable_params}"
+            \t\tnumber of trainable parameter: {num_trainable_params}\n"
         )
 
-        train_dataloader, max_length_train = self._create_matrix(train_data, with_label=True)
-        val_dataloader, max_length_val = self._create_matrix(val_data, with_label=True)
+        train_dataloader, max_length_train = self._create_matrix(
+            train_data, with_label=True, shuffle=self._shuffle_dataloader
+        )
+        val_dataloader, max_length_val = self._create_matrix(
+            val_data, with_label=True, shuffle=False
+        )
+
+        # number of training steps (batchs) after which we will do a validation round
+        self._one_round_size = int(len(train_dataloader) * self._val_frequency)
+        log.info(
+            "There are %s steps in one epoch,\n \
+            \t\tWith a frequency of %s, a validation round will be triggered after each %s steps,\n\
+            \t\twhich results in %s validation rounds per epoch!\n",
+            len(train_dataloader),
+            self._val_frequency,
+            self._one_round_size,
+            len(train_dataloader) / self._one_round_size,
+        )
+        self._steps_counter = 0
 
         num_epochs = self.parameters["num_epochs"]
         if self.other_params["lr_scheduler_config"]["use_scheduler"]:
@@ -156,51 +185,91 @@ class LLMModel(BaseModel):
         # number of tokens of the longest sequence
         log.info(
             f"Maximum length in train: {max_length_train} - "
-            f"Maximum length in validation: {max_length_val}"
+            f"Maximum length in validation: {max_length_val}\n"
         )
 
-        epochs_iterator = tqdm(range(num_epochs))
+        epochs_iterator = range(num_epochs)
         for epoch_num in epochs_iterator:
-            epochs_iterator.set_description(f"epoch: {epoch_num}/{num_epochs}")
-            self.train_one_epoch(train_dataloader, max_length_train)
-            self.validate_one_epoch(val_dataloader, max_length_val)
-            self.log_metrics(epoch_num)
+            print(f"******* Starting Epoch: {epoch_num+1}/{num_epochs} ******* \n")
+            self.train_one_epoch(
+                train_dataloader,
+                max_length_train,
+                val_dataloader,
+                max_length_val,
+            )
+
+            # Break out of training loop if early stopping is reached
+            if self._is_early_stop:
+                log.info(
+                    "Early stopping %s/%s is reached after %s total training steps ! \n",
+                    self._patience_counter,
+                    self._max_patience,
+                    self._steps_counter,
+                )
+                break
 
         if self.save_model:
-            log.info(f"Saving model to: {self.checkpoints}")
-            # Save torch model checkpoint
-            if self._save_llm_only:
-                dict_to_save = {"model_state_dict": self._llm_based_model.module.llm.state_dict()}
-            else:
-                dict_to_save = {
-                    "model_state_dict": self._llm_based_model.state_dict(),
-                    "optimizer_state_dict": self._optimizer.state_dict(),
-                    "metrics": self._metrics,
-                }
-            torch.save(dict_to_save, str(self.checkpoints).replace("model.pkl", "torch_model.pt"))
-            # pickle LLMBasedModel object
-            save_as_pkl(self, self.checkpoints)
+            # Load the best model checkpoint and replace the current model state_dict with the best one
+            torch_best_model = torch.load(
+                str(self.checkpoints).replace("model.pkl", "torch_model.pt")
+            )
+            self._llm_based_model.load_state_dict(torch_best_model["model_state_dict"])
 
-    def train_one_epoch(self, train_dataloader: DataLoader, max_length: int) -> None:
+            # Reset model logging
+            self.model_logger.reset_stdout(original_stdout)
+
+    def train_one_epoch(
+        self,
+        train_dataloader: DataLoader,
+        train_max_length: int,
+        val_dataloader: DataLoader,
+        val_max_length: int,
+    ) -> None:
         """Train model for one epoch.
 
         Args:
             train_dataloader (DataLoader): _description_
-            max_length (int): _description_
+            train_max_length (int): _description_
+            val_dataloader (DataLoader): _description_
+            val_max_length (int): _description_
         """
         self._llm_based_model.train()
         epoch_probs = []
         epoch_labels = []
+        epoch_loss = 0.0
         iterator = tqdm(train_dataloader)
         for pair, label in iterator:
-            batch_loss, batch_probs, batch_labels = self.train_one_step(pair, label, max_length)
+            batch_loss, batch_probs, batch_labels = self.train_one_step(
+                pair, label, train_max_length
+            )
+            self._steps_counter += 1
             iterator.set_postfix({"Loss": batch_loss.item()})
             epoch_probs += batch_probs
             epoch_labels += batch_labels
+            epoch_loss += batch_loss
+            # Run validation If steps_counter reachs one_round_size (val_frequency)
+            if self._steps_counter % self._one_round_size == 0:
+                train_round_probs = torch.Tensor(epoch_probs).detach().cpu()
+                train_round_labels = torch.Tensor(epoch_labels).detach().cpu()
+                train_round_loss = epoch_loss / len(train_dataloader)
+                self.compute_round_metrics(
+                    train_round_probs, train_round_labels, train_round_loss, "train_round"
+                )
+                self.validate_one_round(val_dataloader, val_max_length)
+
+                # Check whether a new best score is reached, Save the model and check if early stopping condition is met
+                self.early_stopping()
+
+            if self._is_early_stop:
+                break
 
         epoch_probs = torch.Tensor(epoch_probs).detach().cpu()
         epoch_labels = torch.Tensor(epoch_labels).detach().cpu()
-        self.compute_epoch_metrics(epoch_probs, epoch_labels, "train")
+        epoch_loss = epoch_loss / len(train_dataloader)
+        self.compute_round_metrics(epoch_probs, epoch_labels, epoch_loss, "train_epoch")
+        log.info("###### Epoch Metrics: ######\n")
+        log.info(self.log_metrics("train_epoch"))
+        log.info(self.log_metrics("val_round"))
 
     def forward_pass(
         self, pair: torch.Tensor, max_length: int
@@ -287,8 +356,8 @@ class LLMModel(BaseModel):
 
         return batch_loss, probs, label
 
-    def validate_one_epoch(self, val_dataloader: DataLoader, max_length: int) -> None:
-        """Validate model for one epoch.
+    def validate_one_round(self, val_dataloader: DataLoader, max_length: int) -> None:
+        """Validate model for one round.
 
         Args:
             val_dataloader (DataLoader): _description_
@@ -300,30 +369,34 @@ class LLMModel(BaseModel):
         """
         self._llm_based_model.eval()
         with torch.no_grad():
-            epoch_probs = []
-            epoch_labels = []
-            iterator = tqdm(val_dataloader)
-            for pair, label in iterator:
+            val_probs = []
+            val_labels = []
+            val_loss = 0.0
+            for pair, label in val_dataloader:
                 batch_loss, batch_probs, batch_labels = self.validate_one_step(
                     pair, label, max_length
                 )
-                iterator.set_postfix({"Loss": batch_loss.item()})
-                epoch_probs += batch_probs
-                epoch_labels += batch_labels
+                val_probs += batch_probs
+                val_labels += batch_labels
+                val_loss += batch_loss
 
-        epoch_probs = torch.Tensor(epoch_probs).detach().cpu()
-        epoch_labels = torch.Tensor(epoch_labels).detach().cpu()
-        self.compute_epoch_metrics(epoch_probs, epoch_labels, "val")
+        val_probs = torch.Tensor(val_probs).detach().cpu()
+        val_labels = torch.Tensor(val_labels).detach().cpu()
+        val_loss = val_loss / len(val_dataloader)
+        self.compute_round_metrics(val_probs, val_labels, val_loss, "val_round")
+        self._llm_based_model.train()
 
     def validate_one_step(
         self, pair: torch.Tensor, label: torch.Tensor, max_length: int
-    ) -> tuple[torch.Tensor, list, list]:
+    ) -> tuple[float, torch.Tensor, torch.Tensor]:
         """Make one forward pass.
 
         Args:
             pair (torch.Tensor): _description_
             label (torch.Tensor): _description_
             max_length (int): _description_
+        Returns:
+            torch.Tensor: returns probabilities and labels
         """
         pair = pair.to(self._device)
         label = label.to(self._device)
@@ -334,45 +407,58 @@ class LLMModel(BaseModel):
 
         return batch_loss, probs, label
 
-    def compute_epoch_metrics(
-        self, epoch_probs: list[float], epoch_labels: list[int], stage: str
+    def compute_round_metrics(
+        self, probs: list[float], round_labels: list[int], loss: float, stage: str
     ) -> None:
-        """Computes epoch metrics and appends them to metrics dict."""
-        epoch_preds = round_probs(epoch_probs, self._prob_threshold)
-        self._metrics[f"{stage}_accuracy"].append(np.average(epoch_preds == epoch_labels))
-        self._metrics[f"{stage}_top_k"].append(compute_top_k(epoch_probs, epoch_labels))
+        """Computes round metrics and appends them to metrics dict."""
+        round_preds = round_probs(probs, self._prob_threshold)
+        self._metrics[f"{stage}_accuracy"].append(np.average(round_preds == round_labels))
+        self._metrics[f"{stage}_top_k"].append(compute_top_k(probs, round_labels))
         self._metrics[f"{stage}_f1"].append(
-            compute_f1_score(epoch_preds, epoch_labels, self._prob_threshold)
+            compute_f1_score(round_preds, round_labels, self._prob_threshold)
         )
-        self._metrics[f"{stage}_roc"].append(compute_roc_score(epoch_probs, epoch_labels))
+        self._metrics[f"{stage}_roc"].append(compute_roc_score(probs, round_labels))
+        self._metrics[f"{stage}_loss"].append(loss)
 
-    def log_metrics(self, epoch_num: int) -> None:
-        """Log epoch metrics.
+    def log_metrics(self, stage: str) -> str:
+        """Log round metrics.
 
         Args:
-            epoch_num (_type_): _description_
-        """
-        epoch_train_acc = self._metrics["train_accuracy"][epoch_num]
-        epoch_val_acc = self._metrics["val_accuracy"][epoch_num]
-        epoch_train_top_k = self._metrics["train_top_k"][epoch_num]
-        epoch_val_top_k = self._metrics["val_top_k"][epoch_num]
-        epoch_train_f1 = self._metrics["train_f1"][epoch_num]
-        epoch_val_f1 = self._metrics["val_f1"][epoch_num]
-        epoch_train_roc = self._metrics["train_roc"][epoch_num]
-        epoch_val_roc = self._metrics["val_roc"][epoch_num]
+            stage (_type_): _description_
+        Returns:
+            str: log message
 
-        log.info(
-            f"\n Epoch {epoch_num + 1} metrics:\n \
-            | Train Accuracy: {epoch_train_acc: .3f} | Val Accuracy: {epoch_val_acc: .3f} \n \
-            | Train topK: {epoch_train_top_k: .3f} | Val topK: {epoch_val_top_k: .3f} \n \
-            | Train F1-score: {epoch_train_f1: .3f} | Val F1-score: {epoch_val_f1: .3f} \n \
-            | Train ROC-score: {epoch_train_roc: .3f} | Val ROC-score: {epoch_val_roc: .3f} \n \
-            "
+        """
+        acc = self._metrics[f"{stage}_accuracy"][-1]
+        top_k = self._metrics[f"{stage}_top_k"][-1]
+        f1 = self._metrics[f"{stage}_f1"][-1]
+        roc = self._metrics[f"{stage}_roc"][-1]
+        loss = self._metrics[f"{stage}_loss"][-1]
+
+        round_num = len(self._metrics[f"{stage}_accuracy"])
+        message = (
+            f"{stage} {round_num} metrics : "
+            f" | Accuracy: {acc: .3f}"
+            f" | topK: {top_k: .3f}"
+            f" | F1-score: {f1: .3f}"
+            f" | ROC-score: {roc: .3f}"
+            f" | log-loss: {loss: .3f}\n"
         )
+
+        if stage == "val_round":
+            current_metric = self._metrics[f"val_round_{self._early_stop_metric}"][-1]
+            message += (
+                "\t\t\tEarly_stop_metric: "
+                f"Current val_round_{self._early_stop_metric} : {current_metric: .3f} | "
+                f"Best val_round_{self._early_stop_metric} : {self._best_metric: .3f}\n"
+            )
+        return message
 
     def predict(self, data: pd.DataFame, with_label: bool) -> Any:
         """Prediction method."""
-        inference_dataloader, max_length = self._create_matrix(data, with_label)
+        inference_dataloader, max_length = self._create_matrix(data, with_label, shuffle=False)
+
+        self._llm_based_model.eval()
 
         predictions = []
         with torch.no_grad():
@@ -383,19 +469,23 @@ class LLMModel(BaseModel):
 
         return predictions
 
-    def _create_matrix(self, data: pd.DataFrame, with_label: bool) -> Any:
+    def _create_matrix(self, data: pd.DataFrame, with_label: bool, **kargs: bool) -> Any:
         """Return the correct data structure. Object that is required by the model."""
         if self._training_type in ["finetuning", "peft"]:
-            dataloader, max_length = self.create_peptide_pairs_dataloader(data, with_label)
+            dataloader, max_length = self.create_peptide_pairs_dataloader(
+                data, with_label, kargs["shuffle"]
+            )
         else:
-            dataloader, max_length = self.create_embeddings_pairs_dataloader(data, with_label)
+            dataloader, max_length = self.create_embeddings_pairs_dataloader(
+                data, with_label, kargs["shuffle"]
+            )
         return dataloader, max_length
 
     # dataloader creator for probing
     def create_embeddings_pairs_dataloader(
-        self, dataframe: pd.DataFrame, with_label: bool
+        self, dataframe: pd.DataFrame, with_label: bool, shuffle: bool
     ) -> tuple[DataLoader, int]:
-        """Creates a sequence dataset for finetuning.
+        """Creates an embeddings dataset for probing.
 
         Args:
             dataframe (pd.DataFrame): dataframe containing sequence pairs and labels.
@@ -423,13 +513,14 @@ class LLMModel(BaseModel):
         embedding_pairs_dataloader = DataLoader(
             embedding_pairs_dataset,
             batch_size=self.parameters["batch_size"],
-            shuffle=self.parameters["shuffle_dataloader"],
+            shuffle=shuffle,
+            num_workers=self.parameters["num_workers"],
         )
         return embedding_pairs_dataloader, max_length
 
     # dataloader creator for finetuning or peft
     def create_peptide_pairs_dataloader(
-        self, dataframe: pd.DataFrame, with_label: bool
+        self, dataframe: pd.DataFrame, with_label: bool, shuffle: bool
     ) -> tuple[DataLoader, int]:
         """Creates a sequence dataset for finetuning.
 
@@ -484,7 +575,8 @@ class LLMModel(BaseModel):
         peptide_pairs_dataloader = DataLoader(
             peptide_pairs_dataset,
             batch_size=self.parameters["batch_size"],
-            shuffle=self.parameters["shuffle_dataloader"],
+            shuffle=shuffle,
+            num_workers=self.parameters["num_workers"],
             collate_fn=peptide_pairs_dataset.tokenize_batch_of_pairs,
         )
         return peptide_pairs_dataloader, max_length
@@ -494,3 +586,60 @@ class LLMModel(BaseModel):
         supported_types = ["finetuning", "probing", "peft"]
         if self._training_type not in supported_types:
             raise ValueError(f"Training type '{self._training_type}' not in {supported_types}")
+
+    def early_stopping(self) -> None:
+        """Save best model and trigger the early stopping if the validation score didn't improve after X steps."""
+        current_metric = self._metrics[f"val_round_{self._early_stop_metric}"][-1]
+
+        if (current_metric > self._best_metric) & self.parameters["early_stop_metric_max"]:
+            print(self.log_metrics("train_round"))
+            print(self.log_metrics("val_round"))
+
+            # Save new best metric
+            self._best_metric = current_metric
+            self._patience_counter = 0
+
+            # Save the best model checkpoint to experiment directory
+            self.save_llm_checkpoint()
+
+            # Set early stopping to False
+            self._is_early_stop = False
+
+        elif (current_metric < self._best_metric) & (not self.parameters["early_stop_metric_max"]):
+            print(self.log_metrics("train_round"))
+            print(self.log_metrics("val_round"))
+
+            # Save new best metric
+            self._best_metric = current_metric
+            self._patience_counter = 0
+
+            # Save the best model checkpoint to experiment directory
+            self.save_llm_checkpoint()
+
+            # Set early stopping to False
+            self._is_early_stop = False
+
+        else:
+            self._patience_counter += 1
+            print(f"Early stopping counter {self._patience_counter} / {self._max_patience}\n")
+            if self._patience_counter >= self._max_patience:
+                # Set early stopping to True
+                self._is_early_stop = True
+                print("Early stopping is Reached !")
+
+    def save_llm_checkpoint(self) -> None:
+        """Save the best model checkpoint to experiment directory."""
+        if self.save_model:
+            print(f"Saving new best checkpoint to: {self.checkpoints} \n\n")
+            # Save torch model checkpoint
+            if self._save_llm_only:
+                dict_to_save = {"model_state_dict": self._llm_based_model.module.llm.state_dict()}
+            else:
+                dict_to_save = {
+                    "model_state_dict": self._llm_based_model.state_dict(),
+                    "optimizer_state_dict": self._optimizer.state_dict(),
+                    "metrics": self._metrics,
+                }
+            torch.save(dict_to_save, str(self.checkpoints).replace("model.pkl", "torch_model.pt"))
+            # pickle LLMBasedModel object
+            save_as_pkl(self, self.checkpoints)

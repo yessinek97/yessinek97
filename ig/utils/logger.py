@@ -58,7 +58,7 @@ class ModelLogWriter:
     def __init__(self, logger_path: str) -> None:
         """Init ModelLogWriter."""
         formatter = logging.Formatter("%(name)-12s: %(levelname)-8s %(message)s")
-        self.logger = logging.getLogger("Model/outpus")
+        self.logger = logging.getLogger("Model/output")
         self.logger.propagate = False
 
         file_handler = logging.FileHandler(logger_path)

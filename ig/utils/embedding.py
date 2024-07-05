@@ -25,9 +25,9 @@ def load_embedding_file(file_path: str) -> Any:
     """
     local_path = DATA_DIRECTORY / file_path
     if Path(local_path).exists():
-        log.info("Loading embedding pickle file at: %s", local_path)
+        log.info("Loading embedding pickle file at: %s \n", local_path)
         return load_pkl(local_path)
-    raise FileNotFoundError("The embeddings pickle file %s cannot be found!!!" % local_path)
+    raise FileNotFoundError("The embeddings pickle file %s cannot be found!!!\n" % local_path)
 
 
 def copy_embeddings_file(source_path: Path, destination_path: Path) -> bool:

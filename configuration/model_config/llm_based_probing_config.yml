@@ -8,13 +8,21 @@ model_config:
     mutated_col_name: tested_peptide_biondeep_mhci
     mutation_position_col_name:
     save_llm_only:
+    lr_scheduler_config:
+      use_scheduler: True
+      max_lr: 0.003
   model_params:
     embed_dim: 2560 # 1024 for protBERT & NT 500m, 512 for NT 50m and 2560 for ESM2 3B
     mlp_layer_sizes: [2048, 512, 128, 32, 8, 2, 1]
     batch_size: 16
     batch_size_test: 16
     shuffle_dataloader: True
+    num_workers: 3
     lr: 0.005
-    num_epochs: 1
-    threshold: 0.1
+    val_frequency: 0.05 # Should be a percentage (0 to 1)
+    early_stop_patience: 700 #
+    early_stop_metric: top_k # available validation metrics : accuracy, top_k, f1, roc
+    early_stop_metric_max: True # True if early_stop_metric should be maximized
+    num_epochs: 20
+    threshold: 0.5
     seed: 2020
