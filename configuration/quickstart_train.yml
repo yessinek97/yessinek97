@@ -1,5 +1,9 @@
 neptune_logs: False
+
 experiments:
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: False
   KfoldExperiment:
     split_column: fold
     plot_shap_values: True
@@ -27,9 +31,12 @@ experiments:
       - mean
     statics:
       - mean
+
 label: cd8_any
+
 feature_paths:
-  - train_features
+  - quickstart_features
+
 processing:
   remove_unnecessary_folders: False
   trainable_features: "features_quickstart.yml"
@@ -44,6 +51,7 @@ processing:
   seed: 1994
   validation_ratio: 0.1
   fold: 5
+
 models:
   - xgboost_config.yml
   - lgbm_config.yml
@@ -70,12 +78,13 @@ evaluation:
     - topk
     - topk_20_patientid
     - topk_patientid
+
 FS:
   n_feat: 20
   n_thread: 5
   force_features:
-    - tested_score_biondeep_mhci
     - expression
+    - tested_score_biondeep_mhci
     - tested_presentation_biondeep_mhci
   FS_methods:
     - Fspca.yml

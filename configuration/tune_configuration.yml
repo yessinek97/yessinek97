@@ -15,14 +15,15 @@ experiments:
     # seeds: [1111, 2222, 3333]
 
 label: cd8_any
+
 feature_paths:
   - ml_train_features
 
 tuning:
   maximize: True
   nbr_trials: 1
+
 processing:
-  # process_data: False
   trainable_features: "features.yml"
   validation_strategy: true
   isunlabelled: false
@@ -30,8 +31,10 @@ processing:
   seed: 2024
   validation_ratio: 0.1
   fold: 5
+
 models:
   - tune_xgboost.yml
   # - tune_lgbm.yml
+
 evaluation:
   print_evals: False

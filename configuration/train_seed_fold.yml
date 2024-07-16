@@ -1,5 +1,9 @@
 neptune_logs: False
+
 experiments:
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: False
   KfoldExperiment:
     split_column: fold
     plot_shap_values: False
@@ -13,15 +17,15 @@ experiments:
       - mean
       - max
       - min
-  SingleModel:
-    validation_column: validation
-    plot_shap_values: False
+
 label: cd8_any
+
 feature_paths:
   - train_features
+
 processing:
   remove_unnecessary_folders: False
-  trainable_features: llm_based_features_config.yml
+  trainable_features: features.yml
   # exclude_features:
   validation_strategy: true
   isunlabelled: false
@@ -35,7 +39,9 @@ processing:
   nan_ratio: 0.6
 
 models:
-  - llm_based_model_config.yml
+  - xgboost_config.yml
+  - lgbm_config.yml
+
 evaluation:
   print_evals: True
   # eval_id_name: patientid

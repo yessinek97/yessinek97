@@ -1,58 +1,78 @@
-neptune_logs: True
+neptune_logs: False
+
 experiments:
-  KfoldExperiment:
-    split_column: fold
-    plot_shap_values: True
-    plot_kfold_shap_values: True # False when using Logistic regression
-    operation:
-      - mean
-    statics:
-      - mean
-      # KfoldMultiSeedExperiment:
-      #   split_column: fold
-      #   plot_shap_values: True
-      #   plot_kfold_shap_values: True # False when using Logistic regression
-      #   model_seed: false
-      #   split_seed: true
-      #   nbr_seeds: 10
-      #   print_seeds_evals: False
-      #   operation:
-      #     - mean
-      #   statics:
-      - mean
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: False
+  # KfoldExperiment:
+  #   split_column: fold
+  #   # plot_shap_values: True
+  #   # plot_kfold_shap_values: True # False when using Logistic regression
+  #   operation:
+  #     - mean
+  #   statics:
+  #     - mean
+  # KfoldMultiSeedExperiment:
+  #   split_column: fold
+  #   plot_shap_values: True
+  #   plot_kfold_shap_values: True # False when using Logistic regression
+  #   model_seed: false
+  #   split_seed: true
+  #   nbr_seeds: 10
+  #   print_seeds_evals: False
+  #   save_seed_predictions: False
+  #   seed_plot_fig: False
+  #   operation:
+  #     - mean
+  #   statics:
+  #     - mean
+
 label: cd8_any
-# feature_paths:
-#   - transformer
+
+feature_paths:
+  - ml_train_features
+  # - dl_train_features # use this to add tabular features for LLM models
+
 processing:
   remove_unnecessary_folders: false
   trainable_features: "features.yml"
   # exclude_features: # You can use prefixes(neofox..),suffixes(mhci,pmhc) patterns(tested) or the full feature name
   #   - neofox
-  #   - tested
-  #   - mhci
-  #   - pmhc
-  #   - gene_ontology
-  #   - rna_localization
-  #   - go_cc_rna_loc
-  #   - rnalocalization_p_membrane
+  #   - ^diff.*whole$ #diff tested pep
+  #   - .*tested.*whole$ # tested pep
+  #   - tc3
+  #   - ^diff.*mhci$
+  #   - ^diff(?!.*(?:mhci|whole)$).* #  diff_mut
+  #   - proxy_score
+  #   - tested_ba_aff_netmhcpan4.1
+  #   - rnalocalization_p_
+  #   - go_term_rna
+  #   - go_term_.*_embed
+  #   - deeptap
+  #   - specificity_gtex
   validation_strategy: True
   isunlabelled: false
-  #normalizer:
-  #normalizer_per_id:
-  #normalizer_id: patientid
+  #normalizer:    # StandardScaler, MinMaxScaler, QuantileTransformer, PowerTransformer, FunctionTransformer
+  # normalizer_per_id:  # StandardScaler, MinMaxScaler, MinMaxScaler, QuantileTransformer, PowerTransformer, FunctionTransformer
+  # normalizer_id: patientid
   fill_nan_method: keep
   seed: 1994
   validation_ratio: 0.1
   fold: 5
   nan_ratio: 0.6
+
 models:
   - xgboost_config.yml
+  # - lgbm_config.yml
+  # - llm_based_probing_config.yml
+  # - llm_based_PEFT_config.yml
+  # - llm_based_finetuning_config.yml
 
 evaluation:
   print_evals: True
-  comparison_score: tested_pres_score_biondeep_mhci
-  eval_id_name: patientid
-  observations_number: 20
+  #comparison_score: proxy_score_presentation
+  # eval_id_name: patientid
+  # observations_number: 20
   threshold: 0.3
   metrics:
     - topk
@@ -63,33 +83,33 @@ evaluation:
     - f1
   metric_selector: topk
   metrics_selector_higher: True
-  data_name_selector: validation # test , validation
+  data_name_selector: test # test , validation
   prediction_name_selector: "prediction_mean"
   monitoring_metrics:
     - roc
     - topk
-    - topk_20_patientid
-    - topk_patientid
-FS:
-  n_feat: 20
-  keep_features_number: False
-  separate_forced_features: False
-  force_features:
-    - proxy_score_binding
-    - expression
-    - proxy_score_presnetation
-  n_thread: 10
-  FS_methods:
-    # - Fspca.yml
-    - Fsxgboost.yml
-    # - Fsxgboostshap.yml
-    # - Fsrfgini.yml
-    # - Fscossim.yml
-    # - Fscorr.yml
-    # - Fssfmlr.yml
-    # - Fsrfelr.yml
-    # - Fssfmxgboost.yml
-    # - Fsrfexgboost.yml
-    # - Fsrelief.yml
-    # - Fsmi.yml
-    # - Fsboruta.yml
+    # - topk_20_patientid
+    # - topk_patientid
+# FS:
+#   n_feat: 20
+#   keep_features_number: False
+#   separate_forced_features: False
+#   force_features:
+#     - expression
+#     - proxy_score_binding
+#     - proxy_score_presentation
+#   n_thread: 10
+#   FS_methods:
+#     - Fspca.yml
+#     # - Fsxgboost.yml
+#     # - Fsxgboostshap.yml
+#     # - Fsrfgini.yml
+#     # - Fscossim.yml
+#     # - Fscorr.yml
+#     # - Fssfmlr.yml
+#     # - Fsrfelr.yml
+#     # - Fssfmxgboost.yml
+#     # - Fsrfexgboost.yml
+#     # - Fsrelief.yml
+#     # - Fsmi.yml
+#     # - Fsboruta.yml

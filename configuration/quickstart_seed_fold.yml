@@ -1,5 +1,9 @@
 neptune_logs: False
+
 experiments:
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: False
   KfoldExperiment:
     split_column: fold
     plot_shap_values: False
@@ -13,12 +17,12 @@ experiments:
       - mean
       - max
       - min
-  SingleModel:
-    validation_column: validation
-    plot_shap_values: True
+
 label: cd8_any
+
 feature_paths:
-  - train_features
+  - quickstart_features
+
 processing:
   remove_unnecessary_folders: False
   trainable_features: features_quickstart.yml
@@ -33,6 +37,8 @@ processing:
 
 models:
   - xgboost_config.yml
+  - lgbm_config.yml
+
 evaluation:
   print_evals: True
   comparison_score: tested_score_biondeep_mhci

@@ -1,9 +1,13 @@
 neptune_logs: False
+
 experiments:
+  SingleModel:
+    validation_column: validation
+    plot_shap_values: False
   # KfoldExperiment:
   #   split_column: fold
-  #   plot_shap_values: True
-  #   plot_kfold_shap_values: True # False when using Logistic regression
+  #   # plot_shap_values: True
+  #   # plot_kfold_shap_values: True # False when using Logistic regression
   #   operation:
   #     - mean
   #   statics:
@@ -22,12 +26,13 @@ experiments:
   #     - mean
   #   statics:
   #     - mean
-  SingleModel:
-    validation_column: validation
-    plot_shap_values: False
+
 label: cd8_any
+
 feature_paths:
   - ml_train_features
+  # - dl_train_features # use this to add tabular features for LLM models
+
 processing:
   remove_unnecessary_folders: false
   trainable_features: "features.yml"
@@ -45,7 +50,6 @@ processing:
   #   - go_term_.*_embed
   #   - deeptap
   #   - specificity_gtex
-
   validation_strategy: True
   isunlabelled: false
   #normalizer:    # StandardScaler, MinMaxScaler, QuantileTransformer, PowerTransformer, FunctionTransformer
@@ -56,10 +60,13 @@ processing:
   validation_ratio: 0.1
   fold: 5
   nan_ratio: 0.6
+
 models:
   - xgboost_config.yml
   # - lgbm_config.yml
-  # - llm_based_model_config.yml
+  # - llm_based_probing_config.yml
+  # - llm_based_PEFT_config.yml
+  # - llm_based_finetuning_config.yml
 
 evaluation:
   print_evals: True
@@ -88,8 +95,8 @@ evaluation:
 #   keep_features_number: False
 #   separate_forced_features: False
 #   force_features:
-#     # - proxy_score_binding
 #     - expression
+#     - proxy_score_binding
 #     - proxy_score_presentation
 #   n_thread: 10
 #   FS_methods:
