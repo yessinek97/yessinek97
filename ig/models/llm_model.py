@@ -315,6 +315,8 @@ class LLMModel(BaseModel):
         """
         # calculate step loss
         batch_loss = self._criterion(logits.squeeze(1), label)
+        # clear last pass gradient error
+        self._optimizer.zero_grad()
         # back propagate loss and update gradient
         batch_loss.backward()
         self._optimizer.step()
