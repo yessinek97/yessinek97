@@ -136,9 +136,9 @@ def augment(
 
     pos_augmentation_coeff = augmentation_coeff
     if make_balance:
-        neg_augmentation_ratio = int(augmentation_coeff * pos_neg_ratio)
+        neg_augmentation_coeff = int(augmentation_coeff * pos_neg_ratio)
     else:  # preserve initial pos / neg ratio
-        neg_augmentation_ratio = augmentation_coeff
+        neg_augmentation_coeff = augmentation_coeff
 
     augmentation_rows = []
     for idx in range(len(df)):
@@ -148,8 +148,8 @@ def augment(
         mutated_peptide = mutated_sequences[idx]
         mutation_start_position = mutation_start_positions[idx]
 
-        tmp_augmentation_coeff = (
-            labels[idx] * pos_augmentation_coeff + (1 - labels[idx]) * neg_augmentation_ratio
+        tmp_augmentation_coeff = int(labels[idx] * pos_augmentation_coeff) + int(
+            (1 - labels[idx]) * neg_augmentation_coeff
         )
 
         for _ in tqdm(range(tmp_augmentation_coeff)):
