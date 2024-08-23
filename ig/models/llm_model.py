@@ -190,7 +190,7 @@ class LLMModel(BaseModel):
 
         epochs_iterator = range(num_epochs)
         for epoch_num in epochs_iterator:
-            print(f"******* Starting Epoch: {epoch_num+1}/{num_epochs} ******* \n")
+            log.info(f"Starting Epoch: {epoch_num+1}/{num_epochs}\n")
             self.train_one_epoch(
                 train_dataloader,
                 max_length_train,
@@ -267,7 +267,7 @@ class LLMModel(BaseModel):
         epoch_labels = torch.Tensor(epoch_labels).detach().cpu()
         epoch_loss = epoch_loss / len(train_dataloader)
         self.compute_round_metrics(epoch_probs, epoch_labels, epoch_loss, "train_epoch")
-        log.info("###### Epoch Metrics: ######\n")
+        log.info("Epoch Metrics:\n")
         log.info(self.log_metrics("train_epoch"))
         log.info(self.log_metrics("val_round"))
 
@@ -592,25 +592,13 @@ class LLMModel(BaseModel):
     def early_stopping(self) -> None:
         """Save best model and trigger the early stopping if the validation score didn't improve after X steps."""
         current_metric = self._metrics[f"val_round_{self._early_stop_metric}"][-1]
-
-        if (current_metric > self._best_metric) & self.parameters["early_stop_metric_max"]:
-            print(self.log_metrics("train_round"))
-            print(self.log_metrics("val_round"))
-
-            # Save new best metric
-            self._best_metric = current_metric
-            self._patience_counter = 0
-
-            # Save the best model checkpoint to experiment directory
-            self.save_llm_checkpoint()
-
-            # Set early stopping to False
-            self._is_early_stop = False
-
-        elif (current_metric < self._best_metric) & (not self.parameters["early_stop_metric_max"]):
-            print(self.log_metrics("train_round"))
-            print(self.log_metrics("val_round"))
-
+        log.info(self.log_metrics("train_round"))
+        log.info(self.log_metrics("val_round"))
+        cond_1 = (current_metric > self._best_metric) & self.parameters["early_stop_metric_max"]
+        cond_2 = (current_metric < self._best_metric) & (
+            not self.parameters["early_stop_metric_max"]
+        )
+        if cond_1 or cond_2:
             # Save new best metric
             self._best_metric = current_metric
             self._patience_counter = 0
@@ -623,16 +611,16 @@ class LLMModel(BaseModel):
 
         else:
             self._patience_counter += 1
-            print(f"Early stopping counter {self._patience_counter} / {self._max_patience}\n")
+            log.info(f"Early stopping counter {self._patience_counter} / {self._max_patience}\n")
             if self._patience_counter >= self._max_patience:
                 # Set early stopping to True
                 self._is_early_stop = True
-                print("Early stopping is Reached !")
+                log.info("Early stopping is Reached !")
 
     def save_llm_checkpoint(self) -> None:
         """Save the best model checkpoint to experiment directory."""
         if self.save_model:
-            print(f"Saving new best checkpoint to: {self.checkpoints} \n\n")
+            log.info(f"Saving new best checkpoint to: {self.checkpoints} \n\n")
             # Save torch model checkpoint
             if self._save_llm_only:
                 dict_to_save = {"model_state_dict": self._llm_based_model.module.llm.state_dict()}
