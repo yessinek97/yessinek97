@@ -3,3 +3,5 @@ general_params:
   augmented_mutated_col_name: mut_rna_sequence_27mer # dna mutated column name or rna mutated column name
   peptide_wildtype_col_name: wildtype_peptide
   peptide_mutated_col_name: tested_peptide
+  label_name: cd8_any
+  validation_set_proportion: 0.1

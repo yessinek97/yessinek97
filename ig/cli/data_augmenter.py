@@ -125,11 +125,21 @@ def augment(
     peptide_wt_col_name = general_configuration["general_params"]["peptide_wildtype_col_name"]
     peptide_mutated_col_name = general_configuration["general_params"]["peptide_mutated_col_name"]
 
+    validation_set_proportion = general_configuration["general_params"]["validation_set_proportion"]
+    label_name = general_configuration["general_params"]["label_name"]
+
     df = read_data(dataset_path)
-    pos_neg_ratio = len(df[df["cd8_any"] == 1]) / len(df[df["cd8_any"] == 0])
+    # (train / val) split and preserve (pos / neg) ratio
+    pos_val_set = df[df[label_name] == 1].sample(frac=validation_set_proportion)
+    neg_val_set = df[df[label_name] == 0].sample(frac=validation_set_proportion)
+    val_set_ids = list(pos_val_set["id"].unique()) + list(neg_val_set["id"].unique())
+    df["validation"] = 0
+    df.loc[df["id"].isin(val_set_ids), "validation"] = 1
+
+    pos_neg_ratio = len(df[df[label_name] == 1]) / len(df[df[label_name] == 0])
     wild_type_sequences = df[peptide_wt_col_name]
     mutated_sequences = df[peptide_mutated_col_name]
-    labels = df["cd8_any"]
+    labels = df[label_name]
     mutation_start_positions = [
         find_diff_pos(wt, mutated) for wt, mutated in zip(wild_type_sequences, mutated_sequences)
     ]
