@@ -78,7 +78,6 @@ class LLMModel(BaseModel):
         )
 
         self._attention_mask = attention_mask
-
         self._training_type = other_params["training_type"]
         self.check_training_type()
         log.info("Training type: %s", self._training_type)
@@ -109,11 +108,14 @@ class LLMModel(BaseModel):
         # instead of saving the whole LLMModel
         self._save_llm_only = other_params["save_llm_only"]
 
+        # send model to GPU and enable multi-gpu usage
+        self._parallel_compute = False
         self._use_cuda = torch.cuda.is_available()
         self._device = torch.device("cuda" if self._use_cuda else "cpu")
-        if self._use_cuda:
-            # send model to GPU and enable multi-gpu usage
-            self._llm_based_model = torch.nn.DataParallel(self._llm_based_model).to(self._device)
+        if self._use_cuda & torch.cuda.device_count() > 1:
+            self._llm_based_model = torch.nn.DataParallel(self._llm_based_model)
+            self._parallel_compute = True
+        self._llm_based_model.to(self._device)
 
         self._wildtype_col_name = other_params["wildtype_col_name"]
         self._mutated_col_name = other_params["mutated_col_name"]
@@ -623,10 +625,20 @@ class LLMModel(BaseModel):
             log.info(f"Saving new best checkpoint to: {self.checkpoints} \n\n")
             # Save torch model checkpoint
             if self._save_llm_only:
-                dict_to_save = {"model_state_dict": self._llm_based_model.module.llm.state_dict()}
+                llm_state_dict = (
+                    self._llm_based_model.module.llm.state_dict()
+                    if self._parallel_compute
+                    else self._llm_based_model.llm.state_dict()
+                )
+                dict_to_save = {"model_state_dict": llm_state_dict}
             else:
+                model_state_dict = (
+                    self._llm_based_model.module.state_dict()
+                    if self._parallel_compute
+                    else self._llm_based_model.state_dict()
+                )
                 dict_to_save = {
-                    "model_state_dict": self._llm_based_model.state_dict(),
+                    "model_state_dict": model_state_dict,
                     "optimizer_state_dict": self._optimizer.state_dict(),
                     "metrics": self._metrics,
                 }

@@ -13,6 +13,9 @@ from ig import CONFIGURATION_DIRECTORY
 from ig.dataset.torch_dataset import PeptidePairsDataset
 from ig.models.torch_based_models import FinetuningModel
 from ig.utils.io import load_yml
+from ig.utils.logger import get_logger
+
+log = get_logger("dl_model/inference")
 
 
 @click.command()
@@ -62,36 +65,49 @@ def predict(
     is_masked_model = general_configuration["model_config"]["general_params"]["is_masked_model"]
     training_type = general_configuration["model_config"]["general_params"]["training_type"]
     model_configuration = general_configuration["model_config"]["model_params"]
-    tokenizer = AutoTokenizer.from_pretrained(llm_hf_model_path)
+    wildtype_col_name = general_configuration["model_config"]["general_params"]["wildtype_col_name"]
+    mutated_col_name = general_configuration["model_config"]["general_params"]["mutated_col_name"]
+    mutation_position_col_name = general_configuration["model_config"]["general_params"][
+        "mutation_position_col_name"
+    ]
+    context_length = general_configuration["model_config"]["model_params"]["context_length"]
+    batch_size = general_configuration["model_config"]["model_params"]["batch_size"]
+    shuffle_dataloader = general_configuration["model_config"]["model_params"]["shuffle_dataloader"]
 
     # read data
     dataframe = pd.read_csv(dataset_path)
-    wild_type_sequences = list(dataframe["wild_type"])
-    mutated_sequences = list(dataframe["mutated"])
-    mutation_start_positions = list(dataframe["mutation_start_position"])
+    wild_type_sequences = list(dataframe[wildtype_col_name])
+    mutated_sequences = list(dataframe[mutated_col_name])
+
     labels = list(dataframe["cd8_any"])
 
     # crop sequences to match desired context length
-    if general_configuration["model_config"]["model_params"]["context_length"]:
-        context_length = general_configuration["model_config"]["model_params"]["context_length"]
-
-        wild_type_sequences = [
-            seq[
-                max(0, mut_pos - context_length // 2) : max(0, mut_pos - context_length // 2)
-                + context_length
+    if context_length:
+        if mutation_position_col_name and mutation_position_col_name in list(dataframe.columns):
+            mutation_start_positions = list(dataframe[mutation_position_col_name])
+            wild_type_sequences = [
+                seq[
+                    max(0, mut_pos - context_length // 2) : max(0, mut_pos - context_length // 2)
+                    + context_length
+                ]
+                for seq, mut_pos in zip(wild_type_sequences, mutation_start_positions)
             ]
-            for seq, mut_pos in zip(wild_type_sequences, mutation_start_positions)
-        ]
 
-        mutated_sequences = [
-            seq[
-                max(0, mut_pos - context_length // 2) : max(0, mut_pos - context_length // 2)
-                + context_length
+            mutated_sequences = [
+                seq[
+                    max(0, mut_pos - context_length // 2) : max(0, mut_pos - context_length // 2)
+                    + context_length
+                ]
+                for seq, mut_pos in zip(mutated_sequences, mutation_start_positions)
             ]
-            for seq, mut_pos in zip(mutated_sequences, mutation_start_positions)
-        ]
+        else:
+            raise ValueError(
+                "if context length is set, mutation positions should be provided"
+                "and the corresponding column should exist"
+            )
 
     # number of tokens of the longest sequence
+    tokenizer = AutoTokenizer.from_pretrained(llm_hf_model_path)
     max_length = max(
         [
             len(tokenizer.encode_plus(seq)["input_ids"])
@@ -106,8 +122,8 @@ def predict(
     # instanciate PeptidePairs dataloader
     peptide_pairs_dataloader = DataLoader(
         peptide_pairs_dataset,
-        batch_size=general_configuration["model_config"]["model_params"]["batch_size"],
-        shuffle=general_configuration["model_config"]["model_params"]["shuffle_dataloader"],
+        batch_size=batch_size,
+        shuffle=shuffle_dataloader,
         collate_fn=peptide_pairs_dataset.tokenize_batch_of_pairs,
     )
 
@@ -121,17 +137,19 @@ def predict(
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint["model_state_dict"])
 
-    # selectkng device
+    # selecting device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
     model.to(device)
     model.eval()
 
-    print(f"starting inference using: {device}")
+    log.info(f"starting inference using: {device}")
     with torch.no_grad():
         all_probs = []
         for pair, _ in tqdm(peptide_pairs_dataloader):
             pair = pair.to(device)
-            logits = model(pair, max_length)
+            logits = model(pair=pair, max_length=max_length, attention_mask=None)
             probs = torch.nn.Sigmoid()(logits)
             all_probs += list(probs.detach().cpu().numpy())
 
@@ -141,5 +159,5 @@ def predict(
             os.makedirs(folder_name)
         df_name = dataset_path.split("/")[-1]
         target_path = Path(os.path.join(folder_name, df_name))
-        print(f"Concatenating probs and saving new dataframe to: {target_path}")
+        log.info(f"Concatenating probs and saving new dataframe to: {target_path}")
         dataframe.to_csv(target_path)

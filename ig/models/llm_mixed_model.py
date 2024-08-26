@@ -92,9 +92,10 @@ class LLMMixedModel(BaseModel):
             llm_state_dict = torch.load(other_params["pretrained_llm_path"])["model_state_dict"]
             self._llm.load_state_dict(llm_state_dict)
 
-        if self._use_cuda:
+        if self._use_cuda & torch.cuda.device_count() > 1:
             # send model to GPU and enable multi-gpu usage
-            self._llm = torch.nn.DataParallel(self._llm).to(self._device)
+            self._llm = torch.nn.DataParallel(self._llm)
+        self._llm.to(self._device)
 
         self._wildtype_col_name = other_params["wildtype_col_name"]
         self._mutated_col_name = other_params["mutated_col_name"]
