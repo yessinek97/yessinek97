@@ -14,7 +14,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 
 from ig.dataset.torch_dataset import EmbeddingsPairsDataset, PeptidePairsDataset
-from ig.models.base_model import BaseModel, log, original_stdout
+from ig.models.base_model import BaseModel, log
 from ig.models.torch_based_models import FinetuningModel, FocusedFinetuningModel, ProbingModel
 from ig.utils.embedding import load_embedding_file
 from ig.utils.general import crop_sequences
@@ -134,6 +134,7 @@ class LLMModel(BaseModel):
         self._max_patience = int(self.parameters["early_stop_patience"])
         self._early_stop_metric = self.parameters["early_stop_metric"]
         self._is_early_stop = False
+        self._patience_counter = 0
         if self.parameters["early_stop_metric_max"]:
             self._best_metric = 0.0
         else:
@@ -216,9 +217,6 @@ class LLMModel(BaseModel):
                 str(self.checkpoints).replace("model.pkl", "torch_model.pt")
             )
             self._llm_based_model.load_state_dict(torch_best_model["model_state_dict"])
-
-            # Reset model logging
-            self.model_logger.reset_stdout(original_stdout)
 
     def train_one_epoch(
         self,
