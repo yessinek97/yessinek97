@@ -263,6 +263,8 @@ class MixedDataset(torch.utils.data.Dataset):
             )["input_ids"]
         ).to(torch.int64)
 
+        x = x.to(self._device)
+
         if not attention_mask:
             attention_mask = x != self._tokenizer.cls_token_id
 
@@ -321,6 +323,8 @@ class MixedDataset(torch.utils.data.Dataset):
                 max_length=self._max_length,
             )["input_ids"]
         ).to(torch.int64)
+
+        x = x.to(self._device)
 
         if not attention_mask:
             attention_mask = x != self._tokenizer.cls_token_id
