@@ -34,7 +34,7 @@ feature_paths:
   # - dl_train_features # use this to add tabular features for LLM models
 
 processing:
-  remove_unnecessary_folders: false
+  remove_unnecessary_folders: true
   trainable_features: "features.yml"
   # exclude_features: # You can use prefixes(neofox..),suffixes(mhci,pmhc) patterns(tested) or the full feature name
   #   - neofox
@@ -50,7 +50,7 @@ processing:
   #   - go_term_.*_embed
   #   - deeptap
   #   - specificity_gtex
-  validation_strategy: True
+  validation_strategy: False
   isunlabelled: false
   #normalizer:    # StandardScaler, MinMaxScaler, QuantileTransformer, PowerTransformer, FunctionTransformer
   # normalizer_per_id:  # StandardScaler, MinMaxScaler, MinMaxScaler, QuantileTransformer, PowerTransformer, FunctionTransformer
@@ -73,7 +73,7 @@ evaluation:
   #comparison_score: proxy_score_presentation
   # eval_id_name: patientid
   # observations_number: 20
-  threshold: 0.3
+  threshold: 0.5
   metrics:
     - topk
     - roc
@@ -94,10 +94,10 @@ evaluation:
 #   n_feat: 20
 #   keep_features_number: False
 #   separate_forced_features: False
-#   force_features:
-#     - expression
-#     - proxy_score_binding
-#     - proxy_score_presentation
+#   # force_features:
+#   #   - expression
+#   #   - proxy_score_binding
+#   #   - proxy_score_presentation
 #   n_thread: 10
 #   FS_methods:
 #     - Fspca.yml

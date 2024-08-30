@@ -31,8 +31,8 @@ model_config:
     lr: 0.0003
     val_frequency: 0.05 # Should be a percentage (0 to 1)
     early_stop_patience: 700 #
-    early_stop_metric: top_k # available validation metrics : accuracy, top_k, f1, roc
-    early_stop_metric_max: True # True if early_stop_metric should be maximized
+    early_stop_metric: top_k # available validation metrics : accuracy, top_k, f1, roc, loss
+    early_stop_metric_max: True # True if early_stop_metric should be maximized ( False for loss)
     num_epochs: 20
     threshold: 0.5
     seed: 2020

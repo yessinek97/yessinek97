@@ -45,7 +45,7 @@ class LLMModel(BaseModel):
         prediction_name: str,
         other_params: dict[str, Any],
         attention_mask: torch.Tensor | None = None,
-        save_model: bool = False,
+        save_model: bool = True,
     ):
         """Initializes LLMModel.
 
@@ -58,7 +58,7 @@ class LLMModel(BaseModel):
             tokenizer (AutoTokenizer): _description_
             checkpoints (Path): _description_
             attention_mask (Optional[torch.Tensor], optional): _description_. Defaults to None.
-            save_model (bool, optional): _description_. Defaults to False.
+            save_model (bool, optional): _description_. Defaults to True.
 
         Raises:
             NotImplementedError: _description_
@@ -109,12 +109,12 @@ class LLMModel(BaseModel):
         self._save_llm_only = other_params["save_llm_only"]
 
         # send model to GPU and enable multi-gpu usage
-        self._parallel_compute = False
+        self._model_is_data_parallel = False
         self._use_cuda = torch.cuda.is_available()
         self._device = torch.device("cuda" if self._use_cuda else "cpu")
         if self._use_cuda & torch.cuda.device_count() > 1:
             self._llm_based_model = torch.nn.DataParallel(self._llm_based_model)
-            self._parallel_compute = True
+            self._model_is_data_parallel = True
         self._llm_based_model.to(self._device)
 
         self._wildtype_col_name = other_params["wildtype_col_name"]
@@ -211,12 +211,14 @@ class LLMModel(BaseModel):
                 )
                 break
 
+        # Load the best model weights from .pt checkpoint for later evaluation step
+        torch_best_model = torch.load(str(self.checkpoints).replace("model.pkl", "torch_model.pt"))
+        # Replace the current model state_dict with the best one
+        self._llm_based_model.load_state_dict(torch_best_model["model_state_dict"])
+
         if self.save_model:
-            # Load the best model checkpoint and replace the current model state_dict with the best one
-            torch_best_model = torch.load(
-                str(self.checkpoints).replace("model.pkl", "torch_model.pt")
-            )
-            self._llm_based_model.load_state_dict(torch_best_model["model_state_dict"])
+            # Save final model (.pkl + .pt) with best weights
+            self.save_final_checkpoint()
 
     def train_one_epoch(
         self,
@@ -603,8 +605,8 @@ class LLMModel(BaseModel):
             self._best_metric = current_metric
             self._patience_counter = 0
 
-            # Save the best model checkpoint to experiment directory
-            self.save_llm_checkpoint()
+            # Keep the best model weights
+            self.save_current_checkpoint()
 
             # Set early stopping to False
             self._is_early_stop = False
@@ -617,29 +619,42 @@ class LLMModel(BaseModel):
                 self._is_early_stop = True
                 log.info("Early stopping is Reached !")
 
-    def save_llm_checkpoint(self) -> None:
-        """Save the best model checkpoint to experiment directory."""
-        if self.save_model:
-            log.info(f"Saving new best checkpoint to: {self.checkpoints} \n\n")
-            # Save torch model checkpoint
-            if self._save_llm_only:
-                llm_state_dict = (
-                    self._llm_based_model.module.llm.state_dict()
-                    if self._parallel_compute
-                    else self._llm_based_model.llm.state_dict()
-                )
-                dict_to_save = {"model_state_dict": llm_state_dict}
-            else:
-                model_state_dict = (
-                    self._llm_based_model.module.state_dict()
-                    if self._parallel_compute
-                    else self._llm_based_model.state_dict()
-                )
-                dict_to_save = {
-                    "model_state_dict": model_state_dict,
-                    "optimizer_state_dict": self._optimizer.state_dict(),
-                    "metrics": self._metrics,
-                }
-            torch.save(dict_to_save, str(self.checkpoints).replace("model.pkl", "torch_model.pt"))
-            # pickle LLMBasedModel object
-            save_as_pkl(self, self.checkpoints)
+    def save_current_checkpoint(self) -> None:
+        """Temporarily save the entire current best model in .pt file."""
+        # Best model to be saved
+        dict_to_save = {
+            "model_state_dict": self._llm_based_model.state_dict(),
+            "optimizer_state_dict": self._optimizer.state_dict(),
+            "metrics": self._metrics,
+        }
+        # Save the current best model to temporary .pt file
+        torch.save(dict_to_save, str(self.checkpoints).replace("model.pkl", "torch_model.pt"))
+
+    def save_final_checkpoint(self) -> None:
+        """Save the final best model checkpoints (.pkl + .pt) with option to only save the LLM backbone."""
+        # Select the torch model to be saved in .pt checkpoint
+        # _save_llm_only must be true for later use in LLMMixedModel
+        if self._save_llm_only:
+            llm_state_dict = (
+                self._llm_based_model.module.llm.state_dict()
+                if self._model_is_data_parallel
+                else self._llm_based_model.llm.state_dict()
+            )
+            dict_to_save = {"model_state_dict": llm_state_dict}
+        else:
+            model_state_dict = (
+                self._llm_based_model.module.state_dict()
+                if self._model_is_data_parallel
+                else self._llm_based_model.state_dict()
+            )
+            dict_to_save = {
+                "model_state_dict": model_state_dict,
+                "optimizer_state_dict": self._optimizer.state_dict(),
+                "metrics": self._metrics,
+            }
+        # Save final torch_model.pt
+        torch.save(dict_to_save, str(self.checkpoints).replace("model.pkl", "torch_model.pt"))
+
+        log.info(f"Saving final best checkpoint to: {self.checkpoints} \n\n")
+        # pickle the LLMBasedModel object to be used in IG framework for model evaluation, inference, ...
+        save_as_pkl(self, self.checkpoints)

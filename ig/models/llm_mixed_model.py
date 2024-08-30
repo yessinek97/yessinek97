@@ -12,7 +12,7 @@ import xgboost as xgb
 from peft import LoraConfig, TaskType, get_peft_model
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoModelForMaskedLM, AutoTokenizer
+from transformers import AutoModel, AutoModelForMaskedLM, AutoTokenizer
 
 from ig.dataset.torch_dataset import MixedDataset
 from ig.models.base_model import BaseModel, log
@@ -36,7 +36,7 @@ class LLMMixedModel(BaseModel):
         label_name: str,
         prediction_name: str,
         other_params: dict[str, Any],
-        save_model: bool = False,
+        save_model: bool = True,
     ):
         """Initializes LLMMixedModel.
 
@@ -49,7 +49,7 @@ class LLMMixedModel(BaseModel):
             tokenizer (AutoTokenizer): _description_
             checkpoints (Path): _description_
             attention_mask (Optional[torch.Tensor], optional): _description_. Defaults to None.
-            save_model (bool, optional): _description_. Defaults to False.
+            save_model (bool, optional): _description_. Defaults to True.
 
         Raises:
             NotImplementedError: _description_
@@ -71,9 +71,15 @@ class LLMMixedModel(BaseModel):
         self._use_cuda = torch.cuda.is_available()
         self._device = torch.device("cuda" if self._use_cuda else "cpu")
 
-        self._llm = AutoModelForMaskedLM.from_pretrained(
-            other_params["llm_hf_model_path"], trust_remote_code=True, output_hidden_states=True
-        )
+        if other_params["is_masked_model"]:
+            self._llm = AutoModelForMaskedLM.from_pretrained(
+                other_params["llm_hf_model_path"], trust_remote_code=True, output_hidden_states=True
+            )
+        else:
+            self._llm = AutoModel.from_pretrained(
+                other_params["llm_hf_model_path"], trust_remote_code=True, output_hidden_states=True
+            )
+
         if other_params["training_type"] == "peft":
             peft_config = LoraConfig(
                 task_type=TaskType.FEATURE_EXTRACTION,
