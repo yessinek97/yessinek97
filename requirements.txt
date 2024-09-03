@@ -12,6 +12,7 @@ google-cloud-storage==2.16.0
 hyperopt==0.2.7
 lightgbm==4.3.0
 matplotlib==3.7.5
+multimolecule==0.0.4
 neptune==1.9.1
 numpy==1.24.4
 pandas==2.0.3

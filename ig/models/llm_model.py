@@ -11,7 +11,6 @@ import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoTokenizer
 
 from ig.dataset.torch_dataset import EmbeddingsPairsDataset, PeptidePairsDataset
 from ig.models.base_model import BaseModel, log
@@ -20,6 +19,7 @@ from ig.utils.embedding import load_embedding_file
 from ig.utils.general import crop_sequences
 from ig.utils.io import save_as_pkl
 from ig.utils.torch import (
+    TOKENIZER_SOURCES,
     compute_f1_score,
     compute_roc_score,
     compute_top_k,
@@ -85,11 +85,12 @@ class LLMModel(BaseModel):
         set_torch_reproducibility(self.parameters["seed"])
 
         if self._training_type in ["finetuning", "peft"]:
-            self._tokenizer = AutoTokenizer.from_pretrained(other_params["llm_hf_model_path"])
+            tokenizer_source = TOKENIZER_SOURCES[other_params["tokenizer_source"]]
+            self._tokenizer = tokenizer_source.from_pretrained(other_params["llm_hf_model_path"])
             llm_model_params_dict = {
                 "model_configuration": parameters,
                 "llm_hf_model_path": other_params["llm_hf_model_path"],
-                "is_masked_model": other_params["is_masked_model"],
+                "model_source": other_params["model_source"],
                 "tokenizer": self._tokenizer,
                 "training_type": self._training_type,
             }
@@ -112,7 +113,7 @@ class LLMModel(BaseModel):
         self._model_is_data_parallel = False
         self._use_cuda = torch.cuda.is_available()
         self._device = torch.device("cuda" if self._use_cuda else "cpu")
-        if self._use_cuda & torch.cuda.device_count() > 1:
+        if self._use_cuda & (torch.cuda.device_count() > 1):
             self._llm_based_model = torch.nn.DataParallel(self._llm_based_model)
             self._model_is_data_parallel = True
         self._llm_based_model.to(self._device)
@@ -271,7 +272,6 @@ class LLMModel(BaseModel):
         self.compute_round_metrics(epoch_probs, epoch_labels, epoch_loss, "train_epoch")
         log.info("Epoch Metrics:\n")
         log.info(self.log_metrics("train_epoch"))
-        log.info(self.log_metrics("val_round"))
 
     def forward_pass(
         self, pair: torch.Tensor, max_length: int

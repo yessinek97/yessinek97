@@ -7,13 +7,13 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoTokenizer
 
 from ig import CONFIGURATION_DIRECTORY
 from ig.dataset.torch_dataset import PeptidePairsDataset
 from ig.models.torch_based_models import FinetuningModel
 from ig.utils.io import load_yml
 from ig.utils.logger import get_logger
+from ig.utils.torch import TOKENIZER_SOURCES
 
 log = get_logger("dl_model/inference")
 
@@ -62,7 +62,8 @@ def predict(
     # read configuration
     general_configuration = load_yml(CONFIGURATION_DIRECTORY / "model_config" / configuration_file)
     llm_hf_model_path = general_configuration["model_config"]["general_params"]["llm_hf_model_path"]
-    is_masked_model = general_configuration["model_config"]["general_params"]["is_masked_model"]
+    model_source = general_configuration["model_config"]["general_params"]["model_source"]
+    tokenizer_source = general_configuration["model_config"]["general_params"]["tokenizer_source"]
     training_type = general_configuration["model_config"]["general_params"]["training_type"]
     model_configuration = general_configuration["model_config"]["model_params"]
     wildtype_col_name = general_configuration["model_config"]["general_params"]["wildtype_col_name"]
@@ -107,7 +108,8 @@ def predict(
             )
 
     # number of tokens of the longest sequence
-    tokenizer = AutoTokenizer.from_pretrained(llm_hf_model_path)
+    tokenizer_source = TOKENIZER_SOURCES[tokenizer_source]
+    tokenizer = tokenizer_source.from_pretrained(llm_hf_model_path)
     max_length = max(
         [
             len(tokenizer.encode_plus(seq)["input_ids"])
@@ -129,7 +131,7 @@ def predict(
 
     model = FinetuningModel(
         llm_hf_model_path=llm_hf_model_path,
-        is_masked_model=is_masked_model,
+        model_source=model_source,
         model_configuration=model_configuration,
         training_type=training_type,
         tokenizer=tokenizer,
@@ -139,7 +141,8 @@ def predict(
 
     # selecting device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if torch.cuda.device_count() > 1:
+    use_cuda = torch.cuda.is_available()
+    if use_cuda & (torch.cuda.device_count() > 1):
         model = torch.nn.DataParallel(model)
     model.to(device)
     model.eval()

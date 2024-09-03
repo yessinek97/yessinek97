@@ -6,13 +6,25 @@ from typing import List, Union
 
 import torch
 import torch.nn.functional as functional
+from multimolecule import RiNALMoModel, RnaTokenizer
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler, OneCycleLR
 from torcheval.metrics.functional import binary_auroc, binary_f1_score
+from transformers import AutoModel, AutoModelForMaskedLM, AutoTokenizer
 
 from ig.utils.logger import get_logger
 
 log: Logger = get_logger("utils/torch")
+
+TOKENIZER_SOURCES = {
+    "RnaTokenizer": RnaTokenizer,
+    "AutoTokenizer": AutoTokenizer,
+}
+LLM_MODEL_SOURCES = {
+    "AutoModel": AutoModel,
+    "AutoModelForMaskedLM": AutoModelForMaskedLM,
+    "RiNALMoModel": RiNALMoModel,
+}
 
 
 def sigmoid_focal_loss(

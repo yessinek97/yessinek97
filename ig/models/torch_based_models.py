@@ -1,11 +1,12 @@
 """Definition of the TorchBaseModel class."""
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import torch
+from multimolecule import RnaTokenizer
 from peft import LoraConfig, TaskType, get_peft_model
-from transformers import AutoModel, AutoModelForMaskedLM, AutoTokenizer
+from transformers import AutoTokenizer
 
-from ig.utils.torch import find_mut_token
+from ig.utils.torch import LLM_MODEL_SOURCES, find_mut_token
 
 
 class TorchBaseModel(torch.nn.Module):
@@ -55,30 +56,26 @@ class FinetuningModel(TorchBaseModel):
         self,
         model_configuration: Dict[str, Any],
         llm_hf_model_path: str,
-        is_masked_model: bool,
+        model_source: str,
         training_type: str,
-        tokenizer: AutoTokenizer,
+        tokenizer: Union[AutoTokenizer, RnaTokenizer],
     ):
         """Initializes the model object.
 
         Args:
             model_configuration (Dict[str, Any]): dict containing model configuration
             llm_hf_model_path (str): path to HuggingFace model
-            is_masked_model (bool): uses AutoModelMaskedLM if True
+            model_source (str): HF class name under which the model is implemented
             training_type: training strategy, peft, finetuning or probing
             tokenizer (AutoTokenizer): tokenize sequences according to the chosen LLM
         """
         super().__init__(model_configuration=model_configuration)
 
         self._llm_hf_model_path = llm_hf_model_path
-        if is_masked_model:
-            self.llm = AutoModelForMaskedLM.from_pretrained(
-                self._llm_hf_model_path, trust_remote_code=True, output_hidden_states=True
-            )
-        else:
-            self.llm = AutoModel.from_pretrained(
-                self._llm_hf_model_path, trust_remote_code=True, output_hidden_states=True
-            )
+        self._model_source = LLM_MODEL_SOURCES[model_source]
+        self.llm = self._model_source.from_pretrained(
+            self._llm_hf_model_path, trust_remote_code=True, output_hidden_states=True
+        )
         self._tokenizer = tokenizer
         if training_type == "peft":
             peft_config = LoraConfig(
@@ -152,24 +149,24 @@ class FocusedFinetuningModel(FinetuningModel):
     def __init__(
         self,
         model_configuration: Dict[str, Any],
+        model_source: str,
         llm_hf_model_path: str,
-        is_masked_model: bool,
         training_type: str,
-        tokenizer: AutoTokenizer,
+        tokenizer: Union[AutoTokenizer, RnaTokenizer],
     ):
         """Initializes the model object.
 
         Args:
             model_configuration (Dict[str, Any]): dict containing model configuration
             llm_hf_model_path (str): path to HuggingFace model
-            is_masked_model (bool): uses AutoModelMaskedLM if True
+            model_source (str): HF class name under which the model is implemented
             training_type: training strategy, peft, finetuning or probing
             tokenizer (AutoTokenizer): tokenize sequences according to the chosen LLM
         """
         super().__init__(
             model_configuration=model_configuration,
             llm_hf_model_path=llm_hf_model_path,
-            is_masked_model=is_masked_model,
+            model_source=model_source,
             training_type=training_type,
             tokenizer=tokenizer,
         )

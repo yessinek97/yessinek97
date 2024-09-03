@@ -2,13 +2,14 @@ model_type: LLMModel # LLMModel, LLMMixedModel
 model_config:
   general_params:
     # LLM model path from HuggingFace (Protein models: ESM / protBERT or DNA models: NT models)
-    llm_hf_model_path: # "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species" # Rostlab/prot_bert_bfd  # facebook/esm2_t33_650M_UR50D
-    is_masked_model: #must be True for NT models, False for the others
+    llm_hf_model_path: "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species" # "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species" # Rostlab/prot_bert_bfd  # facebook/esm2_t33_650M_UR50D
+    model_source: AutoModelForMaskedLM # HF library under which the model is implemented: AutoModel, RiNALMoModel
+    tokenizer_source: AutoTokenizer # HF library under which the tokenizer is impemented: AutoTokenizer, RnaTokenizer
     training_type: finetuning #peft, finetuning, probing
     # wild type and mutated/tested sequences (column name used to load sequences from csv file and embeddings file)
-    wildtype_col_name:
-    mutated_col_name:
-    mutation_position_col_name:
+    wildtype_col_name: wt_dna_sequence_27mer
+    mutated_col_name: mut_dna_sequence_27mer
+    mutation_position_col_name: mutation_start_position_27mer
     save_llm_only: True # Only used with LLMModel
     pretrained_llm_path: # None, Path (Only used with LLMMixedModel)
     # ML model params (only needed for LLMMixedModel)
@@ -24,8 +25,8 @@ model_config:
     embed_dim: # 1024 for protBERT & NT 500m, 512 for NT 50m, 2560 for ESM2 3B and 1280 for ESM2 650M and 320 for esm2_t6_8M_UR50D
     mlp_layer_sizes: #[2048, 1]
     k_for_kmers: 6
-    batch_size: 16
-    batch_size_test: 16
+    batch_size: 4
+    batch_size_test: 4
     shuffle_dataloader: True
     num_workers: 3
     lr: 0.0003
