@@ -12,13 +12,19 @@ import xgboost as xgb
 from peft import LoraConfig, TaskType, get_peft_model
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import AutoModel, AutoModelForMaskedLM, AutoTokenizer
 
 from ig.dataset.torch_dataset import MixedDataset
 from ig.models.base_model import BaseModel, log
 from ig.utils.general import crop_sequences
 from ig.utils.io import save_as_pkl
-from ig.utils.torch import compute_f1_score, compute_roc_score, compute_top_k, round_probs
+from ig.utils.torch import (
+    LLM_MODEL_SOURCES,
+    TOKENIZER_SOURCES,
+    compute_f1_score,
+    compute_roc_score,
+    compute_top_k,
+    round_probs,
+)
 
 
 class LLMMixedModel(BaseModel):
@@ -67,18 +73,17 @@ class LLMMixedModel(BaseModel):
             checkpoints=checkpoints,
             save_model=save_model,
         )
-        self._tokenizer = AutoTokenizer.from_pretrained(other_params["llm_hf_model_path"])
-        self._use_cuda = torch.cuda.is_available()
-        self._device = torch.device("cuda" if self._use_cuda else "cpu")
+        log.info("Training type: %s", other_params["training_type"])
 
-        if other_params["is_masked_model"]:
-            self._llm = AutoModelForMaskedLM.from_pretrained(
-                other_params["llm_hf_model_path"], trust_remote_code=True, output_hidden_states=True
-            )
-        else:
-            self._llm = AutoModel.from_pretrained(
-                other_params["llm_hf_model_path"], trust_remote_code=True, output_hidden_states=True
-            )
+        # Load LLM tokenizer from HF
+        tokenizer_source = TOKENIZER_SOURCES[other_params["tokenizer_source"]]
+        self._tokenizer = tokenizer_source.from_pretrained(other_params["llm_hf_model_path"])
+
+        # Load LLM model from HF
+        self._model_source = LLM_MODEL_SOURCES[other_params["model_source"]]
+        self._llm = self._model_source.from_pretrained(
+            other_params["llm_hf_model_path"], trust_remote_code=True, output_hidden_states=True
+        )
 
         if other_params["training_type"] == "peft":
             peft_config = LoraConfig(
@@ -93,13 +98,15 @@ class LLMMixedModel(BaseModel):
 
         self._prob_threshold = parameters["threshold"]
 
-        # two stages LLMMixedModel
+        # two stages LLMMixedModel (Load a finetuned LLMModel backbone)
         if other_params["pretrained_llm_path"]:
             llm_state_dict = torch.load(other_params["pretrained_llm_path"])["model_state_dict"]
             self._llm.load_state_dict(llm_state_dict)
 
-        if self._use_cuda & torch.cuda.device_count() > 1:
-            # send model to GPU and enable multi-gpu usage
+        # send model to GPU and enable multi-gpu usage
+        self._use_cuda = torch.cuda.is_available()
+        self._device = torch.device("cuda" if self._use_cuda else "cpu")
+        if self._use_cuda & (torch.cuda.device_count() > 1):
             self._llm = torch.nn.DataParallel(self._llm)
         self._llm.to(self._device)
 
