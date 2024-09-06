@@ -109,6 +109,8 @@ class LLMMixedModel(BaseModel):
 
         self._metrics: dict[str, float] = defaultdict(float)
 
+        self._shuffle_dataloader = self.parameters["shuffle_dataloader"]
+
     def fit(
         self,
         train_data: pd.DataFrame,
@@ -117,8 +119,12 @@ class LLMMixedModel(BaseModel):
         """Fit method."""
         log.info(f"Started training: {self.model_type} | using: {self._device}")
 
-        train_dataloader, max_length_train = self._create_matrix(train_data, with_label=True)
-        val_dataloader, max_length_val = self._create_matrix(val_data, with_label=True)
+        train_dataloader, max_length_train = self._create_matrix(
+            train_data, with_label=True, shuffle=self._shuffle_dataloader
+        )
+        val_dataloader, max_length_val = self._create_matrix(
+            val_data, with_label=True, shuffle=False
+        )
         # number of tokens of the longest sequence
         log.info(
             f"Maximum length in train: {max_length_train} - "
@@ -225,20 +231,20 @@ class LLMMixedModel(BaseModel):
 
     def predict(self, data: pd.DataFame, with_label: bool) -> Any:
         """Prediction method."""
-        inference_dataloader, _ = self._create_matrix(data, with_label)
+        inference_dataloader, _ = self._create_matrix(data, with_label, shuffle=False)
         combined_features, _ = self.compute_combined_features(inference_dataloader)
         dinference = xgb.DMatrix(data=combined_features, label=None)
         best_iteration = self.ml_model.best_iteration
         predictions = self.ml_model.predict(dinference, iteration_range=(0, best_iteration + 1))
         return predictions
 
-    def _create_matrix(self, data: pd.DataFrame, with_label: bool) -> Any:
+    def _create_matrix(self, data: pd.DataFrame, with_label: bool, **kargs: bool) -> Any:
         """Return the correct data structure. Object that is required by the model."""
-        return self.create_mixed_dataloader(data, with_label)
+        return self.create_mixed_dataloader(data, with_label, kargs["shuffle"])
 
     # dataloader creator for mixed approach
     def create_mixed_dataloader(
-        self, dataframe: pd.DataFrame, with_label: bool
+        self, dataframe: pd.DataFrame, with_label: bool, shuffle: bool
     ) -> tuple[DataLoader, int]:
         """Creates mixed dataset for mixed approach."""
         # read sequences and labels from dataframe
@@ -300,7 +306,7 @@ class LLMMixedModel(BaseModel):
         mixed_dataloader = DataLoader(
             mixed_dataset,
             batch_size=self.parameters["batch_size"],
-            shuffle=self.parameters["shuffle_dataloader"],
+            shuffle=shuffle,
             collate_fn=collate_fn,
         )
 

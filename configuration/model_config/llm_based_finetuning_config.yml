@@ -1,17 +1,17 @@
 model_type: LLMModel # LLMModel, LLMMixedModel
 model_config:
   general_params:
-    # LLM model path from HuggingFace (Protein models: ESM / protBERT or DNA models: NT models)
-    llm_hf_model_path: "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species" # "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species" # Rostlab/prot_bert_bfd  # facebook/esm2_t33_650M_UR50D
-    model_source: AutoModelForMaskedLM # HF library under which the model is implemented: AutoModel, RiNALMoModel
-    tokenizer_source: AutoTokenizer # HF library under which the tokenizer is impemented: AutoTokenizer, RnaTokenizer
-    training_type: finetuning #peft, finetuning, probing
-    # wild type and mutated/tested sequences (column name used to load sequences from csv file and embeddings file)
-    wildtype_col_name: wt_dna_sequence_27mer
-    mutated_col_name: mut_dna_sequence_27mer
-    mutation_position_col_name: mutation_start_position_27mer
-    save_llm_only: True # Only used with LLMModel
-    pretrained_llm_path: # None, Path (Only used with LLMMixedModel)
+    # LLM model path from HuggingFace (Protein models: ESM / protBERT or DNA models: NT models or RNA models: RiNALMoModel)
+    llm_hf_model_path: # multimolecule/rinalmo # InstaDeepAI/nucleotide-transformer-v2-500m-multi-species # Rostlab/prot_bert_bfd  # facebook/esm2_t33_650M_UR50D
+    model_source: # HF library under which the model is implemented: AutoModel, RiNALMoModel, AutoModelForMaskedLM
+    tokenizer_source: # HF library under which the tokenizer is implemented: AutoTokenizer, RnaTokenizer
+    training_type: finetuning
+    # wild type and mutated/tested sequences (column name used to load sequences from csv files)
+    wildtype_col_name:
+    mutated_col_name:
+    mutation_position_col_name: #(Optional) Used with context_length to crop long DNA/RNA sequences around mutation position
+    save_llm_only: True # Only used with LLMModel to later use the finetuned LLM backbone in LLMMixedModel
+    pretrained_llm_path: # None, Path to finetuned LLM backbone (Only used with LLMMixedModel)
     # ML model params (only needed for LLMMixedModel)
     num_boost_round: 20000000
     verbose_eval: 10
@@ -25,10 +25,10 @@ model_config:
     embed_dim: # 1024 for protBERT & NT 500m, 512 for NT 50m, 2560 for ESM2 3B and 1280 for ESM2 650M and 320 for esm2_t6_8M_UR50D
     mlp_layer_sizes: #[2048, 1]
     k_for_kmers: 6
-    batch_size: 4
-    batch_size_test: 4
+    batch_size: 16
+    batch_size_test: 16
     shuffle_dataloader: True
-    num_workers: 3
+    num_workers: 5
     lr: 0.0003
     val_frequency: 0.05 # Should be a percentage (0 to 1)
     early_stop_patience: 700 #
@@ -37,7 +37,7 @@ model_config:
     num_epochs: 20
     threshold: 0.5
     seed: 2020
-    ml_model_params: # used in case of using LLMMixedModel
+    ml_model_params: # XGboost params used in case of LLMMixedModel
       alpha: 0.02
       booster: gbtree
       colsample_bytree: 1
