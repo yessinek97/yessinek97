@@ -24,6 +24,7 @@ from ig.utils.torch import (
     compute_roc_score,
     compute_top_k,
     round_probs,
+    set_torch_reproducibility,
 )
 
 
@@ -75,6 +76,9 @@ class LLMMixedModel(BaseModel):
         )
         log.info("Training type: %s", other_params["training_type"])
 
+        # set torch & cuda in deterministic mode (for reproducibility)
+        set_torch_reproducibility(self.parameters["seed"])
+
         # Load LLM tokenizer from HF
         tokenizer_source = TOKENIZER_SOURCES[other_params["tokenizer_source"]]
         self._tokenizer = tokenizer_source.from_pretrained(other_params["llm_hf_model_path"])
@@ -117,6 +121,8 @@ class LLMMixedModel(BaseModel):
         self._metrics: dict[str, float] = defaultdict(float)
 
         self._shuffle_dataloader = self.parameters["shuffle_dataloader"]
+
+        self._llm.eval()
 
     def fit(
         self,

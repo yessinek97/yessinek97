@@ -268,13 +268,16 @@ class MixedDataset(torch.utils.data.Dataset):
         if not attention_mask:
             attention_mask = x != self._tokenizer.cls_token_id
 
-        # batch embedding pairs
-        x = self._llm(
-            x.view(batch_size * 2, -1),  # flatten along batch to compute all embeddings in one pass
-            attention_mask=attention_mask.view(batch_size * 2, -1),
-            encoder_attention_mask=attention_mask,
-            output_hidden_states=True,
-        )["hidden_states"][-1]
+        with torch.no_grad():
+            # batch embedding pairs
+            x = self._llm(
+                x.view(
+                    batch_size * 2, -1
+                ),  # flatten along batch to compute all embeddings in one pass
+                attention_mask=attention_mask.view(batch_size * 2, -1),
+                encoder_attention_mask=attention_mask,
+                output_hidden_states=True,
+            )["hidden_states"][-1]
 
         # group embeddings along batch
         x = torch.reshape(x, (batch_size, 2, self._max_length, -1))
@@ -334,13 +337,14 @@ class MixedDataset(torch.utils.data.Dataset):
             find_mut_token(pair[0], pair[1]) for pair in x.view(batch_size, 2, -1)
         ]
 
-        # batch embedding pairs
-        x = self._llm(
-            x,  # flatten along batch to compute all embeddings in one pass
-            attention_mask=attention_mask.view(batch_size * 2, -1),
-            encoder_attention_mask=attention_mask,
-            output_hidden_states=True,
-        )["hidden_states"][-1]
+        with torch.no_grad():
+            # batch embedding pairs
+            x = self._llm(
+                x,  # flatten along batch to compute all embeddings in one pass
+                attention_mask=attention_mask.view(batch_size * 2, -1),
+                encoder_attention_mask=attention_mask,
+                output_hidden_states=True,
+            )["hidden_states"][-1]
 
         # group embeddings along batch
         x = torch.reshape(x, (batch_size, 2, self._max_length, -1))

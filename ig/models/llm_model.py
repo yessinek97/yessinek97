@@ -419,7 +419,7 @@ class LLMModel(BaseModel):
         self._metrics[f"{stage}_accuracy"].append(np.average(round_preds == round_labels))
         self._metrics[f"{stage}_top_k"].append(compute_top_k(probs, round_labels))
         self._metrics[f"{stage}_f1"].append(
-            compute_f1_score(round_preds, round_labels, self._prob_threshold)
+            compute_f1_score(probs, round_labels, self._prob_threshold)
         )
         self._metrics[f"{stage}_roc"].append(compute_roc_score(probs, round_labels))
         self._metrics[f"{stage}_loss"].append(loss)
