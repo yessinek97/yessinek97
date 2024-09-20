@@ -1,15 +1,30 @@
-data_version: IG_16_11_2022
-data_type: Netmhcpan
-push_gcp: False
+data_version: IG_2023
+data_type: PublicBiondeep
+push_gcp: false
 processing:
+  remove_duplicated:
+    remove: True
+    train_columns:
+      - id
+    remove_test: False
+    test_columns:
+      - id
+  filtre_rows:
+    filtre: true
+    filter_column: failed_qc_neoepitope
+    value: False
   legend:
-    # path : #legend.csv
-    filter_column: "to_take"
+    filter_column: to_take
     value: 1
     feat_col_name: features
-  # filter_rows :
-  #   filter_column :
-  #   value :
+
+  remove_missing_value:
+    remove: False
+    columns:
+      - tested_peptide
+      - wildtype_peptide
+      - tested_peptide_biondeep_mhci
+
   label: cd8_any
   id: id
   ids:
@@ -21,15 +36,27 @@ processing:
     - wildtype_peptide
     - author/source
     - genename
+    - cd8_any
+    - tested_peptide_biondeep_mhci
+    - wildtype_peptide_biondeep_mhci
+    - allele_biondeep_mhci
+    # - wildtype_dna_peptide_biondeep_mhci
+    # - tested_dna_peptide_biondeep_mhci
+    # - wildtype_dna_peptide_biondeep_mhci
+    # - tested_dna_peptide_biondeep_mhci
+    # - mut_dna_27mer
+    # - wt_dna_27mer
+    # - mut_rna_27mer
+    # - wt_rna_27mer
   proxy_model_columns:
-    proxy_m_peptide: tested_peptide_netmhcpan4.1
-    proxy_wt_peptide: wildtype_peptide_netmhcpan4.1
-    proxy_allele: allele_netmhcpan4.1
+    proxy_m_peptide: tested_peptide_biondeep_mhci
+    proxy_wt_peptide: wildtype_peptide_biondeep_mhci
+    proxy_allele: allele_biondeep_mhci
     scores:
-      tested_score_netmhcpan4.1: proxy_score_presentation
-      tested_best_rank_netmhcpan4.1: proxy_score_rank_presentation
-      tested_ba_score_netmhcpan4.1: proxy_score_score_binding
-      tested_ba_rank_netmhcpan4.1: proxy_score_rank_binding
+      tested_pres_score_biondeep_mhci: proxy_score_presentation
+      tested_best_rank_biondeep_mhci: proxy_score_rank_presentation
+      tested_score_biondeep_mhci: proxy_score_score_binding
+      diff_biondeep_cleavage: proxy_score_diff_cleavage
   expression:
     filter:
       - exp
@@ -48,6 +75,9 @@ processing:
     - prime_rank
     - prime_score
     - length_tested_peptide
+    - mhcii
+    - pmhc
+    - neofox
   include_features:
     - proxy_score
     - rnalocalization
@@ -56,26 +86,27 @@ processing:
     - pathway
     - deeptap
     - specificity_gtex
-
-  keep_include_features: False
+  keep_include_features: true
+  keep_same_type: False
   nan_ratio: 0.6
-
 features:
   file_name: features.yml
-  float: True
-  include_features_float: True
-  int: True
-  include_features_int:
-  categorical: False
-  include_features_categorical: True
-  bool: False
-  include_features_bool: True
+  float: true
+  include_features_float: true
+  int: true
+  include_features_int: true
+  categorical: true
+  include_features_categorical: true
+  bool: true
+  include_features_bool: true
 split:
-  kfold: True
+  split_path: data/splits.csv
+  kfold: true
+  seed: 2022
   kfold_column_name: fold
   nfold: 5
-  train_val: True
+  train_val: true
   train_val_name: validation
   val_size: 0.1
-  source_split: True
-  source_column: author/source
+  source_split: true
+  source_split_name: genename

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ig import CONFIGURATION_DIRECTORY
+from ig import CONFIGURATION_DIRECTORY, PROC_SEC_ID
 from ig.utils.processing import (
     add_features,
     clean_target,
@@ -17,6 +17,7 @@ from ig.utils.processing import (
     data_description,
     data_processor_new_data,
     data_processor_single_data,
+    filtre_rows,
     find_duplicated_columns_by_values,
     get_columns_by_keywords,
     get_data_type,
@@ -37,7 +38,6 @@ from ig.utils.processing import (
     remove_duplicated_columns_by_name,
     remove_list_columns,
     remove_nan_columns,
-    remove_rows,
     rename_scores,
     replace_nan_strings,
     report_missing_columns,
@@ -60,15 +60,16 @@ def test_replace_nan_strings(helper_dummy_df: pd.DataFrame) -> None:
     assert data.isna().sum().sum() == 3, "Check processing helper functions: replace_nan_strings!"
 
 
-def test_remove_rows() -> None:
+def test_filtre_rows() -> None:
     """This function is used to test the behavior of remove_rows function."""
-    data = pd.DataFrame({"col1": ["A", "B", "C"], "col2": ["X", "Y", "Z"]})
-    configuration = MagicMock(filter_rows_column="col1", filter_rows_value="B")
-    expected_data = pd.DataFrame({"col1": ["A", "C"], "col2": ["X", "Z"]}, index=[0, 2])
+    data = pd.DataFrame({"col1": ["B", "B", "C"], "col2": ["X", "Y", "Z"]})
+    configuration = MagicMock(is_filtre_rows=True, filter_rows_column="col1", filter_rows_value="B")
 
-    assert remove_rows(data, configuration).equals(
+    expected_data = pd.DataFrame({"col1": ["B", "B"], "col2": ["X", "Y"]}, index=[0, 1])
+
+    assert filtre_rows(data, configuration).equals(
         expected_data
-    ), "Check processing helper functions: remove_rows!"
+    ), "Check processing helper functions: filtre_rows!"
 
 
 def test_clean_target() -> None:
@@ -370,7 +371,9 @@ def test_get_data_type(data: pd.DataFrame, col_name: str, expected_type: pd.Seri
 
 
 def test_get_features_type(
-    mock_data_dict: Dict[str, pd.DataFrame], mock_features: List[str]
+    mock_data_dict: Dict[str, pd.DataFrame],
+    mock_features: List[str],
+    mock_include_features: List[str],
 ) -> None:
     """This function is used to test the behavior of get_features_type function."""
     expected_result = pd.DataFrame(
@@ -381,8 +384,7 @@ def test_get_features_type(
             "same_type": [True, True, True, True],
         }
     )
-
-    result = get_features_type(mock_data_dict, mock_features)
+    result = get_features_type(mock_data_dict, mock_features, mock_include_features, True)
 
     assert result.equals(expected_result), "Check processing helper functions: get_features_type !"
 
@@ -492,9 +494,10 @@ def test_get_features_from_features_configuration() -> None:
 
 def test_cross_validation() -> None:
     """This function is used to test the behavior of cross_validation function."""
-    train_data = pd.DataFrame({"proc_sec_id": [1, 2, 3], "second_id": [0, 1, 2]})
+    train_data = pd.DataFrame({"id": [1, 2, 3], PROC_SEC_ID: [0, 1, 2], "gene": [0, 1, 2]})
 
     configuration = MagicMock(
+        id="id",
         split=True,
         split_nfold=3,
         split_seed=1234,
@@ -502,11 +505,15 @@ def test_cross_validation() -> None:
         split_kfold_column_name="kfold",
         split_train_val_name="train_val",
         output_dir=Path("tests/fixtures"),
+        split_source=True,
+        split_source_column="gene",
+        split_source_kfold_column_name="g_kfold",
+        split_path=None,
     )
 
     train_data, cv_columns = cross_validation(train_data=train_data, configuration=configuration)
 
-    assert cv_columns == ["kfold", "train_val"]
+    assert cv_columns == ["kfold", "train_val", "g_kfold"]
     assert train_data["kfold"].dtype == np.dtype("int64")
     assert train_data["train_val"].dtype == np.dtype("int64")
 
@@ -664,7 +671,7 @@ def test_track_features() -> None:
     ),
     [
         (
-            "test_type_1",
+            "float",
             {},
             ["feature1", "feature2", "feature3"],
             ["feature1", "feature2", "feature4"],
@@ -672,11 +679,11 @@ def test_track_features() -> None:
             True,
             False,
             [],
-            {"test_type_1": ["feature1", "feature1", "feature2"]},
+            {"float": ["feature1", "feature1", "feature2"]},
             ["feature1", "feature1", "feature2"],
         ),
         (
-            "test_type_2",
+            "int",
             {},
             ["feature1", "feature2", "feature3"],
             ["feature1", "feature2", "feature4"],

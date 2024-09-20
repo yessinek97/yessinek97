@@ -16,12 +16,15 @@ from ig.utils.processing import (  # data_cleaning,; fix_expression_columns,; ge
     cross_validation,
     data_processor_new_data,
     data_processor_single_data,
+    filtre_rows,
     find_duplicated_columns_by_values,
     get_columns_by_keywords,
     get_features_from_features_configuration,
     get_features_type,
+    get_include_feautres,
     legend_replace_renamed_columns,
     load_dataset,
+    remove_duplucated_entries,
     report_missing_columns,
     union_type_from_features_type,
 )
@@ -121,6 +124,9 @@ def processing(
         assert other_data_name
         assert output_path
         output_dir = DATA_DIRECTORY / output_path
+        if not output_dir.exists():
+            raise FileExistsError(f"{output_dir} is no available")
+
         init_logger(logging_directory=output_dir, file_name="other_data_proc")
         if len(other_data_path) == len(other_data_name):
             process_other_data(
@@ -146,7 +152,6 @@ def process_main_data(  # noqa
 
     input_data_directory = Path(train_path).parent
     base_common_features: Optional[List[str]] = None
-
     data["train"] = load_dataset(train_path)
     if (main_data_path is not None) and (main_data_name is not None):
 
@@ -159,6 +164,20 @@ def process_main_data(  # noqa
     for data_name in data:
         initial_shape = data[data_name].shape
         log.info("-Start processing %s", data_name)
+        if data_name == "train":
+            data[data_name] = filtre_rows(data[data_name], configuration)
+            data[data_name] = remove_duplucated_entries(
+                data[data_name],
+                configuration.is_remove_duplicated,
+                configuration.remove_duplicated_train_cols,
+            )
+        else:
+            data[data_name] = remove_duplucated_entries(
+                data[data_name],
+                configuration.is_test_remove_duplicated,
+                configuration.remove_duplicated_test_cols,
+            )
+
         processed_data[data_name] = data_processor_single_data(
             data[data_name].copy(), configuration
         )
@@ -188,6 +207,9 @@ def process_main_data(  # noqa
             raise FileExistsError("legend file does not exist")
 
     common_features_set = set(processed_data["train"]["proc"].columns)
+    # Drop PROC_SEC_ID
+    common_features_set.discard(PROC_SEC_ID)
+
     for name in data:
         common_features_set = common_features_set & set(processed_data[name]["proc"].columns)
     log.info("- Common features between main data set : %s", len(common_features_set))
@@ -226,10 +248,16 @@ def process_main_data(  # noqa
     features_tracker["common_features"] = common_features
     log.info("#" * 50)
     log.info("- Separate feature per type(int,float,bool,object) ")
-    features_type = get_features_type(
-        {n: processed_data[n]["proc"] for n in processed_data}, common_features
-    )
 
+    include_features = get_include_feautres(configuration, common_features)
+    log.info("-- All include features : %s", len(include_features))
+
+    features_type = get_features_type(
+        {n: processed_data[n]["proc"] for n in processed_data},
+        common_features,
+        include_features,
+        configuration.keep_same_type,
+    )
     int_features = union_type_from_features_type(features_type, int)
     float_features = union_type_from_features_type(features_type, float)
     bool_features = union_type_from_features_type(features_type, bool)
@@ -238,21 +266,20 @@ def process_main_data(  # noqa
     log.info("--- float  : %s", len(float_features))
     log.info("--- bool   : %s", len(bool_features))
     log.info("--- object : %s", len(object_features))
-    common_features = features_type.Name.tolist()
-    log.info("- Common features between main data set with the same type: %s", len(common_features))
+    features_tracker["common_features_not_same_type"] = [
+        feature for feature in common_features if feature not in features_type.Name.tolist()
+    ]
+    features_tracker["common_features_with_same_type"] = common_features
 
-    log.info("#" * 50)
-    log.info("- include features :")
-    include_features = []
-    for keyword in configuration.include_features:
-        single_include_features = get_columns_by_keywords(common_features, keyword)
-        log.info("-- %s  : %s features", keyword, len(single_include_features))
-        include_features.extend(single_include_features)
-    bnt_features = [col for col in common_features if col not in include_features]
+    common_features = features_type.Name.tolist()
+    include_features = get_include_feautres(configuration, common_features)
+    log.info("- Common features between main data set with the same type: %s", len(common_features))
+    base_features = [col for col in common_features if col not in include_features]
     log.info("-- All include features : %s", len(include_features))
-    log.info("-- base features :%s", len(bnt_features))
+    log.info("-- base features :%s", len(base_features))
+
     features_tracker["include_features"] = include_features
-    features_tracker["base_features"] = bnt_features
+    features_tracker["base_features"] = base_features
 
     log.info("#" * 50)
     log.info("- Generate features configuration file")
@@ -263,12 +290,13 @@ def process_main_data(  # noqa
         col for col in configuration.base_columns if col != configuration.label
     ]
     features_configuration["label"] = configuration.label
+
     add_features(
         "float",
         features_configuration,
         float_features,
         include_features,
-        bnt_features,
+        base_features,
         configuration.features_float,
         configuration.features_include_float,
         final_common_features,
@@ -278,7 +306,7 @@ def process_main_data(  # noqa
         features_configuration,
         int_features,
         include_features,
-        bnt_features,
+        base_features,
         configuration.features_int,
         configuration.features_include_int,
         final_common_features,
@@ -288,7 +316,7 @@ def process_main_data(  # noqa
         features_configuration,
         bool_features,
         include_features,
-        bnt_features,
+        base_features,
         configuration.features_bool,
         configuration.features_include_bool,
         final_common_features,
@@ -298,21 +326,23 @@ def process_main_data(  # noqa
         features_configuration,
         object_features,
         include_features,
-        bnt_features,
+        base_features,
         configuration.features_categorical,
         configuration.features_include_categorical,
         final_common_features,
     )
 
-    bnt_features = [col for col in final_common_features if col not in include_features]
+    base_features = [col for col in final_common_features if col not in include_features]
     log.info("--Final common features between main data: %s", len(final_common_features))
     log.info("--- All include features : %s", len(include_features))
-    log.info("--- base features : %s", len(bnt_features))
-    columns_to_save = final_common_features + [PROC_SEC_ID]  # add fold
+    log.info("--- base features : %s", len(base_features))
+    columns_to_save = final_common_features + [PROC_SEC_ID]
+
+    features_tracker["final_common_features"] = final_common_features
+    features_tracker["columns_to_save"] = columns_to_save
 
     if "train" in processed_data:
         if configuration.split:
-
             log.info("#" * 50)
             processed_data["train"]["base"], _ = cross_validation(
                 processed_data["train"]["base"], configuration
@@ -334,6 +364,12 @@ def process_main_data(  # noqa
             configuration.output_dir / name,
         )
         f_data.to_csv(configuration.output_dir / f"{name}.csv", index=False)
+        f_whole_data = b_data.merge(
+            p_data,
+            on=PROC_SEC_ID,
+            how="left",
+        )
+        f_whole_data.to_csv(configuration.output_dir / f"{name}_whole.csv", index=False)
 
     configuration.save_configuration()
     save_yml(features_configuration, configuration.output_dir / configuration.features_file_name)
@@ -368,6 +404,7 @@ def process_other_data(
             "- Keep only %s features defined in the features configuration file", len(features)
         )
         report_missing_columns(proc_data, features, ignore_missing_features)
+        proc_data.to_csv(configuration.output_dir / f"{data_name}_whole.csv", index=False)
         proc_data = proc_data[[col for col in features if col in proc_data.columns] + [PROC_SEC_ID]]
         log.info(
             "- %s with shape %s is saved under %s.csv",

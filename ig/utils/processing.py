@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold, train_test_split
+from sklearn.model_selection import GroupKFold, KFold, train_test_split
 
 from ig import DATA_DIRECTORY, PROC_SEC_ID
 from ig.utils.io import load_yml, read_data, save_yml
@@ -77,13 +77,27 @@ class LoadProcessingConfiguration:
 
         self.exclude_features = [col.lower() for col in self.processing.get("exclude_features", [])]
         self.include_features = [col.lower() for col in self.processing.get("include_features", [])]
-        self.keep_include_features = self.processing.get("keep_include_features", False)
 
+        self.is_remove_duplicated = self.remove_duplicated_entries.get("remove", False)
+        self.is_test_remove_duplicated = self.remove_duplicated_entries.get("remove_test", False)
+
+        self.remove_duplicated_train_cols = [
+            col.lower() for col in self.remove_duplicated_entries.get("train_columns", [])
+        ]
+        self.remove_duplicated_test_cols = [
+            col.lower() for col in self.remove_duplicated_entries.get("test_columns", [])
+        ]
+
+        self.keep_include_features = self.processing.get("keep_include_features", False)
+        self.keep_same_type = self.processing.get("keep_same_type", False)
+        self.is_filtre_rows = self.filter_rows.get("filtre", False)
         self.filter_rows_column = self.filter_rows.get("filter_column", None)
         if self.filter_rows_column:
             self.filter_rows_column = self.filter_rows_column.lower()
-
         self.filter_rows_value = self.filter_rows.get("value", None)
+
+        self.is_remove_missing_value = self.remove_missing_value.get("remove", False)
+        self.remove_missing_value_columns = self.remove_missing_value.get("columns", [])
 
         self.nan_ratio = self.processing.get("nan_ratio", 0.6)
 
@@ -102,13 +116,15 @@ class LoadProcessingConfiguration:
         self.features_include_categorical = self.features.get("include_features_categorical", False)
 
         self.split_kfold = self.split.get("kfold", True)
+        self.split_path = self.split.get("split_path", None)
         self.split_kfold_column_name = self.split.get("kfold_column_name", "fold")
         self.split_nfold = self.split.get("nfold", 5)
         self.split_train_val = self.split.get("train_val", True)
         self.split_train_val_name = self.split.get("train_val_name", "validation")
         self.split_val_size = self.split.get("val_size", 0.1)
         self.split_source = self.split.get("source_split", False)
-        self.split_source_column = self.split.get("source_column", "author/source")
+        self.split_source_column = self.split.get("source_split_name", None)
+        self.split_source_kfold_column_name = f"kfold_{self.split_source_column}"
         self.split_seed = self.split.get("seed", 2023)
         self.base_columns = self.get_base_column()
 
@@ -160,7 +176,22 @@ class LoadProcessingConfiguration:
     @property
     def filter_rows(self) -> Dict[str, Any]:
         """Return filter_rows section from configuration."""
-        return self.processing.get("filter_rows", {})
+        return self.processing.get(
+            "filtre_rows", {"filtre": False, "filter_column": None, "value": None}
+        )
+
+    @property
+    def remove_missing_value(self) -> Dict[str, Any]:
+        """Return remove_missing_value section from configuration."""
+        return self.processing.get("remove_missing_value", {"remove": False, "columns": []})
+
+    @property
+    def remove_duplicated_entries(self) -> Dict[str, Any]:
+        """Return remove_duplicated_entries section from configuration."""
+        return self.processing.get(
+            "remove_duplicated",
+            {"remove": False, "remove_test": False, "train_columns": [], "test_columns": []},
+        )
 
     def save_configuration(self) -> None:
         """Save features configuration."""
@@ -168,36 +199,19 @@ class LoadProcessingConfiguration:
 
     def get_base_column(self) -> List[str]:
         """Generate the base columns features."""
-        base_columns = self.ids
-        if self.proxy_m_pep:
+        base_columns = list(set(self.ids))
+        if self.proxy_m_pep not in base_columns:
             base_columns.append(self.proxy_m_pep)
-        if self.proxy_wt_pep:
+        if self.proxy_wt_pep not in base_columns:
             base_columns.append(self.proxy_wt_pep)
-        if self.proxy_allele:
+        if self.proxy_allele not in base_columns:
             base_columns.append(self.proxy_allele)
-        base_columns.append(self.label)
+        if self.label not in base_columns:
+            base_columns.append(self.label)
+
         if self.id not in base_columns:
             base_columns = [self.id] + base_columns
         return base_columns
-
-
-def remove_rows(data: pd.DataFrame, configuration: LoadProcessingConfiguration) -> pd.DataFrame:
-    """Remove rows from data based on the filter."""
-    if (configuration.filter_rows_column is not None) and (
-        configuration.filter_rows_value is not None
-    ):
-        if configuration.filter_rows_column in data.columns:
-            log.info(
-                "-- Remove rows using  %s column  with the value %s",
-                configuration.filter_rows_column,
-                configuration.filter_rows_value,
-            )
-            log.info("--- data shape before  removing rows %s", data.shape)
-            data = data[data[configuration.filter_rows_column] != configuration.filter_rows_value]
-            log.info("--- data shape after   removing rows %s", data.shape)
-        else:
-            log.info("[%s] column is not defined in the data", configuration.filter_rows_column)
-    return data
 
 
 def replace_nan_strings(data: pd.DataFrame) -> pd.DataFrame:
@@ -393,9 +407,11 @@ def data_processor_single_data(
     """Helper function to apply minor cleaning steps."""
     log.info("-- Replace nan strings")
     data = replace_nan_strings(data)
+    data = remove_rows_with_nan(
+        data, configuration.is_remove_missing_value, configuration.remove_missing_value_columns
+    )
     log.info("-- Process label")
     data = clean_target(data, configuration.label.lower())
-    data = remove_rows(data, configuration)
     if configuration.proxy_scores:
         log.info("-- Rename score")
         data = rename_scores(data, configuration.proxy_scores)
@@ -481,6 +497,8 @@ def is_bool(x: Any) -> bool:
 def get_features_type(
     data: Dict[str, pd.DataFrame],
     features: List[str],
+    include_features: List[str],
+    keep_same_type: bool = False,
 ) -> pd.DataFrame:
     """Get features type from all datasets."""
     features_type = pd.DataFrame()
@@ -495,7 +513,22 @@ def get_features_type(
         .all(1)
     )
     log.info("--- ratio of features with the same type  = %s", features_type.same_type.mean())
-    features_type = features_type[features_type["same_type"] == 1]
+    if keep_same_type:
+        same_features_type = features_type[features_type["same_type"] == 1]
+        log.info("--- Keep Only same type features %s", same_features_type.shape[0])
+
+        if len(include_features):
+            rest_include_features = [
+                col for col in include_features if col not in same_features_type["Name"].to_list()
+            ]
+            include_features_type = features_type[features_type.Name.isin(rest_include_features)]
+            features_type = pd.concat([same_features_type, include_features_type]).reset_index(
+                drop=True
+            )
+            log.info("--- features_type after include include features %s", features_type.shape[0])
+
+        else:
+            return same_features_type
     return features_type
 
 
@@ -529,6 +562,13 @@ def data_processor_new_data(
     data: pd.DataFrame, configuration: LoadProcessingConfiguration
 ) -> pd.DataFrame:
     """Helper function to apply minor cleaning steps."""
+    data = remove_rows_with_nan(
+        data, configuration.is_remove_missing_value, configuration.remove_missing_value_columns
+    )
+
+    data = remove_duplucated_entries(
+        data, configuration.is_test_remove_duplicated, configuration.remove_duplicated_test_cols
+    )
     log.info("-- Replace nan strings")
     data = replace_nan_strings(data)
     log.info("-- Process label")
@@ -580,39 +620,86 @@ def report_missing_columns(
             raise Exception("Features from features configuration are missing")
 
 
-def cross_validation(
+def cross_validation(  # noqa
     train_data: pd.DataFrame, configuration: LoadProcessingConfiguration
 ) -> Tuple[pd.DataFrame, List[str]]:
     """Add corss validation columns, Kfold and train val split."""
     cv_columns = []
+    initial_train_len = len(train_data)
     if configuration.split:
-        log.info("- Add cross validation columns to Train data")
-        splits = train_data[[PROC_SEC_ID]]
-        splits.reset_index(inplace=True, drop=True)
-        if configuration.split_kfold:
-            cv_columns.append(configuration.split_kfold_column_name)
-            splits[configuration.split_kfold_column_name] = 0
-            for i, (_, val_index) in enumerate(
-                KFold(
-                    configuration.split_nfold, random_state=configuration.split_seed, shuffle=True
-                ).split(X=splits[PROC_SEC_ID])
-            ):
-                splits.loc[val_index, configuration.split_kfold_column_name] = int(i)
+        if configuration.split_path:
+            if Path(configuration.split_path).exists():
+                log.info(
+                    "- Add cross validation columns to Train data from  %s",
+                    configuration.split_path,
+                )
+                splits = pd.read_csv(configuration.split_path)
+                train_data = train_data.merge(splits, on=configuration.id, how="left")
+                cv_columns = splits.drop(configuration.id, axis=1).columns.to_list()
+            else:
+                raise FileExistsError(f"split path does not exist  {configuration.split_path}")
 
-        if configuration.split_train_val:
-            cv_columns.append(configuration.split_train_val_name)
-
-            _, val_index = train_test_split(
-                splits[PROC_SEC_ID],
-                random_state=configuration.split_seed,
-                test_size=configuration.split_val_size,
+        else:
+            log.info("- Add cross validation columns to Train data")
+            splits = (
+                train_data[[configuration.id, PROC_SEC_ID]].copy()
+                if not configuration.split_source
+                else train_data[
+                    [configuration.id, PROC_SEC_ID, configuration.split_source_column]
+                ].copy()
             )
-            splits[configuration.split_train_val_name] = 0
-            splits.loc[splits[PROC_SEC_ID].isin(val_index), configuration.split_train_val_name] = 1
+            splits.reset_index(inplace=True, drop=True)
+            if configuration.split_kfold:
+                log.info("  - Working on adding Kfold split")
+                cv_columns.append(configuration.split_kfold_column_name)
+                splits[configuration.split_kfold_column_name] = 0
+                for i, (_, val_index) in enumerate(
+                    KFold(
+                        configuration.split_nfold,
+                        random_state=configuration.split_seed,
+                        shuffle=True,
+                    ).split(X=splits[PROC_SEC_ID])
+                ):
+                    splits.loc[val_index, configuration.split_kfold_column_name] = int(i)
+            if configuration.split_train_val:
+                log.info("  - Working on adding Train/val split")
+
+                cv_columns.append(configuration.split_train_val_name)
+
+                _, val_index = train_test_split(
+                    splits[PROC_SEC_ID],
+                    random_state=configuration.split_seed,
+                    test_size=configuration.split_val_size,
+                )
+                splits[configuration.split_train_val_name] = 0
+                splits.loc[
+                    splits[PROC_SEC_ID].isin(val_index), configuration.split_train_val_name
+                ] = 1
+            if configuration.split_source:
+                log.info("  - Working on adding split per: %s", configuration.split_source_column)
+                splits[configuration.split_source_column].fillna("UNKNOWN", inplace=True)
+
+                cv_columns.append(configuration.split_source_kfold_column_name)
+                splits[configuration.split_source_kfold_column_name] = 0
+                for i, (_, val_index) in enumerate(
+                    GroupKFold(configuration.split_nfold).split(
+                        X=splits[PROC_SEC_ID], groups=splits[configuration.split_source_column]
+                    )
+                ):
+                    splits.loc[val_index, configuration.split_source_kfold_column_name] = int(i)
+                splits.drop([configuration.split_source_column], axis=1, inplace=True)
+
+            train_data = train_data.merge(
+                splits.drop([configuration.id], axis=1), on=PROC_SEC_ID, how="left"
+            )
+            splits.drop([PROC_SEC_ID], axis=1, inplace=True)
 
         splits.to_csv(configuration.output_dir / "splits.csv", index=False)
-        train_data = train_data.merge(splits, on=PROC_SEC_ID, how="left")
 
+        assert len(train_data) == initial_train_len, "Train data contains duplicated ids"
+        assert (
+            train_data[cv_columns].isna().sum().sum() == 0
+        ), "cv columns contains missing value check splits"
     return train_data, cv_columns
 
 
@@ -740,15 +827,31 @@ def add_features(
 ) -> None:
     """Add a specific features type to features configuration."""
     fs = [col for col in features if col in include_features]
+    type_mapping = {
+        "int": "float",
+        "bool": "float",
+        "float": "float",
+        "categorical": "categorical",
+    }
+    added_features = []
+    mapped_type = type_mapping[type_name]
     if take:
-        features_configuration[type_name] = [col for col in features if col in base_features] + fs
-        final_common_features.extend(features_configuration[type_name])
-        log.info("-- Add %s features %s", type_name, len(features_configuration[type_name]))
+        added_features = [col for col in features if col in base_features] + fs
     else:
         if take_from_include_features and (len(fs) > 0):
-            features_configuration[type_name] = fs
-            final_common_features.extend(features_configuration[type_name])
-            log.info("-- Add %s features %s", type_name, len(features_configuration[type_name]))
+            added_features = fs
+
+    if len(added_features) > 0:
+
+        if mapped_type in features_configuration.keys():
+            features_configuration[mapped_type] = (
+                features_configuration[mapped_type] + added_features
+            )
+        else:
+            features_configuration[mapped_type] = added_features
+
+        final_common_features.extend(added_features)
+        log.info("-- Add %s features %s", type_name, len(added_features))
 
 
 def legend_replace_renamed_columns(
@@ -764,3 +867,82 @@ def legend_replace_renamed_columns(
             legend_features.remove(configuration.expression_raw_name)
             legend_features.append(configuration.expression_name)
     return legend_features
+
+
+def filtre_rows(data: pd.DataFrame, configuration: LoadProcessingConfiguration) -> pd.DataFrame:
+    """Remove rows from data based on the filter."""
+    if configuration.is_filtre_rows:
+
+        if (configuration.filter_rows_column is not None) and (
+            configuration.filter_rows_value is not None
+        ):
+            if configuration.filter_rows_column in data.columns:
+
+                log.info(
+                    "-- Remove rows using  %s column  with the value %s",
+                    configuration.filter_rows_column,
+                    configuration.filter_rows_value,
+                )
+                log.info("--- data shape before  removing rows %s", data.shape)
+                data = data[
+                    data[configuration.filter_rows_column] == configuration.filter_rows_value
+                ]
+                log.info("--- data shape after   removing rows %s", data.shape)
+            else:
+                raise ValueError(
+                    (
+                        f"filter_rows_column: {configuration.filter_rows_column}",
+                        "is not defined in the data",
+                    )
+                )
+            if len(data) == 0:
+                raise ValueError(
+                    (
+                        "No data after removing rows using filter_rows_column:",
+                        f"{configuration.filter_rows_column} with the ",
+                        f"value {configuration.filter_rows_value}",
+                    )
+                )
+    return data
+
+
+def get_include_feautres(
+    configuration: LoadProcessingConfiguration, common_features: List[str]
+) -> List[str]:
+    """Get include features based on the keywords."""
+    log.info("#" * 50)
+    log.info("- include features :")
+    include_features = []
+    for keyword in configuration.include_features:
+        single_include_features = get_columns_by_keywords(common_features, keyword)
+        log.info("-- %s  : %s features", keyword, len(single_include_features))
+        include_features.extend(single_include_features)
+
+    return include_features
+
+
+def remove_rows_with_nan(data: pd.DataFrame, is_remove: bool, columns: List[str]) -> pd.DataFrame:
+    """Remove rows with nan values."""
+    if is_remove and len(columns) > 0:
+        log.info("*" * 50)
+        log.info("-- Remove rows with nan values")
+        log.info("-- Remove rows with nan values using the columns %s", columns)
+        log.info("--- data shape before removing rows with nan values %s", data.shape)
+        data = data.dropna(subset=columns)
+        log.info("--- data shape after  removing rows with nan values %s", data.shape)
+    return data
+
+
+def remove_duplucated_entries(
+    data: pd.DataFrame, is_remove_duplicated: int, columns: List[str]
+) -> pd.DataFrame:
+    """Remove duplicated entries."""
+    if is_remove_duplicated:
+        if len(columns) > 0:
+            log.info("*" * 50)
+            log.info("-- Remove duplicated entries")
+            log.info("-- Remove duplicated entries using the columns %s", ",".join(columns))
+            log.info("--- data shape before removing duplicated entries %s", data.shape)
+            data = data.drop_duplicates(subset=columns)
+            log.info("--- data shape after  removing duplicated entries %s", data.shape)
+    return data

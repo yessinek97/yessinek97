@@ -22,9 +22,22 @@ processing: # The processing section lists the settings for the preprocessing pi
     filter_column: # This argument defines the column name used to filter features.
     value: # This argument defines the value inside the filter_column which represents the feature to take.
     feat_col_name: # This argument defines the column's name which hold the features name.
+    remove_duplicated: # Remove duplicate rows based on specific columns
+      remove: True # This argument defines whether to remove duplicate rows for train.
+      train_columns: # This argument defines the column name used to filter duplicate rows for train.
+        - id
+      remove_test: False # This argument defines whether to remove duplicate rows for test.
+      test_columns: # This argument defines the column name used to filter duplicate rows for test.
+        - id
   filter_rows : # This section is used to remove rows base on a given column.
+    filtre: # This argument defines whether to filter rows or not.
     filter_column : # This argument defines the name of column to filter.
     value : # This argument defines the value used to remove rows.
+  remove_missing_value: # This section is used to remove rows with missing values.
+    remove: # This argument defines whether to remove rows with missing values or not.
+    columns: # This argument defines the name of the column to check for missing values.
+      - col1
+      - col2
   label: cd8_any # This argument sets the target label name.
   id: id # This argument defines the unique id.
   ids: # This section provides a list of the columns will be saved with the processed data.
@@ -73,6 +86,7 @@ processing: # The processing section lists the settings for the preprocessing pi
     - deeptap
     - specificity_gtex
   keep_include_features: False # This boolean argument selects whether or not to force processing to keep features from include list in case they will be removed during processing.
+  keep_same_type: False # This boolean argument selects whether or not to force processing to keep only features with the same types between datasets .
   nan_ratio: 0.6 # This argument defines a ratio on the missing values.
 features: # This section holds features settings.
   file_name: features.yml # This argument sets the name of features configuration file.
@@ -85,10 +99,13 @@ features: # This section holds features settings.
   bool: False # This argument sets whether choose to use bool features type or not.
   include_features_bool: True # This argument selects whether to force processing to keep the intersection between bool type and include features in case of bool = False.
 split: # This section lists Cross-validation settings.
+  split_path: # This argument sets the path of the split file which will be used instead of computed
   kfold: True # This argument selects whether to use Kfold split or not.
   kfold_column_name: fold # This argument specifies the column name which will hold the kfold splits if kfold is True.
   nfold: 5 # This argument defines the number of fold if kfold is True.
   train_val: True # This argument specifies whether to use train/validation split or not.
   train_val_name: validation  # This argument defines the column name which will hold the train/validation split if train_val is True.
   val_size: 0.1 # This argument defines the validation size.
+  source_split: true # This argument specifies whether to use source split or not.
+  source_split_name: genename # this argument defines the column name which will hold the source split if source_split is True.
 ```

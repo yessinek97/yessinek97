@@ -554,6 +554,12 @@ def mock_features() -> List[str]:
 
 
 @pytest.fixture(scope="session")
+def mock_include_features() -> List[str]:
+    """Sample mock features."""
+    return ["col1"]
+
+
+@pytest.fixture(scope="session")
 def mock_data():
     """Sample data for integration tests."""
     data = pd.DataFrame(
