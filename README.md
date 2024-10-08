@@ -1,2 +1,3 @@
 # About
-👨🏻‍💻 Current position: AI Research Engineer `@InstaDeep`
+##👨🏻‍💻 Current position: AI Research Engineer `@InstaDeep`
+##🧬
