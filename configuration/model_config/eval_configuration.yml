@@ -1,8 +1,0 @@
-path_save_res: optima/models/evaluation_model
-
-ckpt_path: optima/models/path/to/pickle/model/model.pkl
-
-test_data_paths:
-  - optima/path/to/data/data.tsv
-
-cfg_model_path: optima/configuration/final_configuration.yml
