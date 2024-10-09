@@ -1,1 +1,6 @@
-
+- 👋 Hi, I’m Yessine Khanfir @yessinek97, I am an AI Research Engineer At InstaDeep and currently located in Tunisia.
+- 👀 Interested in Artificial Intelligence and BioAI.
+- 🌱 Currently working on NLP / BioAI Research projects. 
+- 🌱 Currently working on NLP / BioAI Research. 
+- 💞️ Always looking to collaborate to AI / ML projects.
+- 📫 E-mail: ye.khanfir@gmail.com, Phone: +216 56 435 313.
